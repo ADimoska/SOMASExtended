@@ -38,6 +38,7 @@ Team 2, 5
     Methods:
         # - createServer():
         # - createAgents():
+        TEAM 2:
         - createServer(int threshold, int rounds, int turns, int teamSize, int numAgents) -> IDiceServer
         - formTeams(): Changes the fields for each agent (populates their team data)
         - voteForArticlesofAssociation(): Looks at each agent and calls their AoA specific functions
@@ -45,6 +46,8 @@ Team 2, 5
         - manageResources():
             - Goes through all agents and calls their embedded personal strategy (for contribution or taking away from the pool)
             - redistribute based on predecided strategy
+
+        TEAM 5:
         - generateReport():
             - Server looks at agent specific rolls and the common pool within the server, and calls agent specific
             - each agent has this broadcastReport(teamCommonPool int): teamCommonPool is team[uuid].commonPool
