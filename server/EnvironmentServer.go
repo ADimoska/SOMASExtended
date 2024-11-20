@@ -45,6 +45,33 @@ func (cs *EnvironmentServer) RunStartOfIteration(int) {
 	cs.CreateNewRoundScoreThreshold()
 	// start team forming
 
+	// take votes at team level and allocate Strategy.
+	cs.AllocateAoAs()
+}
+
+// Allocate AoA based on team votes;
+// for each member in team, count vote for AoA and then take majority (?) vote
+// assign majority vote back to team struct (team.Strategy)
+func (cs *EnvironmentServer) AllocateAoAs(){
+	// once teams assigned, gather AoA votes from each agent.
+	for _, team := range cs.teams {
+		// ranking cache for each team.
+		voteSum = []
+		for _, agent := range team.Agents {
+			for aoa, vote := range agent.AoARanking{}
+			// accumulate vote from each agent in team
+			voteSum[aoa] += vote
+		}
+		// logic to check largest
+		maxVote = 0
+		for _, sum := range voteSum {
+			if sum > maxVote{
+				maxVote = sum
+			}
+		}
+		// update teams strategy. 
+		team.Strategy = maxVote
+	}
 }
 
 func (cs *EnvironmentServer) RunEndOfIteration(int) {
