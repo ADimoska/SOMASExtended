@@ -17,9 +17,9 @@ func main() {
 		VerboseLevel: 10,
 	}
 
-	// parameters: agent num, iterations, turns, max duration, max thread
+	// parameters: agent num PER TEAM, iterations, turns, max duration, max thread
 	// note: the zero turn is used for team forming
-	serv := envServer.MakeEnvServer(3, 2, 3, 1000*time.Millisecond, 10, agentConfig)
+	serv := envServer.MakeEnvServer(2, 2, 3, 1000*time.Millisecond, 10, agentConfig)
 
 	//serv.ReportMessagingDiagnostics()
 	serv.Start()

@@ -58,8 +58,8 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	}
 }
 
-func (cs *EnvironmentServer) RunStartOfIteration(int) {
-	fmt.Printf("--------Start of iteration %v---------\n", cs.GetIterations())
+func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
+	fmt.Printf("--------Start of iteration %v---------\n", iteration)
 	cs.CreateNewRoundScoreThreshold()
 	// start team forming
 
@@ -118,9 +118,22 @@ func MakeEnvServer(numAgent int, iterations int, turns int, maxDuration time.Dur
 	serv.SetGameRunner(serv)
 
 	// create agents
+	// example: Base Agent & MI_256 from team 4
+
+	// dummy agents (base agent)
 	for i := 0; i < numAgent; i++ {
-		agent := agents.GetBaseAgents(serv, agentConfig)
-		serv.AddAgent(agent)
+		base_agent := agents.GetBaseAgents(serv, agentConfig)
+		serv.AddAgent(base_agent)
+
+		// TEAM 1
+		// TEAM 2
+		// TEAM 3
+		// TEAM 4
+		// example: MI_256 from team 4
+		team4_agent := agents.Team4_CreateAgent(serv, agentConfig)
+		serv.AddAgent(team4_agent)
+		// TEAM 5
+		// TEAM 6
 	}
 
 	serv.aoaMenu = []*common.ArticlesOfAssociation{nil, nil, nil, nil}
@@ -318,6 +331,13 @@ func (cs *EnvironmentServer) CreateAndInitTeamWithAgents(agentIDs []uuid.UUID) u
 
 	fmt.Printf("[server] Created team %v with agents %v\n", teamID, agentIDs)
 	return teamID
+}
+
+// agent get team
+func (cs *EnvironmentServer) GetTeam(agentID uuid.UUID) common.Team {
+	// cs.teamsMutex.RLock()
+	// defer cs.teamsMutex.RUnlock()
+	return cs.teams[cs.GetAgentMap()[agentID].GetTeamID()]
 }
 
 /*

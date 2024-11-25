@@ -139,8 +139,36 @@ func (mi *ExtendedAgent) DecideRollAgain() {
 
 // make a contribution to the common pool
 func (mi *ExtendedAgent) ContributeToCommonPool() int {
-	fmt.Printf("%s is contributing to the common pool\n", mi.GetID())
-	return 0
+	if mi.HasTeam() {
+		if mi.verboseLevel > 6 {
+			fmt.Printf("%s is contributing to the common pool\n", mi.GetID())
+		}
+		contribution := mi.DecideSelfContribution()
+		return contribution
+	} else {
+		if mi.verboseLevel > 6 {
+			fmt.Printf("%s has no team, skipping contribution\n", mi.GetID())
+		}
+		return 0
+	}
+}
+
+func (mi *ExtendedAgent) DecideSelfContribution() int {
+	// MVP: contribute exactly as defined in AoA
+	if mi.server.GetTeam(mi.GetID()).TeamAoA != nil {
+		aoaExpectedContribution := mi.server.GetTeam(mi.GetID()).TeamAoA.GetContributionRule().GetExpectedContributionAmount(mi.GetTrueScore())
+		// double check if score in agent is sufficient (this should be handled by AoA though)
+		if mi.GetTrueScore() < aoaExpectedContribution {
+			return mi.GetTrueScore() // give all score if less than expected
+		}
+		return aoaExpectedContribution
+	} else {
+		if mi.verboseLevel > 6 {
+			// should not happen!
+			fmt.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", mi.GetID())
+		}
+		return 0
+	}
 }
 
 // make withdrawal from common pool
@@ -341,6 +369,10 @@ func (mi *ExtendedAgent) joinExistingTeam(teamID uuid.UUID) {
 //   - teamID: The UUID of the team to assign to this agent
 func (mi *ExtendedAgent) SetTeamID(teamID uuid.UUID) {
 	mi.teamID = teamID
+}
+
+func (mi *ExtendedAgent) HasTeam() bool {
+	return mi.teamID != (uuid.UUID{})
 }
 
 // In RunStartOfIteration, the server loops through each agent in each team

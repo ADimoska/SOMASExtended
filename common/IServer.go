@@ -17,6 +17,8 @@ type IServer interface {
 	StartAgentTeamForming()
 	UpdateCommonPools()
 
+	GetTeam(agentID uuid.UUID) Team
+
 	// Debug functions
 	LogAgentStatus()
 }
