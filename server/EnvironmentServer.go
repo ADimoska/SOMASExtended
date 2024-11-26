@@ -23,9 +23,8 @@ type EnvironmentServer struct {
 	roundScoreThreshold int
 	deadAgents          []common.IExtendedAgent
 
-
 	// set of options for team strategies (agents rank these options)
-	aoaMenu  			[]*common.ArticlesOfAssociation
+	aoaMenu []*common.ArticlesOfAssociation
 }
 
 // overrides that requires implementation
@@ -82,31 +81,38 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 // Allocate AoA based on team votes;
 // for each member in team, count vote for AoA and then take majority (?) vote
 // assign majority vote back to team struct (team.Strategy)
-func (cs *EnvironmentServer) AllocateAoAs(){
-	// once teams assigned, gather AoA votes from each agent.
+func (cs *EnvironmentServer) AllocateAoAs() {
+	// Iterate over each team
 	for _, team := range cs.teams {
-		// ranking cache for each team.
-		var voteSum = []int{0,0,0,0}
-		for _, agent := range team.Agents {
-			if cs.IsAgentDead(agent) {
+		// Ranking cache for the team's votes
+		voteSum := []int{0, 0, 0, 0}
+
+		// Iterate over the agents in the team
+		for _, agentID := range team.Agents {
+			// Skip dead agents
+			if cs.IsAgentDead(agentID) {
 				continue
 			}
-			for aoa, vote := range cs.GetAgentMap()[agent].GetAoARanking() {
+
+			// Get the agent's AoA ranking and add their votes
+			for aoa, vote := range cs.GetAgentMap()[agentID].GetAoARanking() {
 				voteSum[aoa] += vote
 			}
 		}
-		// logic to check largest
-		var currentMax = 0
-		var preference = 0
-		for aoa, voteCount := range voteSum{
-			if voteCount > currentMax{
+
+		// Determine the preferred AoA based on the majority vote
+		currentMax := 0
+		preference := 0
+		for aoa, voteCount := range voteSum {
+			if voteCount > currentMax {
 				currentMax = voteCount
 				preference = aoa
 			}
 		}
 
-		// update teams strategy.
+		// Update the team's strategy
 		team.TeamAoA = cs.aoaMenu[preference]
+		cs.teams[team.TeamID] = team
 	}
 }
 
@@ -202,11 +208,15 @@ func (cs *EnvironmentServer) LogTeamStatus() {
 	for _, team := range cs.teams {
 		fmt.Printf("Team %v: %v\n", team.TeamID, team.Agents)
 	}
-	// log agents that have no team
+	// Log agents with no team
 	for _, agent := range cs.GetAgentMap() {
 		if agent.GetTeamID() == uuid.Nil {
 			fmt.Printf("Agent %v has no team\n", agent.GetID())
 		}
+	}
+	// Log dead agents
+	for _, agent := range cs.deadAgents {
+		fmt.Printf("Agent %v is dead, last team: %v\n", agent.GetID(), agent.(*agents.ExtendedAgent).LastTeamID)
 	}
 }
 
@@ -238,8 +248,27 @@ func (cs *EnvironmentServer) KillAgentBelowThreshold(agentID uuid.UUID) int {
 
 // kill agent
 func (cs *EnvironmentServer) KillAgent(agentID uuid.UUID) {
-	cs.deadAgents = append(cs.deadAgents, cs.GetAgentMap()[agentID])
-	cs.RemoveAgent(cs.GetAgentMap()[agentID])
+	agent := cs.GetAgentMap()[agentID]
+
+	// Remove the agent from the team
+	if teamID := agent.GetTeamID(); teamID != uuid.Nil {
+		cs.teamsMutex.Lock()
+		team := cs.teams[teamID]
+		for i, id := range team.Agents {
+			if id == agentID {
+				// Remove agent from the team
+				team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
+				cs.teams[teamID] = team
+				break
+			}
+		}
+		cs.teamsMutex.Unlock()
+	}
+
+	// Add the agent to the dead agent list and remove it from the server's agent map
+	cs.deadAgents = append(cs.deadAgents, agent)
+	cs.RemoveAgent(agent)
+
 	fmt.Printf("[server] Agent %v killed\n", agentID)
 }
 

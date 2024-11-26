@@ -26,6 +26,9 @@ type ExtendedAgent struct {
 
 	// AoA vote
 	AoARanking []int
+
+	LastTeamID uuid.UUID // Tracks the last team the agent was part of
+
 }
 
 type AgentConfig struct {
@@ -364,6 +367,8 @@ func (mi *ExtendedAgent) joinExistingTeam(teamID uuid.UUID) {
 // Parameters:
 //   - teamID: The UUID of the team to assign to this agent
 func (mi *ExtendedAgent) SetTeamID(teamID uuid.UUID) {
+	// Store the previous team ID
+	mi.LastTeamID = mi.teamID
 	mi.teamID = teamID
 }
 
