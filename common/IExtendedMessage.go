@@ -1,5 +1,5 @@
 package common
-
+package common
 import (
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/message"
 	"github.com/google/uuid"
