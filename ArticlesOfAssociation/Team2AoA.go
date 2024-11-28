@@ -1,4 +1,4 @@
-package common
+package aoa
 
 // import "github.com/google/uuid"
 import (

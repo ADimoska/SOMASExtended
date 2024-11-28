@@ -1,8 +1,9 @@
 package environmentServer
 
 import (
+	aoa "SOMAS_Extended/ArticlesOfAssociation"
 	"SOMAS_Extended/agents"
-	common "SOMAS_Extended/common"
+	"SOMAS_Extended/common"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -24,7 +25,7 @@ type EnvironmentServer struct {
 	deadAgents          []common.IExtendedAgent
 
 	// set of options for team strategies (agents rank these options)
-	aoaMenu []common.IArticlesOfAssociation
+	aoaMenu []aoa.IArticlesOfAssociation
 }
 
 func (cs *EnvironmentServer) RunTurn(i, j int) {
@@ -61,7 +62,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 		team.TeamAoA.RunAoAStuff()
 
 		// Initiate Contribution Audit vote
-		contributionAuditVotes := []common.Vote{}
+		contributionAuditVotes := []aoa.Vote{}
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			vote := agent.GetContributionAuditVote()
@@ -103,7 +104,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 		}
 
 		// Initiate Withdrawal Audit vote
-		withdrawalAuditVotes := []common.Vote{}
+		withdrawalAuditVotes := []aoa.Vote{}
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			vote := agent.GetWithdrawalAuditVote()
@@ -224,16 +225,16 @@ func MakeEnvServer(numAgent int, iterations int, turns int, maxDuration time.Dur
 		// TEAM 6
 	}
 
-	serv.aoaMenu = make([]common.IArticlesOfAssociation, 4)
+	serv.aoaMenu = make([]aoa.IArticlesOfAssociation, 4)
 
 	// for now, menu just has 4 choices of AoA. TBC.
-	serv.aoaMenu[0] = common.CreateFixedAoA()
+	serv.aoaMenu[0] = aoa.CreateFixedAoA()
 
-	serv.aoaMenu[1] = common.CreateFixedAoA()
+	serv.aoaMenu[1] = aoa.CreateFixedAoA()
 
-	serv.aoaMenu[2] = common.CreateFixedAoA()
+	serv.aoaMenu[2] = aoa.CreateFixedAoA()
 
-	serv.aoaMenu[3] = common.CreateFixedAoA()
+	serv.aoaMenu[3] = aoa.CreateFixedAoA()
 
 	return serv
 }

@@ -8,7 +8,8 @@ import (
 
 	common "SOMAS_Extended/common"
 
-	// TODO:
+	// TODO: S
+	aoa "SOMAS_Extended/ArticlesOfAssociation"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/message"
@@ -231,16 +232,16 @@ func (mi *ExtendedAgent) LogSelfInfo() {
 // 0: No preference
 // 1: Prefer audit
 // -1: Prefer no audit
-func (mi *ExtendedAgent) GetContributionAuditVote() common.Vote {
-	return common.CreateVote(0, mi.GetID(), uuid.Nil)
+func (mi *ExtendedAgent) GetContributionAuditVote() aoa.Vote {
+	return aoa.CreateVote(0, mi.GetID(), uuid.Nil)
 }
 
 // Agent returns their preference for an audit on withdrawal
 // 0: No preference
 // 1: Prefer audit
 // -1: Prefer no audit
-func (mi *ExtendedAgent) GetWithdrawalAuditVote() common.Vote {
-	return common.CreateVote(0, mi.GetID(), uuid.Nil)
+func (mi *ExtendedAgent) GetWithdrawalAuditVote() aoa.Vote {
+	return aoa.CreateVote(0, mi.GetID(), uuid.Nil)
 }
 
 func (mi *ExtendedAgent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {}

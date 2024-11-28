@@ -1,6 +1,7 @@
 package common
 
 import (
+	aoa "SOMAS_Extended/ArticlesOfAssociation"
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 	"github.com/google/uuid"
 )
@@ -47,6 +48,6 @@ type IExtendedAgent interface {
 	LogSelfInfo()
 	GetAoARanking() []int
 	SetAoARanking(Preferences []int)
-	GetContributionAuditVote() Vote
-	GetWithdrawalAuditVote() Vote
+	GetContributionAuditVote() aoa.Vote
+	GetWithdrawalAuditVote() aoa.Vote
 }
