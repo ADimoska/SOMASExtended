@@ -47,6 +47,9 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
 				continue
 			}
+			// Override agent rolls for testing purposes
+			// agentList := []uuid.UUID{agentID}
+			// cs.OverrideAgentRolls(agentID, agentList, 1)
 			agent.StartRollingDice(agent)
 			agentActualContribution := agent.GetActualContribution(agent)
 			agentContributionsTotal += agentActualContribution
@@ -61,9 +64,6 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 		// 	Agents do not get to see the common pool before deciding their contribution
 		//  Different to the withdrawal phase!
 		team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
-
-		// Do AoA processing
-		team.TeamAoA.RunAoAStuff()
 
 		// Initiate Contribution Audit vote
 		contributionAuditVotes := []common.Vote{}
@@ -174,7 +174,21 @@ func (cs *EnvironmentServer) AllocateAoAs() {
 		}
 
 		// Update the team's strategy
-		team.TeamAoA = cs.aoaMenu[preference]
+		switch preference {
+		case 0:
+			team.TeamAoA = common.CreateFixedAoA()
+		case 1:
+			team.TeamAoA = common.CreateFixedAoA()
+		case 2:
+			team.TeamAoA = common.CreateFixedAoA()
+		case 3:
+			team.TeamAoA = common.CreateFixedAoA()
+		case 4:
+			team.TeamAoA = common.CreateFixedAoA()
+		default:
+			team.TeamAoA = common.CreateFixedAoA()
+		}
+
 		cs.teams[team.TeamID] = team
 	}
 }
@@ -230,17 +244,6 @@ func MakeEnvServer(numAgent int, iterations int, turns int, maxDuration time.Dur
 		// TEAM 5
 		// TEAM 6
 	}
-
-	serv.aoaMenu = make([]common.IArticlesOfAssociation, 4)
-
-	// for now, menu just has 4 choices of AoA. TBC.
-	serv.aoaMenu[0] = common.CreateFixedAoA()
-
-	serv.aoaMenu[1] = common.CreateFixedAoA()
-
-	serv.aoaMenu[2] = common.CreateFixedAoA()
-
-	serv.aoaMenu[3] = common.CreateFixedAoA()
 
 	return serv
 }
@@ -514,4 +517,62 @@ func (cs *EnvironmentServer) RemoveFromOrphanedAgents(agentID uuid.UUID) {
 // GetOrphanedAgents returns the list of agents who have left their teams and are not dead.
 func (cs *EnvironmentServer) GetOrphanedAgents() []common.IExtendedAgent {
 	return cs.orphanedAgents
+}
+
+// Possibly needs to look at what team/AoA is being used to tally up the votes
+func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, controllerIds []uuid.UUID, stickThreshold int) {
+	controlled := cs.GetAgentMap()[agentId]
+	currentScore := controlled.GetTrueScore()
+
+	accumulatedScore := 0
+	rounds := 1
+	prevRoll := -1
+
+	rollingComplete := false
+
+	for !rollingComplete {
+		// AoAs can change how many stick decisions are needed here
+		numStickDecisions := 0
+		// The agents responsible for making the stick or again decision
+		for _, controllerId := range controllerIds {
+			controller := cs.GetAgentMap()[controllerId]
+			numStickDecisions += controller.StickOrAgainFor(agentId, accumulatedScore, prevRoll)
+		}
+
+		if numStickDecisions >= stickThreshold {
+			rollingComplete = true
+			fmt.Printf("%s decided to [STICK], score accumulated: %v", agentId, accumulatedScore)
+			break
+		}
+
+		if rounds > 1 {
+			fmt.Printf("%s decided to [CONTINUE ROLLING], previous roll: %v", agentId, prevRoll)
+		}
+
+		currentRoll := generateScore()
+		fmt.Printf("%s rolled: %v\n this turn", agentId, currentRoll)
+		if currentRoll <= prevRoll {
+			// Gone bust, so reset the accumulated score and break out of the loop
+			accumulatedScore = 0
+			fmt.Printf("%s **[HAS GONE BUST!]** round: %v, current score: %v\n", agentId, rounds, currentScore)
+			break
+		}
+
+		accumulatedScore += currentRoll
+		prevRoll = currentRoll
+		rounds++
+	}
+	// In case the agent has gone bust, this does nothing
+	controlled.SetTrueScore(currentScore + accumulatedScore)
+	// Log the updated score
+	fmt.Printf("%s turn score: %v, total score: %v\n", agentId, accumulatedScore, controlled.GetTrueScore())
+}
+
+func generateScore() int {
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+	score := 0
+	for i := 0; i < 3; i++ {
+		score += rand.Intn(6) + 1
+	}
+	return score
 }

@@ -58,6 +58,9 @@ func (t *Team2AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
 func (t *Team2AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
 	// ignore agentStatedContribution
 	// check if agent actually contributed it's entire score
+	if t.AuditMap[agentId] == nil {
+		t.AuditMap[agentId] = NewAuditQueue(5)
+	}
 	t.AuditMap[agentId].AddToQueue(agentActualContribution != agentScore)
 }
 
@@ -73,6 +76,9 @@ func (t *Team2AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 }
 
 func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
+	if t.AuditMap[agentId] == nil {
+		t.AuditMap[agentId] = NewAuditQueue(5)
+	}
 	if agentId == t.Leader {
 		t.AuditMap[agentId].AddToQueue(float64(agentScore)*0.25 != float64(agentActualWithdrawal))
 	} else {
@@ -106,7 +112,7 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 
 func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	// Seed the random number generator to ensure different shuffles each time
-	rand.Seed(time.Now().UnixNano())
+	rand.NewSource(time.Now().UnixNano())
 
 	// Create a copy of the agentIDs to avoid modifying the original list
 	shuffledAgents := make([]uuid.UUID, len(agentIDs))
@@ -122,7 +128,7 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 
 func (t *Team2AoA) RunAoAStuff() {}
 
-func CreateTeam2AoA() IArticlesOfAssociation {
+func CreateTeam2AoA(auditDuration int) IArticlesOfAssociation {
 	return &Team2AoA{
 		AuditMap:   make(map[uuid.UUID]*AuditQueue),
 		OffenceMap: make(map[uuid.UUID]int),

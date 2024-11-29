@@ -221,6 +221,16 @@ func (mi *ExtendedAgent) DecideWithdrawal() int {
 	}
 }
 
+/*
+Provide agentId for memory, current accumulated score
+(to see if above or below predicted threshold for common pool contribution)
+And previous roll in case relevant
+*/
+func (mi *ExtendedAgent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
+	// random chance, to simulate what is already implemented
+	return rand.Intn(2)
+}
+
 // dev function
 func (mi *ExtendedAgent) LogSelfInfo() {
 	fmt.Printf("[Agent %s] score: %v\n", mi.GetID(), mi.score)

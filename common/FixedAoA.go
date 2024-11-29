@@ -64,9 +64,6 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
-func (t *FixedAoA) RunAoAStuff() {
-}
-
 func CreateFixedAoA() IArticlesOfAssociation {
 	return &FixedAoA{}
 }
