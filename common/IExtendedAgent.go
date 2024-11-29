@@ -35,6 +35,7 @@ type IExtendedAgent interface {
 	StickOrAgain() bool
 	DecideContribution() int
 	DecideWithdrawal() int
+	DecideLeaveTeam() bool
 
 	// Messaging functions
 	HandleTeamFormationMessage(msg *TeamFormationMessage)

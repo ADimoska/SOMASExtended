@@ -450,3 +450,22 @@ func (mi *ExtendedAgent) SetAoARanking(Preferences []int) {
 func (mi *ExtendedAgent) GetAoARanking() []int {
 	return mi.AoARanking
 }
+
+func (mi *ExtendedAgent) DecideLeaveTeam() bool {
+	// Generate a random number between 0 and 9
+	decision := rand.Intn(10)
+
+	// If the random number is 0, the agent decides to leave (10% chance)
+	if decision == 0 {
+		if mi.verboseLevel > 6 {
+			fmt.Printf("Agent %s decided to leave the team (10%% probability triggered)\n", mi.GetID())
+		}
+		return true
+	}
+
+	// Otherwise, the agent stays in the team
+	if mi.verboseLevel > 6 {
+		fmt.Printf("Agent %s decided to stay in the team\n", mi.GetID())
+	}
+	return false
+}

@@ -22,6 +22,7 @@ type EnvironmentServer struct {
 
 	roundScoreThreshold int
 	deadAgents          []common.IExtendedAgent
+	orphanedAgents      []common.IExtendedAgent // New slice for orphaned agents
 
 	// set of options for team strategies (agents rank these options)
 	aoaMenu []common.IArticlesOfAssociation
@@ -30,10 +31,14 @@ type EnvironmentServer struct {
 func (cs *EnvironmentServer) RunTurn(i, j int) {
 	fmt.Printf("\n\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
 
-	cs.teamsMutex.Lock()
-	defer cs.teamsMutex.Unlock()
+	cs.teamsMutex.RLock()
+	localTeams := make(map[uuid.UUID]*common.Team)
+	for id, team := range cs.teams {
+		localTeams[id] = team
+	}
+	cs.teamsMutex.RUnlock()
 
-	for _, team := range cs.teams {
+	for _, team := range localTeams {
 		fmt.Println("\nRunning turn for team ", team.TeamID)
 		// Sum of contributions from all agents in the team for this turn
 		agentContributionsTotal := 0
@@ -119,8 +124,10 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			}
 		}
 	}
-
+	// Ask agents if they want to leave their teams
+	cs.HandleAgentsLeavingTeams()
 	// TODO: Reallocate agents who left their teams during the turn
+
 }
 
 func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
@@ -432,4 +439,70 @@ func (cs *EnvironmentServer) GetTeam(agentID uuid.UUID) *common.Team {
 	// cs.teamsMutex.RLock()
 	// defer cs.teamsMutex.RUnlock()
 	return cs.teams[cs.GetAgentMap()[agentID].GetTeamID()]
+}
+
+func (cs *EnvironmentServer) HandleAgentsLeavingTeams() {
+	// Acquire read lock
+	cs.teamsMutex.RLock()
+	localTeams := make(map[uuid.UUID]*common.Team)
+	for id, team := range cs.teams {
+		localTeams[id] = team
+	}
+	cs.teamsMutex.RUnlock()
+
+	for teamID, team := range localTeams {
+		for _, agentID := range team.Agents {
+			agent := cs.GetAgentMap()[agentID]
+			if agent.GetTeamID() != uuid.Nil && !cs.IsAgentDead(agentID) {
+				if agent.DecideLeaveTeam() {
+					fmt.Printf("[server] Agent %v decided to leave team %v\n", agentID, teamID)
+					// Acquire write lock only when modifying shared data
+					cs.RemoveAgentFromTeam(agentID, teamID)
+				}
+			}
+		}
+	}
+}
+
+func (cs *EnvironmentServer) RemoveAgentFromTeam(agentID uuid.UUID, teamID uuid.UUID) {
+	cs.teamsMutex.Lock()
+	defer cs.teamsMutex.Unlock()
+
+	team, exists := cs.teams[teamID]
+	if !exists {
+		fmt.Printf("[server] Team %v does not exist\n", teamID)
+		return
+	}
+
+	for i, id := range team.Agents {
+		if id == agentID {
+			// Remove agent from the team
+			team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
+			cs.teams[teamID] = team
+
+			// Update orphaned agents list
+			agent := cs.GetAgentMap()[agentID]
+			agent.SetTeamID(uuid.Nil)
+			if !cs.IsAgentDead(agentID) {
+				cs.orphanedAgents = append(cs.orphanedAgents, agent)
+			}
+			break
+		}
+	}
+}
+
+// A helper function to remove any agent from Orphan list
+func (cs *EnvironmentServer) RemoveFromOrphanedAgents(agentID uuid.UUID) {
+	for i, agent := range cs.orphanedAgents {
+		if agent.GetID() == agentID {
+			// Remove agent from the orphaned list
+			cs.orphanedAgents = append(cs.orphanedAgents[:i], cs.orphanedAgents[i+1:]...)
+			return
+		}
+	}
+}
+
+// GetOrphanedAgents returns the list of agents who have left their teams and are not dead.
+func (cs *EnvironmentServer) GetOrphanedAgents() []common.IExtendedAgent {
+	return cs.orphanedAgents
 }
