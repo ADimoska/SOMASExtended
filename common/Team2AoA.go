@@ -9,16 +9,25 @@ import (
 	"github.com/google/uuid"
 )
 
+// Warning -> Implicit to the AoA, not formalized until a successful audit
+// Offence -> Formalized warning, 3 offences result in a kick
+// Need to formalize the first offence punishment -> Server needs to enforce this.
+
+
+// ---------------------------------------- Audit Queue Functionality ----------------------------------------
+
+type IAuditQueue interface {
+	AddToQueue(auditResult bool)
+	GetLength() int
+	SetLength(length int)
+	GetWarnings() int
+	GetLastRound() bool
+	SetLastRound(value bool)
+}
+
 type AuditQueue struct {
 	length int
 	rounds list.List
-}
-
-func NewAuditQueue(length int) *AuditQueue {
-	return &AuditQueue{
-		length: length,
-		rounds: list.List{},
-	}
 }
 
 func (aq *AuditQueue) AddToQueue(auditResult bool) {
@@ -26,6 +35,14 @@ func (aq *AuditQueue) AddToQueue(auditResult bool) {
 		aq.rounds.Remove(aq.rounds.Front())
 	}
 	aq.rounds.PushBack(auditResult)
+}
+
+func (aq *AuditQueue) GetLength() int {
+	return aq.length
+}
+
+func (aq *AuditQueue) SetLength(length int) {
+	aq.length = length
 }
 
 func (aq *AuditQueue) GetWarnings() int {
@@ -36,8 +53,33 @@ func (aq *AuditQueue) GetWarnings() int {
 	return warnings
 }
 
+func (aq *AuditQueue) GetLastRound() bool {
+	back := aq.rounds.Back()
+	if back != nil {
+		return back.Value.(bool)
+	}
+	return false
+}
+
+func (aq *AuditQueue) SetLastRound(value bool) {
+	back := aq.rounds.Back()
+	if back != nil {
+		back.Value = value
+	}
+}
+
+func NewAuditQueue(length int) *AuditQueue {
+	return &AuditQueue{
+		length: length,
+		rounds: list.List{},
+	}
+}
+
+// ---------------------------------------- Articles of Association Functionality ----------------------------------------
+
 type Team2AoA struct {
 	AuditMap   map[uuid.UUID]*AuditQueue
+	// Used by the server in order to track which agents need to be kicked/fined/rolling privileges revoked
 	OffenceMap map[uuid.UUID]int
 	Leader     uuid.UUID
 }
@@ -50,22 +92,31 @@ func (t *Team2AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) in
 	return agentScore
 }
 
-// TODO: Team2 to implement the actual functionality
+func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
+	// Only deduct from the common pool for a successful audit
+	warnings := t.AuditMap[agentId].GetWarnings()
+	offences := t.OffenceMap[agentId]
+	offences += warnings
+
+	if offences > 3 {
+		offences = 3
+	}
+
+	t.OffenceMap[agentId] = offences
+
+	return offences == 3
+}
+
 func (t *Team2AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
-	return false
+	return t.GetAuditResult(agentId)
 }
 
 func (t *Team2AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
-	// ignore agentStatedContribution
-	// check if agent actually contributed it's entire score
-	if t.AuditMap[agentId] == nil {
-		t.AuditMap[agentId] = NewAuditQueue(5)
-	}
 	t.AuditMap[agentId].AddToQueue(agentActualContribution != agentScore)
 }
 
 func (t *Team2AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
-	return false
+	return t.GetAuditResult(agentId)
 }
 
 func (t *Team2AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
@@ -76,14 +127,12 @@ func (t *Team2AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 }
 
 func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
-	if t.AuditMap[agentId] == nil {
-		t.AuditMap[agentId] = NewAuditQueue(5)
-	}
+	multiplier := 0.10
 	if agentId == t.Leader {
-		t.AuditMap[agentId].AddToQueue(float64(agentScore)*0.25 != float64(agentActualWithdrawal))
-	} else {
-		t.AuditMap[agentId].AddToQueue(float64(agentScore)*0.10 != float64(agentActualWithdrawal))
+		multiplier = 0.25
 	}
+	auditResult := float64(agentScore) * multiplier != float64(agentActualWithdrawal) || t.AuditMap[agentId].GetLastRound()
+	t.AuditMap[agentId].SetLastRound(auditResult)
 }
 
 func (t *Team2AoA) GetAuditCost(commonPool int) int {
@@ -107,14 +156,14 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 			return vote.VotedForID
 		}
 	}
-	return uuid.Nil // Explicitly return uuid.Nil for "no result"
+	return uuid.Nil
 }
 
 func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	// Seed the random number generator to ensure different shuffles each time
 	rand.NewSource(time.Now().UnixNano())
 
-	// Create a copy of the agentIDs to avoid modifying the original list
+	// Create a copy of agentIDs to avoid modifying the original slice
 	shuffledAgents := make([]uuid.UUID, len(agentIDs))
 	copy(shuffledAgents, agentIDs)
 
@@ -123,14 +172,47 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 		shuffledAgents[i], shuffledAgents[j] = shuffledAgents[j], shuffledAgents[i]
 	})
 
-	return shuffledAgents
+	withdrawalOrder := make([]uuid.UUID, 0, len(agentIDs))
+
+	// Add the leader ID to the first position
+	withdrawalOrder = append(withdrawalOrder, t.Leader)
+
+	// Append all other IDs, excluding the leader
+	for _, agentID := range shuffledAgents {
+		if agentID != t.Leader {
+			withdrawalOrder = append(withdrawalOrder, agentID)
+		}
+	}
+
+	return withdrawalOrder
 }
 
-func (t *Team2AoA) RunAoAStuff() {}
+func (t *Team2AoA) RunAoAStuff() {
+	for agentId, offences := range t.OffenceMap {
+		currentAuditDuration := t.AuditMap[agentId].GetLength()
+		if offences == 1 {
+			if currentAuditDuration < 6 {
+				t.AuditMap[agentId].SetLength(6) // After one warning, increase the duration of the audit memory to 12 audits
+			}
+		} else if offences == 2 {
+			if currentAuditDuration < 8 {
+				t.AuditMap[agentId].SetLength(8) // After two warnings, increase the duration of the audit memory to 16 audits
+			}
+		}
+	}
+}
 
-func CreateTeam2AoA(auditDuration int) IArticlesOfAssociation {
+func CreateTeam2AoA(team *Team) IArticlesOfAssociation {
+	auditMap := make(map[uuid.UUID]*AuditQueue)
+	offenceMap := make(map[uuid.UUID]int)
+
+	for _, memberId := range team.Agents {
+		auditMap[memberId] = NewAuditQueue(4)
+		offenceMap[memberId] = 0
+	}
+
 	return &Team2AoA{
-		AuditMap:   make(map[uuid.UUID]*AuditQueue),
-		OffenceMap: make(map[uuid.UUID]int),
+		AuditMap:   auditMap,
+		OffenceMap: offenceMap,
 	}
 }
