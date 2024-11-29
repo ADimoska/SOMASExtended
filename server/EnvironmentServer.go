@@ -302,29 +302,38 @@ func (cs *EnvironmentServer) KillAgentBelowThreshold(agentID uuid.UUID) int {
 
 // kill agent
 func (cs *EnvironmentServer) KillAgent(agentID uuid.UUID) {
-	agent := cs.GetAgentMap()[agentID]
+	agent, exists := cs.GetAgentMap()[agentID]
+	if !exists || agent == nil {
+		fmt.Printf("[server] Attempted to kill a non-existent or nil agent with ID %v\n", agentID)
+		return
+	}
 
-	// Remove the agent from the team
+	// Remove the agent from the team if they have one
 	if teamID := agent.GetTeamID(); teamID != uuid.Nil {
 		cs.teamsMutex.Lock()
-		team := cs.teams[teamID]
-		for i, id := range team.Agents {
-			if id == agentID {
-				// Remove agent from the team
-				team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
-				cs.teams[teamID] = team
-				// Set the team of the agent to Nil !!!
-				agent.SetTeamID(uuid.Nil)
-				break
+		team, teamExists := cs.teams[teamID]
+		if teamExists && team != nil {
+			for i, id := range team.Agents {
+				if id == agentID {
+					// Remove agent from the team
+					team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
+					cs.teams[teamID] = team
+					break
+				}
 			}
+		} else {
+			fmt.Printf("[server] Team %v does not exist when trying to kill agent %v\n", teamID, agentID)
 		}
 		cs.teamsMutex.Unlock()
-
-		// Add the agent to the dead agent list and remove it from the server's agent map
-		cs.deadAgents = append(cs.deadAgents, agent)
-		cs.RemoveAgent(agent)
-		fmt.Printf("[server] Agent %v killed\n", agentID)
 	}
+
+	// Set the team of the agent to Nil
+	agent.SetTeamID(uuid.Nil)
+
+	// Add the agent to the dead agent list and remove it from the server's agent map
+	cs.deadAgents = append(cs.deadAgents, agent)
+	cs.RemoveAgent(agent)
+	fmt.Printf("[server] Agent %v killed\n", agentID)
 }
 
 // is agent dead
