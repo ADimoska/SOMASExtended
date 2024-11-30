@@ -36,6 +36,9 @@ type IExtendedAgent interface {
 	DecideContribution() int
 	DecideWithdrawal() int
 	StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int
+	//moved these here
+	GetContributionAuditVote() Vote
+	GetWithdrawalAuditVote() Vote
 
 	// Messaging functions
 	HandleTeamFormationMessage(msg *TeamFormationMessage)
@@ -48,6 +51,4 @@ type IExtendedAgent interface {
 	LogSelfInfo()
 	GetAoARanking() []int
 	SetAoARanking(Preferences []int)
-	GetContributionAuditVote() Vote
-	GetWithdrawalAuditVote() Vote
 }
