@@ -167,7 +167,7 @@ func (t2a *Team2Agent) AllocateRank() common.Vote{
 				highestTrustScore = agentTrustScore;
 			}
 		}
-		if  0 <= highestTrustScore <= 10{ 
+		if  highestTrustScore <= 10 { 
 			return common.CreateVote(1, t2a.GetID(), highestAgent);
 		}else{
 			return common.CreateVote(0, t2a.GetID(), uuid.Nil); // abstain cuz no trust score exists or is too high so gone wrong somehwere
