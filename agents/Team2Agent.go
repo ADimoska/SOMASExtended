@@ -18,7 +18,7 @@ type Team2Agent struct {
 }
 
 // constructor for Fascist Agent - not sure exaftly whats going on here
-func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *FascistAgent {
+func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
 	return &Team2Agent{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 	}
@@ -27,7 +27,7 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 // ----- 2.1 Decision to send or accept a team invitiation -----
 
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-
+	return []uuid.UUID{}
 }
 
 // ----- 2.2 Decision to stick -----
