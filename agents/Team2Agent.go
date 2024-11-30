@@ -127,64 +127,76 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 }
 
 // /////////// ----------------------RANKING SYSTEM---------------------- /////////////
-func (t2a *Team2Agent) AssignRole(agentID uuid.UUID, role int) int {
-	// Check if trustScore map exists
+// neeed to structure agent map to include roles
+// AssignRole assigns a specific role to an agent based on their UUID
+func (t2a *Team2Agent) AssignRole(agentID uuid.UUID, role string) string {
+	// Ensure trustScore map exists
 	if t2a.trustScore == nil {
 		t2a.trustScore = make(map[uuid.UUID]int)
 	}
-	// Update the role of the agent in trustScore map (or other structure if required)
-	t2a.trustScore[agentID] = role
-	return role // Return the role assigned for confirmation
+	// Update the trustScore map to reflect the role 
+	t2a.rank = role
+
+	return role // Return the assigned role
 }
 
-
-// Decide who is leader and who isnt, do this with an integar flage. Key = {1: leader, 2: general, 3: citizen, 4: police}
-func (t2a *Team2Agent) AllocateRank() common.Vote {
-	// Get the current turn (assumes GetLastRound fetches the turn number)
-	currentTurn := t2a.common.GetLastRound() // Implement correctly if needed
-	var highestTrustScore int = math.MinInt
+// AllocateRank decides roles and assigns them based on the current game state and votes
+func (t2a *Team2Agent) AllocateRank(votes []common.Vote) common.Vote {
+	// Get the current turn
+	currentTurn := t2a.Team2AoA.GetLastRound() // TODO fix the way i call this
+	var highestTrustScore int = math.MinInt // Lowest possible int for comparison
 	var highestAgent uuid.UUID
 
 	// Get the list of all agent UUIDs
 	agentIDs := t2a.server.GetAgentsInTeam(t2a.teamID)
 
 	if len(agentIDs) == 0 {
-		// If no agents, return abstain vote
-		return common.CreateVote(0, t2a.GetID(), uuid.Nil)
+		// If no agents are found, abstain from voting
+		return common.Vote{IsVote: 0, VoterID: t2a.GetID(), VotedForID: uuid.Nil}
 	}
 
-	// Check if it's the first turn
-	if currentTurn == 0 {
+	// First turn: Randomly assign roles
+	if !currentTurn {
 		// Randomly select a leader
 		leaderIndex := rand.Intn(len(agentIDs))
 		leaderID := agentIDs[leaderIndex]
-		// Assign the leader role
-		t2a.AssignRole(leaderID, 1) // Role 1 is Leader
+		// Assign leader role
+		t2a.AssignRole(leaderID, "Leader")
 
-		// Assign citizens to others
+		// Assign citizen roles to all other agents
 		for _, agentID := range agentIDs {
 			if agentID != leaderID {
-				t2a.AssignRole(agentID, 3) // Role 3 is Citizen
+				t2a.AssignRole(agentID, "Citizen") 
 			}
 		}
-		// Return a vote indicating the new leader
-		return common.CreateVote(1, t2a.GetID(), leaderID)
+		// Return a vote indicating the leader
+		return common.Vote{IsVote: 1, VoterID: t2a.GetID(), VotedForID: leaderID}
 	} else {
-		// Choose leader based on trust scores
+		// Subsequent turns: Use trust scores to assign roles
 		for _, agentID := range agentIDs {
-			agentTrustScore := t2a.trustScore[agentID] // Assuming trustScore is initialized properly
+			agentTrustScore := t2a.trustScore[agentID] // Trust score map must be initialized
 			if agentTrustScore > highestTrustScore {
 				highestAgent = agentID
 				highestTrustScore = agentTrustScore
 			}
 		}
 
-		// If no valid trust scores, abstain
+		// If no valid trust scores are found, abstain
 		if highestTrustScore <= 0 {
-			return common.CreateVote(0, t2a.GetID(), uuid.Nil)
+			return common.Vote{IsVote: 0, VoterID: t2a.GetID(), VotedForID: uuid.Nil}
 		}
 
-		// Return vote for the highest agent
-		return common.CreateVote(1, t2a.GetID(), highestAgent)
+		// Assign leader to the agent with the highest trust score
+		t2a.AssignRole(highestAgent, "Leader") 
+
+		// Assign citizen roles to all other agents
+		for _, agentID := range agentIDs {
+			if agentID != highestAgent {
+				t2a.AssignRole(agentID, "Citizen") 
+			}
+		}
+
+		// Return a vote indicating the new leader
+		return  common.Vote{IsVote: 1, VoterID: t2a.GetID(), VotedForID: highestAgent}
 	}
 }
