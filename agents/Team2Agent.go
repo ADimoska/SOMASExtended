@@ -129,17 +129,17 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 // /////////// ----------------------RANKING SYSTEM---------------------- /////////////
 func (t2a *Team2Agent) AssignRole(agentID uuid.UUID, role int) int {
 	// get agent profiles and update with assigned roles
-	var agentIDs []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID);
+	// var agentIDs []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID);
 	//TODO set the role of the agent - idk how to do this yet - some sort of agent profile where there is a role field
 	return 0 // TODO Return updated agent profiles
 }
 
 // Decide who is leader and who isnt, do this with an integar flage. Key = {1: leader, 2: general, 3: citizen, 4: police}
-func (t2a *Team2Agent) AllocateRank() {
-	//TODO get turn, iteration and agent ids from server - call the server functions
+func (t2a *Team2Agent) AllocateRank() common.Vote{
 	// Get the current turn and iteration
-	currentTurn bool = t2a.common.GetLastRound()
+	currentTurn := t2a.common.GetLastRound() //TODO fix this
 	var highestTrustScore int = 0; // start with lowest poss trust score
+	var highestAgent uuid.UUID;
 	// Get the list of all agent UUIDs
 	var agentIDs []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID);
 	// int currentIteration = t2a.server.GetCurrentIteration(t2a.teamID)
@@ -159,7 +159,7 @@ func (t2a *Team2Agent) AllocateRank() {
 		}
 	} else {
 		// Agents vote leader in based on trust scores
-		for _, agentID := range agentsInTeam {
+		for _, agentID := range agentIDs {
 			agentTrustScore := t2a.trustScore[agentID];
 
 			if agentTrustScore > highestTrustScore {
