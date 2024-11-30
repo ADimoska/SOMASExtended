@@ -141,7 +141,66 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 // ----- 2.1 Decision to send or accept a team invitiation -----
 
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	return []uuid.UUID{}
+    // Initialize selected agents slice
+    selectedAgents := make([]uuid.UUID, 0)
+    
+    // Initialize trust score map if it hasn't been initialized yet
+    if t2a.trustScore == nil {
+        t2a.trustScore = make(map[uuid.UUID]int)
+    }
+    
+    // Set trust threshold for accepting/sending invitations
+    trustThreshold := 7 // This can be adjusted based on desired behavior
+    
+    // Iterate through all agents
+    for _, agentInfo := range agentInfoList {
+        // Use the full AgentUUID instead of just the ID
+        agentUUID := agentInfo.AgentUUID
+        
+        // Skip if it's our own ID
+        if agentUUID == t2a.GetID() {
+            continue
+        }
+        
+        // Get current trust score for this agent
+        trustScore, exists := t2a.trustScore[agentUUID]
+        if !exists {
+            // If we haven't interacted with this agent before, set a neutral trust score
+            trustScore = 5
+            t2a.trustScore[agentUUID] = trustScore
+        }
+        
+        // Check if we're a follower and they're a leader
+        if t2a.rank != nil {
+            ourRole, weHaveRole := t2a.rank[t2a.GetID()]
+            theirRole, theyHaveRole := t2a.rank[agentUUID]
+            
+            // Followers always accept leader's invitation
+            if weHaveRole && theyHaveRole && 
+               ourRole == "Citizen" && theirRole == "Leader" {
+                selectedAgents = append(selectedAgents, agentUUID)
+                continue
+            }
+            
+            // Leaders are more selective with followers
+            if weHaveRole && theyHaveRole && 
+               ourRole == "Leader" && theirRole == "Citizen" {
+                // Only accept if they meet trust threshold
+                if trustScore >= trustThreshold {
+                    selectedAgents = append(selectedAgents, agentUUID)
+                }
+                continue
+            }
+        }
+        
+        // For agents without established roles or regular interactions
+        // Accept/send invitation if trust score is above threshold
+        if trustScore >= trustThreshold {
+            selectedAgents = append(selectedAgents, agentUUID)
+        }
+    }
+    
+    return selectedAgents
 }
 
 // ----- 2.2 Decision to stick -----
@@ -268,8 +327,6 @@ func (t2a *Team2Agent) AssignRole(agentID uuid.UUID, role string) string {
 // AllocateRank decides roles and assigns them based on the current game state and votes
 func (t2a *Team2Agent) AllocateRank(votes []common.Vote) common.Vote {
 	// Get the current turn
-	// currentTurn := t2a.Team2AoA.GetLastRound() // TODO fix the way i call this
-	currentTurn := false
 	var highestTrustScore int = math.MinInt // Lowest possible int for comparison
 	var highestAgent uuid.UUID
 
@@ -280,10 +337,11 @@ func (t2a *Team2Agent) AllocateRank(votes []common.Vote) common.Vote {
 		// If no agents are found, abstain from voting
 		return common.Vote{IsVote: 0, VoterID: t2a.GetID(), VotedForID: uuid.Nil}
 	}
-
-	// First turn: Randomly assign roles
-	if !currentTurn {
-		// Randomly select a leader
+	//get vote result from the server
+	// vote result = t2a.Team2AoA.GetVoteResult(votes) //TODO fix the way i call this
+	voteResult := uuid.Nil
+	if !voteResult {
+		//Randomly select a leader
 		leaderIndex := rand.Intn(len(agentIDs))
 		leaderID := agentIDs[leaderIndex]
 		// Assign leader role
@@ -294,26 +352,48 @@ func (t2a *Team2Agent) AllocateRank(votes []common.Vote) common.Vote {
 			if agentID != leaderID {
 				t2a.AssignRole(agentID, "Citizen")
 			}
-		}
-		// Return a vote indicating the leader
-		return common.Vote{IsVote: 1, VoterID: t2a.GetID(), VotedForID: leaderID}
-	} else {
-		// Subsequent turns: Use trust scores to assign roles
+	}else{
+		t2a.AssignRole(voteResult, "Leader")
+		// Assign citizen roles to all other agents
 		for _, agentID := range agentIDs {
-			agentTrustScore := t2a.trustScore[agentID] // Trust score map must be initialized
-			if agentTrustScore > highestTrustScore {
-				highestAgent = agentID
-				highestTrustScore = agentTrustScore
+			if agentID != voteResult {
+				t2a.AssignRole(agentID, "Citizen")
 			}
 		}
-
-		// If no valid trust scores are found, abstain
-		if highestTrustScore <= 0 {
-			return common.Vote{IsVote: 0, VoterID: t2a.GetID(), VotedForID: uuid.Nil}
-		}
-
-		// Return a vote indicating the new leader
-		return common.Vote{IsVote: 1, VoterID: t2a.GetID(), VotedForID: highestAgent}
-
 	}
+	// // First turn: Randomly assign roles
+	// if currentGame == 0 {
+	// 	// Randomly select a leader
+	// 	leaderIndex := rand.Intn(len(agentIDs))
+	// 	leaderID := agentIDs[leaderIndex]
+	// 	// Assign leader role
+	// 	t2a.AssignRole(leaderID, "Leader")
+
+	// 	// Assign citizen roles to all other agents
+	// 	for _, agentID := range agentIDs {
+	// 		if agentID != leaderID {
+	// 			t2a.AssignRole(agentID, "Citizen")
+	// 		}
+	// 	}
+	// 	// Return a vote indicating the leader
+	// 	return common.Vote{IsVote: 1, VoterID: t2a.GetID(), VotedForID: leaderID}
+	// } else {
+	// 	// Subsequent turns: Use trust scores to assign roles
+	// 	for _, agentID := range agentIDs {
+	// 		agentTrustScore := t2a.trustScore[agentID] // Trust score map must be initialized
+	// 		if agentTrustScore > highestTrustScore {
+	// 			highestAgent = agentID
+	// 			highestTrustScore = agentTrustScore
+	// 		}
+	// 	}
+
+	// 	// If no valid trust scores are found, abstain
+	// 	if highestTrustScore <= 0 {
+	// 		return common.Vote{IsVote: 0, VoterID: t2a.GetID(), VotedForID: uuid.Nil}
+	// 	}
+
+	// 	// Return a vote indicating the new leader
+	// 	return common.Vote{IsVote: 1, VoterID: t2a.GetID(), VotedForID: highestAgent}
+
+	// }
 }
