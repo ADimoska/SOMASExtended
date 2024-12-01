@@ -4,7 +4,6 @@ import (
 	"SOMAS_Extended/common"
 	"fmt"
 	"math"
-	"math/rand"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 	"github.com/google/uuid"
@@ -13,7 +12,7 @@ import (
 // this is the third tier of composition - embed the extended agent and add 'user specific' fields
 type Team2Agent struct {
 	*ExtendedAgent
-	rank            map[uuid.UUID]string // Map agent UUID ot rank
+	rank            bool
 	trustScore      map[uuid.UUID]int
 	strikeCount     map[uuid.UUID]int
 	thresholdBounds []int
@@ -284,46 +283,6 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 }
 
 // /////////// ----------------------RANKING SYSTEM---------------------- /////////////
-// AllocateRank decides roles and assigns them based on the current game state and votes
-func (t2a *Team2Agent) AllocateRank(votes []common.Vote) {
-	// Get the list of all agent UUIDs
-	agentIDs := t2a.server.GetAgentsInTeam(t2a.teamID)
-
-	// Ensure rankMap is initialized
-	if t2a.rank == nil {
-		t2a.rank = make(map[uuid.UUID]string)
-	}
-
-	// Get vote result from the server
-	// voteResult := t2a.Team2AoA.GetVoteResult() // TO-DO: implement this function
-	voteResult := uuid.Nil
-	// If vote result is nil, randomly assign leader
-	if voteResult == uuid.Nil {
-		// Randomly select a leader
-		leaderIndex := rand.Intn(len(agentIDs))
-		leaderID := agentIDs[leaderIndex]
-
-		// Assign leader role
-		t2a.rank[leaderID] = "Leader"
-
-		// Assign citizen roles to all other agents
-		for _, agentID := range agentIDs {
-			if agentID != leaderID {
-				t2a.rank[agentID] = "Citizen"
-			}
-		}
-	} else {
-		// Assign vote result as leader
-		t2a.rank[voteResult] = "Leader"
-
-		// Assign citizen roles to all other agents
-		for _, agentID := range agentIDs {
-			if agentID != voteResult {
-				t2a.rank[agentID] = "Citizen"
-			}
-		}
-	}
-}
 
 func (t2a *Team2Agent) GetLeaderVote() common.Vote {
 	// Experiment with this - it is our threshold to decide leader worthiness
@@ -354,3 +313,5 @@ func (t2a *Team2Agent) GetLeaderVote() common.Vote {
 		return common.CreateVote(0, t2a.GetID(), uuid.Nil)
 	}
 }
+
+// is get function for the leader vote
