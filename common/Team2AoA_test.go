@@ -104,4 +104,13 @@ func TestTeam2Aoa_offences(t *testing.T) {
 	if aoa.OffenceMap[alice] != 1 {
 		t.Errorf("Expected 1, got %v", aoa.OffenceMap[alice])
 	}
+
+	// This is a warning
+	aoa.SetContributionAuditResult(alice, 100, 20, 100)
+	// Legitimate behaviour -> Should lead to only one warning this round
+	aoa.SetWithdrawalAuditResult(alice, 100, 25, 25, 100)
+
+	if aoa.AuditMap[alice].GetWarnings() != 1 {
+		t.Errorf("Expected 1, got %v", aoa.AuditMap[alice].GetWarnings())
+	}
 }
