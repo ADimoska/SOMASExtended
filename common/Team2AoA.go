@@ -5,6 +5,7 @@ import (
 	"container/list"
 	"math/rand"
 	"time"
+	"math"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +24,7 @@ type IAuditQueue interface {
 	GetWarnings() int
 	GetLastRound() bool
 	SetLastRound(value bool)
+	Reset()
 }
 
 type AuditQueue struct {
@@ -46,11 +48,14 @@ func (aq *AuditQueue) SetLength(length int) {
 }
 
 func (aq *AuditQueue) GetWarnings() int {
-	warnings := 0
-	for e := aq.rounds.Front(); e != nil; e = e.Next() {
-		warnings += e.Value.(int)
-	}
-	return warnings
+    warnings := 0
+    for e := aq.rounds.Front(); e != nil; e = e.Next() {
+		// Avoid run-time panic (which would happen if this is enforced to be an int)
+        if e.Value.(bool) {
+            warnings++
+        }
+    }
+    return warnings
 }
 
 func (aq *AuditQueue) GetLastRound() bool {
@@ -66,6 +71,10 @@ func (aq *AuditQueue) SetLastRound(value bool) {
 	if back != nil {
 		back.Value = value
 	}
+}
+
+func (aq *AuditQueue) Reset() {
+	aq.rounds.Init()
 }
 
 func NewAuditQueue(length int) *AuditQueue {
@@ -104,6 +113,9 @@ func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
 
 	t.OffenceMap[agentId] = offences
 
+	// Reset the audit queue after an audit to prevent double counting of offences
+	t.AuditMap[agentId].Reset()
+
 	return offences == 3
 }
 
@@ -131,7 +143,13 @@ func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, a
 	if agentId == t.Leader {
 		multiplier = 0.25
 	}
-	auditResult := float64(agentScore) * multiplier != float64(agentActualWithdrawal) || t.AuditMap[agentId].GetLastRound()
+	const epsilon = 1e-9 // Define a small threshold
+	expectedWithdrawal := float64(agentScore) * multiplier
+	actualWithdrawal := float64(agentActualWithdrawal)
+
+	// Compare using epsilon to handle floating-point inaccuracies
+	auditResult := math.Abs(expectedWithdrawal-actualWithdrawal) > epsilon || t.AuditMap[agentId].GetLastRound()
+
 	t.AuditMap[agentId].SetLastRound(auditResult)
 }
 
@@ -139,7 +157,7 @@ func (t *Team2AoA) GetAuditCost(commonPool int) int {
 	if commonPool < 5 {
 		return 2
 	}
-	return 5 + ((commonPool - 5) / 5)
+	return 2 + (commonPool / 5)
 }
 
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
@@ -192,19 +210,32 @@ func (t *Team2AoA) RunAoAStuff() {
 		currentAuditDuration := t.AuditMap[agentId].GetLength()
 		if offences == 1 {
 			if currentAuditDuration < 6 {
-				t.AuditMap[agentId].SetLength(6) // After one warning, increase the duration of the audit memory to 12 audits
+				t.AuditMap[agentId].SetLength(6) // After one warning, increase the duration of the audit memory to 6 audits
 			}
 		} else if offences == 2 {
 			if currentAuditDuration < 8 {
-				t.AuditMap[agentId].SetLength(8) // After two warnings, increase the duration of the audit memory to 16 audits
+				t.AuditMap[agentId].SetLength(8) // After two warnings, increase the duration of the audit memory to 8 audits
 			}
 		}
 	}
 }
 
-func CreateTeam2AoA(team *Team) IArticlesOfAssociation {
+func (t *Team2AoA) SetLeader(leader uuid.UUID) {
+	t.Leader = leader
+}
+
+func CreateTeam2AoA(team *Team, leader uuid.UUID) IArticlesOfAssociation {
 	auditMap := make(map[uuid.UUID]*AuditQueue)
 	offenceMap := make(map[uuid.UUID]int)
+
+	if leader == uuid.Nil {
+		shuffledAgents := make([]uuid.UUID, len(team.Agents))
+		copy(shuffledAgents, team.Agents)
+		rand.Shuffle(len(shuffledAgents), func(i, j int) {
+			shuffledAgents[i], shuffledAgents[j] = shuffledAgents[j], shuffledAgents[i]
+		})
+		leader = shuffledAgents[0]
+	}
 
 	for _, memberId := range team.Agents {
 		auditMap[memberId] = NewAuditQueue(4)
@@ -214,5 +245,6 @@ func CreateTeam2AoA(team *Team) IArticlesOfAssociation {
 	return &Team2AoA{
 		AuditMap:   auditMap,
 		OffenceMap: offenceMap,
+		Leader:     leader,
 	}
 }
