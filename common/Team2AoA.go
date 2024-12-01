@@ -116,7 +116,7 @@ func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
 	// Reset the audit queue after an audit to prevent double counting of offences
 	t.AuditMap[agentId].Reset()
 
-	return offences == 3 // If the agent has 3 offences, they are kicked
+	return offences == 3 // When this is true, the agent needs to be kicked from the team
 }
 
 func (t *Team2AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
