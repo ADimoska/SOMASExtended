@@ -27,9 +27,9 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 }
 
 // ----- 1.2 Trust Score Update -----
-func (t *Team2Agent) SetTrustScore(id uuid.UUID) {
-	if _, exists := t.trustScore[id]; !exists {
-		t.trustScore[id] = 70
+func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
+	if _, exists := t2a.trustScore[id]; !exists {
+		t2a.trustScore[id] = 70
 	}
 }
 
