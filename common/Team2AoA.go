@@ -21,8 +21,8 @@ type IAuditQueue interface {
 	GetLength() int
 	SetLength(length int)
 	GetWarnings() int
-	GetLastRound() bool
-	SetLastRound(value bool)
+	GetLastAuditWarning() bool
+	SetLastAuditWarning(value bool)
 	Reset()
 }
 
@@ -57,7 +57,7 @@ func (aq *AuditQueue) GetWarnings() int {
     return warnings
 }
 
-func (aq *AuditQueue) GetLastRound() bool {
+func (aq *AuditQueue) GetLastAuditWarning() bool {
 	back := aq.rounds.Back()
 	if back != nil {
 		return back.Value.(bool)
@@ -65,7 +65,7 @@ func (aq *AuditQueue) GetLastRound() bool {
 	return false
 }
 
-func (aq *AuditQueue) SetLastRound(value bool) {
+func (aq *AuditQueue) SetLastAuditWarning(value bool) {
 	back := aq.rounds.Back()
 	if back != nil {
 		back.Value = value
@@ -148,9 +148,9 @@ func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, a
 	actualWithdrawal := float64(agentActualWithdrawal)
 
 	// Compare using epsilon to handle floating-point inaccuracies
-	auditResult := math.Abs(expectedWithdrawal-actualWithdrawal) > epsilon || t.AuditMap[agentId].GetLastRound()
+	auditResult := math.Abs(expectedWithdrawal-actualWithdrawal) > epsilon || t.AuditMap[agentId].GetLastAuditWarning()
 
-	t.AuditMap[agentId].SetLastRound(auditResult)
+	t.AuditMap[agentId].SetLastAuditWarning(auditResult)
 }
 
 func (t *Team2AoA) GetAuditCost(commonPool int) int {
@@ -170,6 +170,7 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 				voteMap[vote.VotedForID]++
 			}
 		}
+		// TODO: 4 is the fixed threshold of votes, this may change depending on team size
 		if voteMap[vote.VotedForID] > 4 {
 			return vote.VotedForID
 		}
