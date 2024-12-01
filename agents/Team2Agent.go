@@ -25,11 +25,27 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 }
 
+// ----- 1.1 Decide Contribution -----
+func (t2a *Team2Agent) DecideContribution() int {
+
+	// Get the current points in the common pool
+	currentPoints := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+	// Get the expected contribution from the AOA - currently just ou rAoA but can change this to whichever AoA is currently in use
+	expectedContribution := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedContribution(t2a.GetID(), currentPoints)
+	// If the expected contribution is less than or equal to current points just contribute expected
+	if expectedContribution <= currentPoints {
+		return expectedContribution
+	}
+
+	// If the expected contribution is more than current points, contribute all current points
+	return currentPoints
+}
+
 // ----- 1.2 Trust Score Update -----
 func (t *Team2Agent) SetTrustScore(id uuid.UUID) {
-    if _, exists := t.trustScore[id]; !exists {
-        t.trustScore[id] = 70
-    }
+	if _, exists := t.trustScore[id]; !exists {
+		t.trustScore[id] = 70
+	}
 }
 
 // Overall function to update one agents trust score for other agents
@@ -118,7 +134,6 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 	// Initialize selected agents slice
 	selectedAgents := make([]uuid.UUID, 0)
 
-
 	// Set trust threshold for accepting/sending invitations
 	trustThreshold := 7 // This can be adjusted based on desired behavior
 
@@ -166,7 +181,7 @@ func (t2a *Team2Agent) StickorAgain() {
 
 // ----- 2.3 Decision to cheat / not cooperate
 
-func (t2a *Team2Agent) DecideContribution() {
+func (t2a *Team2Agent) DecideContributionCheating() {
 
 }
 
@@ -189,19 +204,19 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 	// 1: Setup
 
 	// experiment with these;
-	var auditThreshold int = 5 		// decision to audit based on if an agents trust score is lower than this
-	var suspicionFactor int = 2		// how much we lower everyone's trust scores if there is a discrepancy.
-	var discrepancyThreshold = 4 	// if discrepancy between stated and actual common pool is greater than this, lower trust scores.
+	var auditThreshold int = 5   // decision to audit based on if an agents trust score is lower than this
+	var suspicionFactor int = 2  // how much we lower everyone's trust scores if there is a discrepancy.
+	var discrepancyThreshold = 4 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
 	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
 
 	// 2: Main logic
 
-	// get the actual size of common pool post contributions, and the supposed size based on what agents have stated about their contributions. 
-	// compare them to find the discrepancy. 
+	// get the actual size of common pool post contributions, and the supposed size based on what agents have stated about their contributions.
+	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	var supposedCommonPoolSize = 0 
+	var supposedCommonPoolSize = 0
 	for _, agentID := range agentsInTeam {
 		// TODO:
 		// get the agents stated contribution
@@ -209,19 +224,19 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 	}
 	var discrepancy int = supposedCommonPoolSize - actualCommonPoolSize
 
-	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor. 
+	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
 	// then check to see if the least trusted agent in your team is below the threshold
 	if discrepancy > discrepancyThreshold {
 
 		// decrement all team trust scores
 		for _, agentID := range agentsInTeam {
-			t2a.trustScore[agentID] -= suspicionFactor;
+			t2a.trustScore[agentID] -= suspicionFactor
 		}
-	
-		var lowestTrustScore int = math.MaxInt; 
+
+		var lowestTrustScore int = math.MaxInt
 		var lowestAgent uuid.UUID
 
-		// find the agent with the lowest trust score. 
+		// find the agent with the lowest trust score.
 		for _, agentID := range agentsInTeam {
 			agentTrustScore := t2a.trustScore[agentID]
 
@@ -232,7 +247,7 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 		}
 
 		// if the lowest agent is below the threshold, submit a vote for them
-		// if they still aren't, abstain. 
+		// if they still aren't, abstain.
 		if lowestTrustScore < auditThreshold {
 			// 1 means vote for audit of this person
 			return common.CreateVote(1, t2a.GetID(), lowestAgent)
@@ -247,46 +262,44 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 
 }
 
-
-
 func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	// 1: Setup
 
 	// experiment with these;
-	var auditThreshold int = 5 		// decision to audit based on if an agents trust score is lower than this
-	var suspicionFactor int = 2		// how much we lower everyone's trust scores if there is a discrepancy.
-	var discrepancyThreshold = 4 	// if discrepancy between stated and actual common pool is greater than this, lower trust scores.
+	var auditThreshold int = 5   // decision to audit based on if an agents trust score is lower than this
+	var suspicionFactor int = 2  // how much we lower everyone's trust scores if there is a discrepancy.
+	var discrepancyThreshold = 4 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
 	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
 
 	// 2: Main logic
-	
-	// get the actual size of common pool after withdrawals, and the supposed size based on what agents have stated about their withdrawals. 
-	// compare them to find the discrepancy. 
+
+	// get the actual size of common pool after withdrawals, and the supposed size based on what agents have stated about their withdrawals.
+	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	var supposedCommonPoolSize int; // starts out as the size of the common pool before withdrawals
+	var supposedCommonPoolSize int // starts out as the size of the common pool before withdrawals
 	for _, agentID := range agentsInTeam {
 		// TODO:
 		// get the agents stated withdrawal
 		// take this away from the supposed common pool size.
 	}
-	
+
 	var discrepancy int = supposedCommonPoolSize - actualCommonPoolSize
 
-	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor. 
+	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
 	// then check to see if the least trusted agent in your team is below the threshold
 	if discrepancy > discrepancyThreshold {
 
 		// decrement all team trust scores
 		for _, agentID := range agentsInTeam {
-			t2a.trustScore[agentID] -= suspicionFactor;
+			t2a.trustScore[agentID] -= suspicionFactor
 		}
-	
-		var lowestTrustScore int = math.MaxInt; 
+
+		var lowestTrustScore int = math.MaxInt
 		var lowestAgent uuid.UUID
 
-		// find the agent with the lowest trust score. 
+		// find the agent with the lowest trust score.
 		for _, agentID := range agentsInTeam {
 			agentTrustScore := t2a.trustScore[agentID]
 
@@ -297,7 +310,7 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 		}
 
 		// if the lowest agent is below the threshold, submit a vote for them
-		// if they still aren't, abstain. 
+		// if they still aren't, abstain.
 		if lowestTrustScore < auditThreshold {
 			// 1 means vote for audit of this person
 			return common.CreateVote(1, t2a.GetID(), lowestAgent)
@@ -309,7 +322,6 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 		// in this case there is no discrepancy this round, so prefer not audit (-1)
 		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
 	}
-
 
 }
 
