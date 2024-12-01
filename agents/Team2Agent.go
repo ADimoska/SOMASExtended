@@ -4,6 +4,7 @@ import (
 	"SOMAS_Extended/common"
 	"fmt"
 	"math"
+	"math/rand"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 	"github.com/google/uuid"
@@ -23,34 +24,6 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	return &Team2Agent{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig), rank: false, trustScore: make(map[uuid.UUID]int), strikeCount: make(map[uuid.UUID]int), thresholdBounds: make([]int, 2),
 	}
-}
-
-// ----- 1.1 Decide Contribution and Withdrawal -----
-func (t2a *Team2Agent) DecideContribution() int {
-
-	// Get the current points in the common pool
-	currentPoints := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	// Get the expected contribution from the AOA - currently just ou rAoA but can change this to whichever AoA is currently in use
-	expectedContribution := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedContribution(t2a.GetID(), currentPoints)
-	// If the expected contribution is less than or equal to current points just contribute expected
-	if expectedContribution <= currentPoints {
-		return expectedContribution
-	}
-
-	// If the expected contribution is more than current points, contribute all current points
-	return currentPoints
-}
-
-func (t2a *Team2Agent) DecideWithdrawal() int {
-    // Get the current points in the common pool
-    currentPoints := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-    // Get common pool size
-	commonPoolSize := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-    // Get the expected withdrawal from the AOA
-    expectedWithdrawal := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), currentPoints, commonPoolSize)
-    
-    // If the expected withdrawal is more than current points, withdraw all current points
-    return expectedWithdrawal
 }
 
 // ----- 1.2 Trust Score Update -----
@@ -197,16 +170,149 @@ func (t2a *Team2Agent) DecideContributionCheating() {
 
 }
 
-func (t2a *Team2Agent) DecideWithdrawal() {
-
-}
-
 func (t2a *Team2Agent) GetStatedContribution() {
 
 }
 
 func (t2a *Team2Agent) GetStatedWithdrawal() {
 
+}
+
+// EvaluatePerformance calculates the agent's performance relative to the team
+func (t2a *Team2Agent) EvaluatePerformance(rounds int) string {
+	// Calculate the agent's average performance
+	agentID := t2a.GetID()
+	agentTotal := 0
+	for i := len(t2a.rollHistory[agentID]) - 1; i >= 0 && i >= len(t2a.rollHistory[agentID])-rounds; i-- {
+		agentTotal += t2a.rollHistory[agentID][i]
+	}
+	agentAvg := float64(agentTotal) / float64(rounds)
+
+	// Calculate the team's overall average performance
+	teamTotal, totalRounds := 0, 0
+	for _, history := range t2a.rollHistory {
+		for i := len(history) - 1; i >= 0 && i >= len(history)-rounds; i-- {
+			teamTotal += history[i]
+			totalRounds++
+		}
+	}
+	teamAvg := float64(teamTotal) / float64(totalRounds)
+
+	// Categorize performance
+	if agentAvg > teamAvg*1.2 {
+		return "Great"
+	} else if agentAvg >= teamAvg*0.8 {
+		return "Average"
+	} else if agentAvg >= teamAvg*0.5 {
+		return "Bad"
+	} else {
+		return "Terrible"
+	}
+}
+
+// DecideContribution determines how much an agent contributes to the pool
+func (t2a *Team2Agent) DecideContribution() int {
+	// Get AoA expected contribution
+	agentID := t2a.GetID()
+	agentScore := t2a.trustScore[agentID]
+	aoaContribution := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedContribution(t2a.GetID(), agentScore)
+
+	// Evaluate performance
+	performance := t2a.EvaluatePerformance(5) // Evaluate over the last 5 rounds
+
+	// Adjust contribution based on performance
+	contribution := aoaContribution
+	switch performance {
+	case "Great":
+		contribution = aoaContribution // Full contribution
+	case "Average":
+		if WeightedRandom("Average") {
+			contribution = int(float64(aoaContribution) * 0.8) // 20% reduction
+		}
+	case "Bad":
+		if WeightedRandom("Bad") {
+			contribution = int(float64(aoaContribution) * 0.5) // 50% reduction
+		}
+	case "Terrible":
+		if WeightedRandom("Terrible") {
+			contribution = int(float64(aoaContribution) * 0.2) // 80% reduction
+		}
+	}
+
+	// Ensure contribution is non-negative
+	if contribution < 0 {
+		contribution = 0
+	}
+
+	fmt.Printf("Agent %s decided to contribute: %d (Performance: %s)\n",
+		t2a.GetID(), contribution, performance)
+
+	return contribution
+}
+
+// WeightedRandom returns true if the agent decides to reduce their contribution
+func WeightedRandom(category string) bool {
+	probabilities := map[string]float64{
+		"Great":    0.01, // 0% chance to reduce
+		"Average":  0.1,  // 20% chance to reduce
+		"Bad":      0.25, // 60% chance to reduce
+		"Terrible": 0.5,  // 90% chance to reduce
+	}
+	randVal := rand.Float64()
+	return randVal < probabilities[category]
+}
+
+// DecideWithdrawal determines how much an agent will withdraw
+func (t2a *Team2Agent) DecideWithdrawal() int {
+	// Agent-specific variables
+	agentID := t2a.GetID()
+	agentScore := t2a.score
+	commonPool := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+
+	// Expected withdrawal from AoA
+	aoaWithdrawal := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), agentScore, commonPool)
+
+	// Evaluate performance
+	performance := t2a.EvaluatePerformance(5) // Performance over the last 5 rounds
+
+	// Base withdrawal starts from AoA expectation
+	baseWithdrawal := aoaWithdrawal
+	switch performance {
+	case "Great":
+		baseWithdrawal = int(float64(aoaWithdrawal) * 0.5) // Withdraw less if performing well
+	case "Bad":
+		baseWithdrawal = int(float64(aoaWithdrawal) * 1.2) // Withdraw more if performing poorly
+	case "Terrible":
+		baseWithdrawal = int(float64(aoaWithdrawal) * 1.75) // Withdraw much more if struggling
+	}
+
+	// Adjust for trust level
+	trust := t2a.trustScore[agentID]
+	trustModifier := 1.0
+	if trust > 7 {
+		trustModifier = 0.9 // High trust => more cooperative
+	} else if trust < 3 {
+		trustModifier = 1.2 // Low trust => more selfish
+	}
+
+	// Adjust for team size
+	teamAgents := t2a.server.GetAgentsInTeam(t2a.teamID) // Get agents in the team
+	teamSize := len(teamAgents)                          // Calculate team size
+	teamSizeModifier := 1.0                              // Default modifier
+
+	if teamSize > 5 {
+		teamSizeModifier = 0.8 // Larger teams => scale down withdrawal
+	} else if teamSize <= 3 {
+		teamSizeModifier = 1.2 // Smaller teams => scale up withdrawal
+	}
+
+	// Calculate final withdrawal amount
+	finalWithdrawal := int(float64(baseWithdrawal) * trustModifier * teamSizeModifier)
+
+	fmt.Printf("Agent %s decided to withdraw: %d (AoA: %d, Performance: %s, Trust: %.2f, TeamSize: %d)\n",
+		agentID, finalWithdrawal, aoaWithdrawal, performance, trust, teamSize)
+
+	return finalWithdrawal
 }
 
 // 2.4 ----- Decision to Audit Someone
