@@ -18,10 +18,10 @@ type Team2Agent struct {
 	thresholdBounds []int
 }
 
-// constructor for team 2 agent - not sure exactly whats going on here
+// constructor for team2agent - initialised as all followers
 func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
 	return &Team2Agent{
-		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
+		ExtendedAgent: GetBaseAgents(funcs, agentConfig), rank: false, trustScore: make(map[uuid.UUID]int), strikeCount: make(map[uuid.UUID]int), thresholdBounds: make([]int, 2),
 	}
 }
 
