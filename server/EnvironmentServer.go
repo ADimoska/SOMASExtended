@@ -1,24 +1,23 @@
 package environmentServer
 
 import (
-	"SOMAS_Extended/agents"
-	common "SOMAS_Extended/common"
 	"fmt"
+	"github.com/google/uuid"
 	"math/rand"
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/server"
+
+	common "github.com/ADimoska/SOMASExtended/common"
 )
 
 type EnvironmentServer struct {
 	*server.BaseServer[common.IExtendedAgent]
+	Teams map[uuid.UUID]*common.Team
 
 	teamsMutex    sync.RWMutex
 	agentInfoList []common.ExposedAgentInfo
-	teams         map[uuid.UUID]*common.Team
 
 	roundScoreThreshold int
 	deadAgents          []common.IExtendedAgent
@@ -30,7 +29,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	cs.teamsMutex.Lock()
 	defer cs.teamsMutex.Unlock()
 
-	for _, team := range cs.teams {
+	for _, team := range cs.Teams {
 		fmt.Println("\nRunning turn for team ", team.TeamID)
 		// Sum of contributions from all agents in the team for this turn
 		agentContributionsTotal := 0
@@ -159,7 +158,7 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 // assign majority vote back to team struct (team.Strategy)
 func (cs *EnvironmentServer) allocateAoAs() {
 	// Iterate over each team
-	for _, team := range cs.teams {
+	for _, team := range cs.Teams {
 		// ranking cache for each team.
 		var voteSum = []int{0, 0, 0, 0}
 		for _, agent := range team.Agents {
@@ -197,7 +196,7 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			team.TeamAoA = common.CreateFixedAoA()
 		}
 
-		cs.teams[team.TeamID] = team
+		cs.Teams[team.TeamID] = team
 	}
 }
 
@@ -226,36 +225,6 @@ func (cs *EnvironmentServer) reviveDeadAgents() {
 	cs.deadAgents = cs.deadAgents[:0]
 }
 
-// constructor
-func MakeEnvServer(numAgent int, iterations int, turns int, maxDuration time.Duration, maxThread int, agentConfig agents.AgentConfig) *EnvironmentServer {
-	serv := &EnvironmentServer{
-		BaseServer: server.CreateBaseServer[common.IExtendedAgent](iterations, turns, maxDuration, maxThread),
-		teams:      make(map[uuid.UUID]*common.Team),
-	}
-	serv.SetGameRunner(serv)
-
-	// create agents
-	// example: Base Agent & MI_256 from team 4
-
-	// dummy agents (base agent)
-	for i := 0; i < numAgent; i++ {
-		base_agent := agents.GetBaseAgents(serv, agentConfig)
-		serv.AddAgent(base_agent)
-
-		// TEAM 1
-		// TEAM 2
-		// TEAM 3
-		// TEAM 4
-		// example: MI_256 from team 4
-		team4_agent := agents.Team4_CreateAgent(serv, agentConfig)
-		serv.AddAgent(team4_agent)
-		// TEAM 5
-		// TEAM 6
-	}
-
-	return serv
-}
-
 // debug log printing
 func (cs *EnvironmentServer) LogAgentStatus() {
 	// log agent count, and their scores
@@ -270,7 +239,7 @@ func (cs *EnvironmentServer) LogAgentStatus() {
 
 // pretty logging to show all team status
 func (cs *EnvironmentServer) LogTeamStatus() {
-	for _, team := range cs.teams {
+	for _, team := range cs.Teams {
 		fmt.Printf("Team %v: %v\n", team.TeamID, team.Agents)
 	}
 	// Log agents with no team
@@ -318,12 +287,12 @@ func (cs *EnvironmentServer) killAgent(agentID uuid.UUID) {
 	// Remove the agent from the team
 	if teamID := agent.GetTeamID(); teamID != uuid.Nil {
 		cs.teamsMutex.Lock()
-		team := cs.teams[teamID]
+		team := cs.Teams[teamID]
 		for i, id := range team.Agents {
 			if id == agentID {
 				// Remove agent from the team
 				team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
-				cs.teams[teamID] = team
+				cs.Teams[teamID] = team
 				// Set the team of the agent to Nil !!!
 				agent.SetTeamID(uuid.Nil)
 				break
@@ -353,7 +322,7 @@ func (cs *EnvironmentServer) IsAgentDead(agentID uuid.UUID) bool {
 func (cs *EnvironmentServer) StartAgentTeamForming() {
 	// Clear existing teams at the start of team formation
 	cs.teamsMutex.Lock()
-	cs.teams = make(map[uuid.UUID]*common.Team)
+	cs.Teams = make(map[uuid.UUID]*common.Team)
 	cs.teamsMutex.Unlock()
 
 	// Get updated agent info and let agents form teams
@@ -368,7 +337,7 @@ func (cs *EnvironmentServer) StartAgentTeamForming() {
 }
 
 func (cs *EnvironmentServer) CreateTeam() {
-	cs.teams = make(map[uuid.UUID]*common.Team)
+	cs.Teams = make(map[uuid.UUID]*common.Team)
 }
 
 func (cs *EnvironmentServer) AddAgentToTeam(agentID uuid.UUID, teamID uuid.UUID) {
@@ -376,7 +345,7 @@ func (cs *EnvironmentServer) AddAgentToTeam(agentID uuid.UUID, teamID uuid.UUID)
 	defer cs.teamsMutex.Unlock()
 
 	// Check if agent is already in this team
-	team, exists := cs.teams[teamID]
+	team, exists := cs.Teams[teamID]
 	if !exists {
 		fmt.Printf("[server] Team %v does not exist\n", teamID)
 		return
@@ -394,14 +363,14 @@ func (cs *EnvironmentServer) AddAgentToTeam(agentID uuid.UUID, teamID uuid.UUID)
 func (cs *EnvironmentServer) GetAgentsInTeam(teamID uuid.UUID) []uuid.UUID {
 	// cs.teamsMutex.RLock()
 	// defer cs.teamsMutex.RUnlock()
-	return cs.teams[teamID].Agents
+	return cs.Teams[teamID].Agents
 }
 
 func (cs *EnvironmentServer) CheckAgentAlreadyInTeam(agentID uuid.UUID) bool {
 	cs.teamsMutex.RLock()
 	defer cs.teamsMutex.RUnlock()
 
-	for _, team := range cs.teams {
+	for _, team := range cs.Teams {
 		for _, agent := range team.Agents {
 			if agent == agentID {
 				return true
@@ -430,7 +399,7 @@ func (cs *EnvironmentServer) CreateAndInitTeamWithAgents(agentIDs []uuid.UUID) u
 
 	// Protect map write with mutex
 	cs.teamsMutex.Lock()
-	cs.teams[teamID] = common.NewTeam(teamID)
+	cs.Teams[teamID] = common.NewTeam(teamID)
 	cs.teamsMutex.Unlock()
 
 	// Update each agent's team ID
@@ -449,7 +418,7 @@ func (cs *EnvironmentServer) CreateAndInitTeamWithAgents(agentIDs []uuid.UUID) u
 func (cs *EnvironmentServer) GetTeam(agentID uuid.UUID) *common.Team {
 	// cs.teamsMutex.RLock()
 	// defer cs.teamsMutex.RUnlock()
-	return cs.teams[cs.GetAgentMap()[agentID].GetTeamID()]
+	return cs.Teams[cs.GetAgentMap()[agentID].GetTeamID()]
 }
 
 // Possibly needs to look at what team/AoA is being used to tally up the votes

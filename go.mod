@@ -1,4 +1,4 @@
-module SOMAS_Extended
+module github.com/ADimoska/SOMASExtended
 
 go 1.23.2
 

@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	common "SOMAS_Extended/common"
+	common "github.com/ADimoska/SOMASExtended/common"
 
 	// TODO:
 

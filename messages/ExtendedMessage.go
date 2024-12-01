@@ -1,7 +1,7 @@
 package messages
 
 import (
-	"SOMAS_Extended/common"
+	"github.com/ADimoska/SOMASExtended/common"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/message"
 	"github.com/google/uuid"
