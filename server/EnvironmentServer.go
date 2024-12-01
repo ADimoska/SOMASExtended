@@ -142,22 +142,22 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	fmt.Printf("--------Start of iteration %v---------\n", iteration)
 
 	// Initialise random threshold
-	cs.CreateNewRoundScoreThreshold()
+	cs.createNewRoundScoreThreshold()
 
 	// Revive all dead agents
-	cs.ReviveDeadAgents()
+	cs.reviveDeadAgents()
 
 	// start team forming
 	cs.StartAgentTeamForming()
 
 	// take votes at team level and allocate Strategy.
-	cs.AllocateAoAs()
+	cs.allocateAoAs()
 }
 
 // Allocate AoA based on team votes;
 // for each member in team, count vote for AoA and then take majority (?) vote
 // assign majority vote back to team struct (team.Strategy)
-func (cs *EnvironmentServer) AllocateAoAs() {
+func (cs *EnvironmentServer) allocateAoAs() {
 	// Iterate over each team
 	for _, team := range cs.teams {
 		// ranking cache for each team.
@@ -203,7 +203,7 @@ func (cs *EnvironmentServer) AllocateAoAs() {
 
 func (cs *EnvironmentServer) RunEndOfIteration(int) {
 	for _, agent := range cs.GetAgentMap() {
-		cs.KillAgentBelowThreshold(agent.GetID())
+		cs.killAgentBelowThreshold(agent.GetID())
 	}
 }
 
@@ -215,7 +215,7 @@ func (cs *EnvironmentServer) Start() {
 	// TODO
 }
 
-func (cs *EnvironmentServer) ReviveDeadAgents() {
+func (cs *EnvironmentServer) reviveDeadAgents() {
 	for _, agent := range cs.deadAgents {
 		fmt.Printf("[server] Agent %v is being revived\n", agent.GetID())
 		agent.SetTrueScore(0) // new agents start with a score of 0
@@ -295,24 +295,24 @@ func (cs *EnvironmentServer) UpdateAndGetAgentExposedInfo() []common.ExposedAgen
 }
 
 // create a new round score threshold
-func (cs *EnvironmentServer) CreateNewRoundScoreThreshold() {
+func (cs *EnvironmentServer) createNewRoundScoreThreshold() {
 	// random one between 10 to 20 (TODO)
 	cs.roundScoreThreshold = rand.Intn(10) + 10
 	fmt.Printf("[server] New round score threshold: %v\n", cs.roundScoreThreshold)
 }
 
 // check agent score
-func (cs *EnvironmentServer) KillAgentBelowThreshold(agentID uuid.UUID) int {
+func (cs *EnvironmentServer) killAgentBelowThreshold(agentID uuid.UUID) int {
 	agent := cs.GetAgentMap()[agentID]
 	score := agent.GetTrueScore()
 	if score < cs.roundScoreThreshold {
-		cs.KillAgent(agentID)
+		cs.killAgent(agentID)
 	}
 	return score
 }
 
 // kill agent
-func (cs *EnvironmentServer) KillAgent(agentID uuid.UUID) {
+func (cs *EnvironmentServer) killAgent(agentID uuid.UUID) {
 	agent := cs.GetAgentMap()[agentID]
 
 	// Remove the agent from the team
@@ -453,7 +453,7 @@ func (cs *EnvironmentServer) GetTeam(agentID uuid.UUID) *common.Team {
 }
 
 // Possibly needs to look at what team/AoA is being used to tally up the votes
-func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, controllerIds []uuid.UUID, stickThreshold int) {
+func (cs *EnvironmentServer) overrideAgentRolls(agentId uuid.UUID, controllerIds []uuid.UUID, stickThreshold int) {
 	controlled := cs.GetAgentMap()[agentId]
 	currentScore := controlled.GetTrueScore()
 
