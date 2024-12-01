@@ -25,7 +25,7 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 }
 
-// ----- 1.1 Decide Contribution -----
+// ----- 1.1 Decide Contribution and Withdrawal -----
 func (t2a *Team2Agent) DecideContribution() int {
 
 	// Get the current points in the common pool
@@ -39,6 +39,18 @@ func (t2a *Team2Agent) DecideContribution() int {
 
 	// If the expected contribution is more than current points, contribute all current points
 	return currentPoints
+}
+
+func (t2a *Team2Agent) DecideWithdrawal() int {
+    // Get the current points in the common pool
+    currentPoints := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+    // Get common pool size
+	commonPoolSize := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+    // Get the expected withdrawal from the AOA
+    expectedWithdrawal := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), currentPoints, commonPoolSize)
+    
+    // If the expected withdrawal is more than current points, withdraw all current points
+    return expectedWithdrawal
 }
 
 // ----- 1.2 Trust Score Update -----
