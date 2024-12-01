@@ -320,14 +320,19 @@ func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.
 func (mi *ExtendedAgent) StateContributionToTeam() {
 	// Broadcast contribution to team
 	statedContribution := mi.GetStatedContribution(mi)
-	contributionMsg := mi.CreateContributionMessage(statedContribution)
+	// Currently assuming we have a truthful agent, that broadcasts exactly what the expected contribution is based on their score this round.
+	expectedContribution := mi.server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
+	contributionMsg := mi.CreateContributionMessage(statedContribution, expectedContribution)
 	mi.BroadcastSyncMessageToTeam(contributionMsg)
 }
 
 func (mi *ExtendedAgent) StateWithdrawalToTeam() {
 	// Broadcast withdrawal to team
 	statedWithdrawal := mi.GetStatedWithdrawal(mi)
-	withdrawalMsg := mi.CreateWithdrawalMessage(statedWithdrawal)
+	// Currently assuming we have a truthful agent, that broadcasts exactly what the expected withdrawal is based on their score this round.
+	commonPool := mi.server.GetTeam(mi.GetID()).GetCommonPool()
+	expectedWithdrawal := mi.server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
+	withdrawalMsg := mi.CreateWithdrawalMessage(statedWithdrawal, expectedWithdrawal)
 	mi.BroadcastSyncMessageToTeam(withdrawalMsg)
 }
 
@@ -346,17 +351,19 @@ func (mi *ExtendedAgent) CreateScoreReportMessage() *common.ScoreReportMessage {
 	}
 }
 
-func (mi *ExtendedAgent) CreateContributionMessage(statedAmount int) *common.ContributionMessage {
+func (mi *ExtendedAgent) CreateContributionMessage(statedAmount int, expectedAmount int) *common.ContributionMessage {
 	return &common.ContributionMessage{
-		BaseMessage:  mi.CreateBaseMessage(),
-		StatedAmount: statedAmount,
+		BaseMessage:    mi.CreateBaseMessage(),
+		StatedAmount:   statedAmount,
+		ExpectedAmount: expectedAmount,
 	}
 }
 
-func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.WithdrawalMessage {
+func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int, expectedAmount int) *common.WithdrawalMessage {
 	return &common.WithdrawalMessage{
-		BaseMessage:  mi.CreateBaseMessage(),
-		StatedAmount: statedAmount,
+		BaseMessage:    mi.CreateBaseMessage(),
+		StatedAmount:   statedAmount,
+		ExpectedAmount: expectedAmount,
 	}
 }
 
