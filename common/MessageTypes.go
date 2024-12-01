@@ -18,14 +18,12 @@ type ScoreReportMessage struct {
 
 type ContributionMessage struct {
 	message.BaseMessage
-	StatedAmount   int
-	ExpectedAmount int
+	StatedAmount int
 }
 
 type WithdrawalMessage struct {
 	message.BaseMessage
-	StatedAmount   int
-	ExpectedAmount int
+	StatedAmount int
 }
 
 func (msg *TeamFormationMessage) InvokeMessageHandler(agent IExtendedAgent) {
