@@ -202,6 +202,14 @@ func (t2a *Team2Agent) DecideWithdrawal() {
 
 }
 
+func (t2a *Team2Agent) GetStatedContribution() {
+
+}
+
+func (t2a *Team2Agent) GetStatedWithdrawal() {
+
+}
+
 // 2.4 ----- Decision to Audit Someone
 
 func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
