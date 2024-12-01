@@ -1,0 +1,80 @@
+name: Validate and Enforce Version Bump
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  FIXED_VERSION: ''
+  STATUS: ''
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch main branch version
+        run: |
+          set -e
+          git fetch origin main
+          MAIN_VERSION=$(git show origin/main:VERSION)
+          echo "MAIN_VERSION=$MAIN_VERSION" >> $GITHUB_ENV
+
+      - name: Fetch PR version
+        run: |
+          set -e
+          PR_VERSION=$(cat VERSION)
+          echo "PR_VERSION=$PR_VERSION" >> $GITHUB_ENV
+
+      - name: Compare versions
+        id: compare_versions
+        run: |
+          set -e
+          IFS='.' read -r main_major main_minor main_patch <<< "$MAIN_VERSION"
+          IFS='.' read -r pr_major pr_minor pr_patch <<< "$PR_VERSION"
+
+          if [[ $pr_major -eq $main_major && $pr_minor -eq $main_minor && $pr_patch -eq $((main_patch + 1)) ]]; then
+            echo "Version bump is valid."
+            echo "STATUS=valid" >> $GITHUB_ENV
+            echo "STATUS=valid" >> $GITHUB_OUTPUT
+          else
+            echo "Version bump is invalid. Fixing..."
+            pr_patch=$((main_patch + 1))
+            fixed_version="$main_major.$main_minor.$pr_patch"
+            echo "$fixed_version" > VERSION
+            echo "STATUS=invalid" >> $GITHUB_ENV
+            echo "STATUS=invalid" >> $GITHUB_OUTPUT
+            echo "FIXED_VERSION=$fixed_version" >> $GITHUB_ENV
+
+      - name: Commit fixed version (if needed)
+        if: steps.compare_versions.outputs.STATUS == 'invalid'
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add VERSION
+          git commit -m "chore: fix version bump to ${{ env.FIXED_VERSION }}"
+          set +e
+          git push
+          if [ $? -ne 0 ]; then
+            echo "Failed to push changes. Please manually increment the version in VERSION and tag it."
+            exit 1
+          else
+            git tag "v${{ env.FIXED_VERSION }}"
+            git push origin "v${{ env.FIXED_VERSION }}"
+          fi
+
+      - name: Set PR status
+        run: |
+          set -e
+          if [[ "${{ env.STATUS }}" == "valid" ]]; then
+            echo "Version bump check passed."
+          else
+            echo "Version bump check fixed. Updated to ${{ env.FIXED_VERSION }}."
+          fi
