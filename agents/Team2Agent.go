@@ -2,6 +2,7 @@ package agents
 
 import (
 	"SOMAS_Extended/common"
+	"fmt"
 	"math"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
@@ -36,7 +37,38 @@ func (t *Team2Agent) SetTrustScore(id uuid.UUID) {
 // update if votes to audit different to you -->>(are we allowed their vote?)
 // update if agent not audited for that round
 // update if chooses to audit another agent
+// Overall function to update one agents trust score for other agents
+// (can either implement like this or call functions underneath during each event)
+func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, strikeCount int) {
+	switch eventType {
+	case "strike":
+		// if agent is not cooperating:
+		t2a.ApplyStrike(agentID, strikeCount) // from helper function
 
+	// case "kickedFromTeam":
+	//     // If the target agent was kicked out of another team
+	//     t2a.ApplyKickFromTeam(targetAgentID)
+
+	case "auditVote":
+		// If the target agent voted to audit you
+		t2a.ApplyAuditVote(agentID)
+
+	case "notAudited":
+		// If the target agent was not audited
+		t2a.ApplyNotAudited(agentID)
+
+	case "AoAVote":
+		// If the target agent voted in AoA
+		t2a.ApplyAoAVote(agentID)
+
+	case "auditOther":
+		// If the target agent audited another agent
+		t2a.ApplyAuditOther(agentID)
+
+	default:
+		fmt.Println("Invalid event type")
+	}
+}
 
 // TO-DO: call this function when agent found to be not cooperating or in function above
 func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
