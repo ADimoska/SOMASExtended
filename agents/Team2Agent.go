@@ -171,11 +171,11 @@ func (t2a *Team2Agent) DecideContributionCheating() {
 }
 
 func (t2a *Team2Agent) GetStatedContribution() {
-
+	// to implement, for now rely on the implementation already in ExtendedAgent
 }
 
 func (t2a *Team2Agent) GetStatedWithdrawal() {
-
+	// to implement, for now rely on the implementation already in ExtendedAgent
 }
 
 // EvaluatePerformance calculates the agent's performance relative to the team
