@@ -4,7 +4,6 @@ package common
 import (
 	"container/list"
 	"math/rand"
-	"time"
 	"math"
 
 	"github.com/google/uuid"
@@ -101,6 +100,7 @@ func (t *Team2AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) in
 	return agentScore
 }
 
+// Probably not very relevant, the punishment is levied based on offences committed and is enforced by the server
 func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
 	// Only deduct from the common pool for a successful audit
 	warnings := t.AuditMap[agentId].GetWarnings()
@@ -116,7 +116,7 @@ func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
 	// Reset the audit queue after an audit to prevent double counting of offences
 	t.AuditMap[agentId].Reset()
 
-	return offences == 3
+	return offences == 3 // If the agent has 3 offences, they are kicked
 }
 
 func (t *Team2AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
@@ -178,9 +178,6 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 }
 
 func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
-	// Seed the random number generator to ensure different shuffles each time
-	rand.NewSource(time.Now().UnixNano())
-
 	// Create a copy of agentIDs to avoid modifying the original slice
 	shuffledAgents := make([]uuid.UUID, len(agentIDs))
 	copy(shuffledAgents, agentIDs)
@@ -205,6 +202,7 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return withdrawalOrder
 }
 
+// To be ran every round, so that the server has enough information to enforce the AoA
 func (t *Team2AoA) RunAoAStuff() {
 	for agentId, offences := range t.OffenceMap {
 		currentAuditDuration := t.AuditMap[agentId].GetLength()
@@ -222,6 +220,21 @@ func (t *Team2AoA) RunAoAStuff() {
 
 func (t *Team2AoA) SetLeader(leader uuid.UUID) {
 	t.Leader = leader
+}
+
+func (t *Team2AoA) GetLeader() uuid.UUID {
+	return t.Leader
+}
+
+// After the AoA stuff has been run, the server can use this to determine what punishment to impose
+func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
+	offenders := make([]uuid.UUID, 0)
+	for agentId, offences := range t.OffenceMap {
+		if offences == numOffences {
+			offenders = append(offenders, agentId)
+		}
+	}
+	return offenders
 }
 
 func CreateTeam2AoA(team *Team, leader uuid.UUID) IArticlesOfAssociation {
