@@ -26,49 +26,25 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 }
 
 // ----- 1.2 Trust Score Update -----
+func (t *Team2Agent) SetTrustScore(id uuid.UUID) {
+    if _, exists := t.trustScore[id]; !exists {
+        t.trustScore[id] = 70
+    }
+}
 
 // update when not cooperating based on strikes
-// update trust score if agent kicked out of other team (can't implement yet?)
-// update if votes to audit different to you
+// update trust score if agent kicked out of other team -->>(can't implement yet?)
+// update if votes to audit different to you -->>(are we allowed their vote?)
 // update if agent not audited for that round
-// update depending on AoA votes
 // update if chooses to audit another agent
 
-// Overall function to update one agents trust score for other agents
-// (can either implement like this or call functions underneath during each event)
-func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, strikeCount int) {
-	switch eventType {
-	case "strike":
-		// if agent is not cooperating:
-		t2a.ApplyStrike(agentID, strikeCount) // from helper function
-
-	// case "kickedFromTeam":
-	//     // If the target agent was kicked out of another team
-	//     t2a.ApplyKickFromTeam(targetAgentID)
-
-	case "auditVote":
-		// If the target agent voted to audit you
-		t2a.ApplyAuditVote(agentID)
-
-	case "notAudited":
-		// If the target agent was not audited
-		t2a.ApplyNotAudited(agentID)
-
-	case "AoAVote":
-		// If the target agent voted in AoA
-		t2a.ApplyAoAVote(agentID)
-
-	case "auditOther":
-		// If the target agent audited another agent
-		t2a.ApplyAuditOther(agentID)
-
-	default:
-		fmt.Println("Invalid event type")
-	}
-}
 
 // TO-DO: call this function when agent found to be not cooperating or in function above
 func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
+	if t2a.trustScore == nil {
+		t2a.SetTrustScore(agentID)
+	}
+
 	t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 	var penalty int
 	strikeCount := t2a.strikeCount[agentID]
@@ -99,39 +75,27 @@ func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
 
 // TO-DO: get audit votes for other agents in this round
 func (t2a *Team2Agent) ApplyAuditVote(agentID uuid.UUID) {
+	if t2a.trustScore == nil {
+		t2a.SetTrustScore(agentID)
+	}
 	// Update trust score based on audit vote
 	t2a.trustScore[agentID] -= 5
 }
 
 // TO-DO: get audit information for other agents in this round
 func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
+	if t2a.trustScore == nil {
+		t2a.SetTrustScore(agentID)
+	}
 	// Update trust score based on not being audited
 	t2a.trustScore[agentID] += 2
 }
 
-// TO-DO: figure out AoA vote system
-func (t2a *Team2Agent) ApplyAoAVote(agentID uuid.UUID) {
-	// Update trust score based on AoA vote
-	var reward int
-	switch t2a.server.GetAgentVote(agentID) {
-	case 1:
-		reward = 20
-	case 2:
-		reward = 10
-	case 3:
-		reward = 5
-	case 4:
-		reward = 0
-	case 5:
-		reward = -5
-	case 6:
-		reward = -10
-	}
-	t2a.trustScore[agentID] += reward
-}
-
 // TO-DO: call this function in audit vote functions below
 func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
+	if t2a.trustScore == nil {
+		t2a.SetTrustScore(agentID)
+	}
 	// Update trust score based on auditing another agent
 	t2a.trustScore[agentID] += 2
 }
@@ -141,10 +105,6 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 	// Initialize selected agents slice
 	selectedAgents := make([]uuid.UUID, 0)
 
-	// Initialize trust score map if it hasn't been initialized yet
-	if t2a.trustScore == nil {
-		t2a.trustScore = make(map[uuid.UUID]int)
-	}
 
 	// Set trust threshold for accepting/sending invitations
 	trustThreshold := 7 // This can be adjusted based on desired behavior
@@ -152,6 +112,10 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 	// Iterate through all agents
 	for _, agentInfo := range agentInfoList {
 		agentUUID := agentInfo.AgentUUID
+		// Initialize trust score map if it hasn't been initialized yet
+		if t2a.trustScore == nil {
+			t2a.SetTrustScore(agentUUID)
+		}
 
 		// Skip if it's our own ID
 		if agentUUID == t2a.GetID() {
@@ -351,6 +315,10 @@ func (t2a *Team2Agent) GetLeaderVote() common.Vote {
 	// Iterate over our team, finding the agent with the highest trust score
 	for _, agentID := range agentsInTeam {
 		agentTrustScore := t2a.trustScore[agentID]
+		// Initialize trust score map if it hasn't been initialized yet
+		if t2a.trustScore == nil {
+			t2a.SetTrustScore(agentID)
+		}
 
 		if agentTrustScore > highestTrustScore {
 			mostTrustedAgent = agentID
