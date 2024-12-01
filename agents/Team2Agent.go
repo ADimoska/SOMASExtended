@@ -2,7 +2,6 @@ package agents
 
 import (
 	"SOMAS_Extended/common"
-	"fmt"
 	"math"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
@@ -58,14 +57,12 @@ func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
 	if strikeCount == 3 {
 		penalty = 30
 	} else {
+		// should never reach this point
 		penalty = 40
 	}
 
 	// Update trust score based on strike count
 	t2a.trustScore[agentID] -= penalty
-
-	fmt.Printf("Agent %s received a strike. Total strikes: %d, Penalty applied: %d, New trust score: %d\n",
-		agentID, strikeCount, penalty, t2a.trustScore[agentID])
 }
 
 // func (t2a *Team2Agent) ApplyKickFromTeam(agentID uuid.UUID) {
