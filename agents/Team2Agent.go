@@ -346,4 +346,10 @@ func (t2a *Team2Agent) GetLeaderVote() common.Vote {
 	}
 }
 
-// is get function for the leader vote
+func (t2a *Team2Agent) ToggleLeader() {
+	t2a.rank = !t2a.rank
+}
+
+func (t2a *Team2Agent) GetRole() bool {
+	return t2a.rank // If true, they are the leader
+}
