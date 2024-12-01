@@ -32,34 +32,17 @@ func (t *Team2Agent) SetTrustScore(id uuid.UUID) {
     }
 }
 
-// update when not cooperating based on strikes
-// update trust score if agent kicked out of other team -->>(can't implement yet?)
-// update if votes to audit different to you -->>(are we allowed their vote?)
-// update if agent not audited for that round
-// update if chooses to audit another agent
 // Overall function to update one agents trust score for other agents
 // (can either implement like this or call functions underneath during each event)
 func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, strikeCount int) {
 	switch eventType {
 	case "strike":
 		// if agent is not cooperating:
-		t2a.ApplyStrike(agentID, strikeCount) // from helper function
-
-	// case "kickedFromTeam":
-	//     // If the target agent was kicked out of another team
-	//     t2a.ApplyKickFromTeam(targetAgentID)
-
-	case "auditVote":
-		// If the target agent voted to audit you
-		t2a.ApplyAuditVote(agentID)
+		t2a.ApplyStrike(agentID) // from helper function
 
 	case "notAudited":
 		// If the target agent was not audited
 		t2a.ApplyNotAudited(agentID)
-
-	case "AoAVote":
-		// If the target agent voted in AoA
-		t2a.ApplyAoAVote(agentID)
 
 	case "auditOther":
 		// If the target agent audited another agent
@@ -70,7 +53,7 @@ func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, str
 	}
 }
 
-// TO-DO: call this function when agent found to be not cooperating or in function above
+// update when not cooperating based on strikes
 func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
 	if t2a.trustScore == nil {
 		t2a.SetTrustScore(agentID)
@@ -97,21 +80,22 @@ func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
 	t2a.trustScore[agentID] -= penalty
 }
 
+// update trust score if agent kicked out of other team -->>(can't implement yet?)
 // func (t2a *Team2Agent) ApplyKickFromTeam(agentID uuid.UUID) {
 //     // Update trust score based on being kicked from another team
 //     t2a.trustScore[agentID] -= 5
 // }
 
-// TO-DO: get audit votes for other agents in this round
-func (t2a *Team2Agent) ApplyAuditVote(agentID uuid.UUID) {
-	if t2a.trustScore == nil {
-		t2a.SetTrustScore(agentID)
-	}
-	// Update trust score based on audit vote
-	t2a.trustScore[agentID] -= 5
-}
+// update trust score based on audit vote (maybe exclude this as shouldn't know other agents votes?)
+// func (t2a *Team2Agent) ApplyAuditVote(agentID uuid.UUID) {
+// 	if t2a.trustScore == nil {
+// 		t2a.SetTrustScore(agentID)
+// 	}
+// 	// Update trust score based on audit vote
+// 	t2a.trustScore[agentID] -= 5
+// }
 
-// TO-DO: get audit information for other agents in this round
+// update if agent not audited for that round
 func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
 	if t2a.trustScore == nil {
 		t2a.SetTrustScore(agentID)
@@ -120,7 +104,7 @@ func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
 	t2a.trustScore[agentID] += 2
 }
 
-// TO-DO: call this function in audit vote functions below
+// update if chooses to audit another agent
 func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 	if t2a.trustScore == nil {
 		t2a.SetTrustScore(agentID)
