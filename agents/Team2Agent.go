@@ -151,7 +151,6 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 
 	// Iterate through all agents
 	for _, agentInfo := range agentInfoList {
-		// Use the full AgentUUID instead of just the ID
 		agentUUID := agentInfo.AgentUUID
 
 		// Skip if it's our own ID
@@ -160,12 +159,7 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 		}
 
 		// Get current trust score for this agent
-		trustScore, exists := t2a.trustScore[agentUUID]
-		if !exists {
-			// If we haven't interacted with this agent before, set a neutral trust score
-			trustScore = 5
-			t2a.trustScore[agentUUID] = trustScore
-		}
+		trustScore, _ := t2a.trustScore[agentUUID]
 
 		// Check if we're a leader and they're not
 		if t2a.rank {
@@ -178,14 +172,10 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 
 		// If we're not a leader (follower), be more open to invitations
 		// Accept/send invitation if trust score is above threshold
-		if t2a.rank == false && trustScore >= trustThreshold {
+		if trustScore > trustThreshold {
 			selectedAgents = append(selectedAgents, agentUUID)
 		}
 
-		// If we are a leader and they are a follower, we can invite them
-		if if t2a.rank == true && trustScore > trustThreshold {
-			selectedAgents = append(selectedAgents, agentUUID)
-		}
 	}
 
 	return selectedAgents
