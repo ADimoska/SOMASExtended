@@ -137,7 +137,6 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 }
 
 // ----- 2.1 Decision to send or accept a team invitiation -----
-
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 	// Initialize selected agents slice
 	selectedAgents := make([]uuid.UUID, 0)
@@ -168,30 +167,16 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 			t2a.trustScore[agentUUID] = trustScore
 		}
 
-		// Check if we're a follower and they're a leader
-		if t2a.rank != nil {
-			ourRole, weHaveRole := t2a.rank[t2a.GetID()]
-			theirRole, theyHaveRole := t2a.rank[agentUUID]
-
-			// Followers always accept leader's invitation
-			if weHaveRole && theyHaveRole &&
-				ourRole == "Citizen" && theirRole == "Leader" {
+		// Check if we're a leader and they're not
+		if t2a.rank {
+			// Leaders are more selective and only accept followers with high trust
+			if trustScore >= trustThreshold {
 				selectedAgents = append(selectedAgents, agentUUID)
-				continue
 			}
-
-			// Leaders are more selective with followers
-			if weHaveRole && theyHaveRole &&
-				ourRole == "Leader" && theirRole == "Citizen" {
-				// Only accept if they meet trust threshold
-				if trustScore >= trustThreshold {
-					selectedAgents = append(selectedAgents, agentUUID)
-				}
-				continue
-			}
+			continue
 		}
 
-		// For agents without established roles or regular interactions
+		// If we're not a leader (follower), be more open to invitations
 		// Accept/send invitation if trust score is above threshold
 		if trustScore >= trustThreshold {
 			selectedAgents = append(selectedAgents, agentUUID)
