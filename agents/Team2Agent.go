@@ -181,6 +181,11 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 		if trustScore >= trustThreshold {
 			selectedAgents = append(selectedAgents, agentUUID)
 		}
+
+		// If we are a leader and they are a follower, we can invite them
+		if trustScore > trustThreshold {
+			selectedAgents = append(selectedAgents, agentUUID)
+		}
 	}
 
 	return selectedAgents
