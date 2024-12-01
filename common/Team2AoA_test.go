@@ -53,7 +53,7 @@ func TestAuditQueue_GetLastRound(t *testing.T) {
 	queue.AddToQueue(false)
 	queue.AddToQueue(true)
 
-	if !queue.GetLastRound() {
+	if !queue.GetLastAuditWarning() {
 		t.Errorf("Expected last round to be true")
 	}
 }
