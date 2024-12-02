@@ -36,7 +36,7 @@ type IExtendedAgent interface {
 	// Strategic decisions (functions that each team can implement their own)
 	// NOTE: Any function calling these should have a parameter of type IExtendedAgent (instance IExtendedAgent)
 	DecideTeamForming(agentInfoList []ExposedAgentInfo) []uuid.UUID
-	StickOrAgain() bool
+	StickOrAgain(accumulatedScore int, prevRoll int) bool
 	DecideContribution() int
 	DecideWithdrawal() int
 	VoteOnAgentEntry(candidateID uuid.UUID) bool
