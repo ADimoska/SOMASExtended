@@ -37,10 +37,9 @@ func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
 }
 
 // Overall function to update one agents trust score for other agents
-// (can either implement like this or call functions underneath during each event)
 func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, strikeCount int) {
-	auditContributionResult := t2a.server.GetTeam(t2a.GetID()).TeamAoA.GetContributionAuditResult(agentID) //fix
-	auditWithdrawalResult := t2a.server.GetTeam(t2a.GetID()).TeamAoA.GetWithdrawalAuditResult(agentID)
+	auditContributionResult := t2a.server.GetTeam(agentID).TeamAoA.GetContributionAuditResult(agentID) //fix
+	auditWithdrawalResult := t2a.server.GetTeam(agentID).TeamAoA.GetWithdrawalAuditResult(agentID)
 	switch eventType {
 	case "strike":
 		if auditContributionResult || auditWithdrawalResult{
@@ -332,7 +331,6 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 // 2.4 ----- Decision to Audit Someone
 
 func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
-
 	// 1: Setup
 
 	// experiment with these;
