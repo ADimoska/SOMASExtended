@@ -29,7 +29,7 @@ func main() {
 	}
 	serv.SetGameRunner(serv)
 
-	const numAgents int = 2
+	const numAgents int = 3
 
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {

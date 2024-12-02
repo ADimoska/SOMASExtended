@@ -133,9 +133,9 @@ func (t *Team2AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
 
 func (t *Team2AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
 	if agentId == t.Leader {
-		return int(float64(agentScore) * 0.25)
+		return int(float64(commonPool) * 0.25)
 	}
-	return int(float64(agentScore) * 0.10)
+	return int(float64(commonPool) * 0.20)
 }
 
 func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
