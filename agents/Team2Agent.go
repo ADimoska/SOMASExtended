@@ -26,6 +26,9 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 }
 
+
+// Section 1: 
+
 // ----- 1.2 Trust Score Update -----
 func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
 	if _, exists := t2a.trustScore[id]; !exists {
@@ -121,6 +124,7 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 }
 
 
+// Section 2:
 
 // ----- 2.1 Decision to send or accept a team invitiation -----
 
