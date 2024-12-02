@@ -140,7 +140,7 @@ func (t2a *Team2Agent) GetRole() bool {
 
 // Part 2: Core Game Flow Functions
 
-// ---------- Team Forming ----------
+// ---------- TEAM FORMING ----------
 
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 
@@ -216,7 +216,7 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 	}
 }
 
-// ---------- Vote on Orphans ----------
+// ---------- VOTE ON ORPHANS ----------
 
 func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 	// Return true to accept them, false to not accept them.
@@ -230,7 +230,7 @@ func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 	}
 }
 
-// ---------- Decision to stick  ----------
+// ---------- DECISION TO STICK  ----------
 
 func (t2a *Team2Agent) StickorAgain() {}
 
@@ -238,7 +238,7 @@ func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, 
 	return 0
 }
 
-// ---------- Contributing/Audit Contributing and Withdrawing/Audit Withdrawing ----------
+// ---------- CONTRIBUTION, WITHDRAWAL AND ASSOCIATED AUDITING ----------
 
 func (t2a *Team2Agent) DecideContribution() int {
 	// MVP: contribute exactly as defined in AoA
