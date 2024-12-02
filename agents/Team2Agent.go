@@ -30,9 +30,10 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 }
 
-// Trust Score Functions:
+// Part 1: Specialised Agent Strategy Functions
 
-// ----- 1.2 Trust Score Update -----
+// ---------- TRUST SCORE SYSTEM ----------
+
 func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
 	if _, exists := t2a.trustScore[id]; !exists {
 		t2a.trustScore[id] = 70
@@ -92,7 +93,52 @@ func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
 }
 
 
-// Section 2:
+// ----------- RANKING SYSTEM ----------
+
+func (t2a *Team2Agent) GetLeaderVote() common.Vote {
+	// Experiment with this - it is our threshold to decide leader worthiness
+	var leaderThreshold int = 60
+
+	// Get list of UUIDs in our team
+	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
+
+	var highestTrustScore int = math.MinInt // Start with the minimum possible int
+	var mostTrustedAgent uuid.UUID
+
+	// Iterate over our team, finding the agent with the highest trust score
+	for _, agentID := range agentsInTeam {
+		agentTrustScore := t2a.trustScore[agentID]
+		// Initialize trust score map if it hasn't been initialized yet
+		if t2a.trustScore == nil {
+			t2a.SetTrustScore(agentID)
+		}
+
+		if agentTrustScore > highestTrustScore {
+			mostTrustedAgent = agentID
+			highestTrustScore = agentTrustScore
+		}
+	}
+
+	// If the most trusted agent is above the threshold, vote for them as leader
+	if highestTrustScore > leaderThreshold {
+		// 1 means vote for this agent as leader
+		return common.CreateVote(1, t2a.GetID(), mostTrustedAgent)
+	} else {
+		// 0 means abstain / no preference
+		return common.CreateVote(0, t2a.GetID(), uuid.Nil)
+	}
+}
+
+func (t2a *Team2Agent) ToggleLeader() {
+	t2a.rank = !t2a.rank
+}
+
+func (t2a *Team2Agent) GetRole() bool {
+	return t2a.rank // If true, they are the leader
+}
+
+
+// Part 2: Core Game Flow Functions
 
 // ---------- Team Forming ----------
 
@@ -170,6 +216,19 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 	}
 }
 
+// ---------- Vote on Orphans ----------
+
+func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
+	// Return true to accept them, false to not accept them.
+
+	acceptOrphanThreshold := 20 	// low as we want to accept orphans.
+
+	if (t2a.trustScore[candidateID] > acceptOrphanThreshold ){
+		return true
+	} else {
+		return false
+	}
+}
 
 // ---------- Decision to stick  ----------
 
@@ -313,7 +372,6 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 
 	// decrement the common pool estimate by the stated amount
 	t2a.commonPoolEstimate -= msg.StatedAmount
-
 }
 
 func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
@@ -373,66 +431,6 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	}
 }
 
-
-// Misc:
-
-// /////////// ----------------------RANKING SYSTEM---------------------- /////////////
-
-
-func (t2a *Team2Agent) GetLeaderVote() common.Vote {
-	// Experiment with this - it is our threshold to decide leader worthiness
-	var leaderThreshold int = 60
-
-	// Get list of UUIDs in our team
-	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
-
-	var highestTrustScore int = math.MinInt // Start with the minimum possible int
-	var mostTrustedAgent uuid.UUID
-
-	// Iterate over our team, finding the agent with the highest trust score
-	for _, agentID := range agentsInTeam {
-		agentTrustScore := t2a.trustScore[agentID]
-		// Initialize trust score map if it hasn't been initialized yet
-		if t2a.trustScore == nil {
-			t2a.SetTrustScore(agentID)
-		}
-
-		if agentTrustScore > highestTrustScore {
-			mostTrustedAgent = agentID
-			highestTrustScore = agentTrustScore
-		}
-	}
-
-	// If the most trusted agent is above the threshold, vote for them as leader
-	if highestTrustScore > leaderThreshold {
-		// 1 means vote for this agent as leader
-		return common.CreateVote(1, t2a.GetID(), mostTrustedAgent)
-	} else {
-		// 0 means abstain / no preference
-		return common.CreateVote(0, t2a.GetID(), uuid.Nil)
-	}
-}
-
-func (t2a *Team2Agent) ToggleLeader() {
-	t2a.rank = !t2a.rank
-}
-
-func (t2a *Team2Agent) GetRole() bool {
-	return t2a.rank // If true, they are the leader
-}
-
-
-func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
-	// Return true to accept them, false to not accept them.
-
-	acceptOrphanThreshold := 20 	// low as we want to accept orphans.
-
-	if (t2a.trustScore[candidateID] > acceptOrphanThreshold ){
-		return true
-	} else {
-		return false
-	}
-}
 
 
 // ---------- MISC TO INCORPORATE ----------
