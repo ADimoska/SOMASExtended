@@ -58,7 +58,7 @@ func TestAuditQueue_GetLastRound(t *testing.T) {
 	}
 }
 
-func setUp () (uuid.UUID, uuid.UUID, uuid.UUID, *Team2AoA) {
+func setUp() (uuid.UUID, uuid.UUID, uuid.UUID, *Team2AoA) {
 	alice := uuid.New()
 	bob := uuid.New()
 	charlie := uuid.New()

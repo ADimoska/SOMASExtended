@@ -18,13 +18,13 @@ type ScoreReportMessage struct {
 
 type ContributionMessage struct {
 	message.BaseMessage
-	StatedAmount int
+	StatedAmount   int
 	ExpectedAmount int
 }
 
 type WithdrawalMessage struct {
 	message.BaseMessage
-	StatedAmount int
+	StatedAmount   int
 	ExpectedAmount int
 }
 

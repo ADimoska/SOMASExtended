@@ -3,8 +3,8 @@ package common
 // import "github.com/google/uuid"
 import (
 	"container/list"
-	"math/rand"
 	"math"
+	"math/rand"
 
 	"github.com/google/uuid"
 )
@@ -12,7 +12,6 @@ import (
 // Warning -> Implicit to the AoA, not formalized until a successful audit
 // Offence -> Formalized warning, 3 offences result in a kick
 // Need to formalize the first offence punishment -> Server needs to enforce this.
-
 
 // ---------------------------------------- Audit Queue Functionality ----------------------------------------
 
@@ -47,14 +46,14 @@ func (aq *AuditQueue) SetLength(length int) {
 }
 
 func (aq *AuditQueue) GetWarnings() int {
-    warnings := 0
-    for e := aq.rounds.Front(); e != nil; e = e.Next() {
+	warnings := 0
+	for e := aq.rounds.Front(); e != nil; e = e.Next() {
 		// Avoid run-time panic (which would happen if this is enforced to be an int)
-        if e.Value.(bool) {
-            warnings++
-        }
-    }
-    return warnings
+		if e.Value.(bool) {
+			warnings++
+		}
+	}
+	return warnings
 }
 
 func (aq *AuditQueue) GetLastAuditWarning() bool {
@@ -86,7 +85,7 @@ func NewAuditQueue(length int) *AuditQueue {
 // ---------------------------------------- Articles of Association Functionality ----------------------------------------
 
 type Team2AoA struct {
-	AuditMap   map[uuid.UUID]*AuditQueue
+	AuditMap map[uuid.UUID]*AuditQueue
 	// Used by the server in order to track which agents need to be kicked/fined/rolling privileges revoked
 	OffenceMap map[uuid.UUID]int
 	Leader     uuid.UUID

@@ -169,8 +169,8 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 
 // 	}
 
-// 	return selectedAgents
-// }
+//		return selectedAgents
+//	}
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 	invitationList := []uuid.UUID{}
 	for _, agentInfo := range agentInfoList {
@@ -193,6 +193,7 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 	// Return a slice containing the chosen agent
 	return []uuid.UUID{chosenAgent}
 }
+
 // ----- 2.2 Decision to stick -----
 
 func (t2a *Team2Agent) StickorAgain() {}
