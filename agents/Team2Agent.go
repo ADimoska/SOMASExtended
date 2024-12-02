@@ -293,12 +293,12 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 	// get the actual size of common pool post contributions, and the supposed size based on what agents have stated about their contributions.
 	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	var supposedCommonPoolSize = 0
-	for _, agentID := range agentsInTeam {
-		// TODO:
-		// get the agents stated contribution
-		// increment the supposed common pool size.
-	}
+	var supposedCommonPoolSize = 10 //placeholder for now
+	// for _, agentID := range agentsInTeam {
+	// 	// TODO:
+	// 	// get the agents stated contribution
+	// 	// increment the supposed common pool size.
+	// }
 	var discrepancy int = supposedCommonPoolSize - actualCommonPoolSize
 
 	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
@@ -354,12 +354,12 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	// get the actual size of common pool after withdrawals, and the supposed size based on what agents have stated about their withdrawals.
 	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	var supposedCommonPoolSize int // starts out as the size of the common pool before withdrawals
-	for _, agentID := range agentsInTeam {
-		// TODO:
-		// get the agents stated withdrawal
-		// take this away from the supposed common pool size.
-	}
+	var supposedCommonPoolSize int = 10 // starts out as the size of the common pool before withdrawals
+	// for _, agentID := range agentsInTeam {
+	// 	// TODO:
+	// 	// get the agents stated withdrawal
+	// 	// take this away from the supposed common pool size.
+	// }
 
 	var discrepancy int = supposedCommonPoolSize - actualCommonPoolSize
 
