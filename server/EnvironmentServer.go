@@ -5,7 +5,6 @@ import (
 	"github.com/google/uuid"
 	"math/rand"
 	"sync"
-	"time"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/server"
 
@@ -451,62 +450,4 @@ func (cs *EnvironmentServer) GetTeam(agentID uuid.UUID) *common.Team {
 // Get team from team ID, mostly for testing.
 func (cs *EnvironmentServer) GetTeamFromTeamID(teamID uuid.UUID) *common.Team {
 	return cs.Teams[teamID]
-}
-
-// Possibly needs to look at what team/AoA is being used to tally up the votes
-func (cs *EnvironmentServer) overrideAgentRolls(agentId uuid.UUID, controllerIds []uuid.UUID, stickThreshold int) {
-	controlled := cs.GetAgentMap()[agentId]
-	currentScore := controlled.GetTrueScore()
-
-	accumulatedScore := 0
-	rounds := 1
-	prevRoll := -1
-
-	rollingComplete := false
-
-	for !rollingComplete {
-		// AoAs can change how many stick decisions are needed here
-		numStickDecisions := 0
-		// The agents responsible for making the stick or again decision
-		for _, controllerId := range controllerIds {
-			controller := cs.GetAgentMap()[controllerId]
-			numStickDecisions += controller.StickOrAgainFor(agentId, accumulatedScore, prevRoll)
-		}
-
-		if numStickDecisions >= stickThreshold {
-			rollingComplete = true
-			fmt.Printf("%s decided to [STICK], score accumulated: %v", agentId, accumulatedScore)
-			break
-		}
-
-		if rounds > 1 {
-			fmt.Printf("%s decided to [CONTINUE ROLLING], previous roll: %v", agentId, prevRoll)
-		}
-
-		currentRoll := generateScore()
-		fmt.Printf("%s rolled: %v\n this turn", agentId, currentRoll)
-		if currentRoll <= prevRoll {
-			// Gone bust, so reset the accumulated score and break out of the loop
-			accumulatedScore = 0
-			fmt.Printf("%s **[HAS GONE BUST!]** round: %v, current score: %v\n", agentId, rounds, currentScore)
-			break
-		}
-
-		accumulatedScore += currentRoll
-		prevRoll = currentRoll
-		rounds++
-	}
-	// In case the agent has gone bust, this does nothing
-	controlled.SetTrueScore(currentScore + accumulatedScore)
-	// Log the updated score
-	fmt.Printf("%s turn score: %v, total score: %v\n", agentId, accumulatedScore, controlled.GetTrueScore())
-}
-
-func generateScore() int {
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-	score := 0
-	for i := 0; i < 3; i++ {
-		score += rand.Intn(6) + 1
-	}
-	return score
 }

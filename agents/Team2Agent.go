@@ -129,70 +129,74 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 
 // ----- 2.1 Decision to send or accept a team invitiation -----
 
-// func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-// 	// Initialize selected agents slice
-// 	selectedAgents := make([]uuid.UUID, 0)
-
-// 	// Set trust threshold for accepting/sending invitations
-// 	trustThreshold := 7 // This can be adjusted based on desired behavior
-
-// 	// Iterate through all agents
-// 	for _, agentInfo := range agentInfoList {
-// 		agentUUID := agentInfo.AgentUUID
-// 		// Initialize trust score map if it hasn't been initialized yet
-// 		if t2a.trustScore == nil {
-// 			t2a.SetTrustScore(agentUUID)
-// 		}
-
-// 		// Skip if it's our own ID
-// 		if agentUUID == t2a.GetID() {
-// 			continue
-// 		}
-
-// 		// Get current trust score for this agent
-// 		trustScore := t2a.trustScore[agentUUID]
-
-// 		// Check if we're a leader and they're not
-// 		if t2a.rank {
-// 			// Leaders are more selective and only accept followers with high trust
-// 			if trustScore >= trustThreshold {
-// 				selectedAgents = append(selectedAgents, agentUUID)
-// 			}
-// 			continue
-// 		}
-
-// 		// If we're not a leader (follower), be more open to invitations
-// 		// Accept/send invitation if trust score is above threshold
-// 		if trustScore > trustThreshold {
-// 			selectedAgents = append(selectedAgents, agentUUID)
-// 		}
-
-// 	}
-
-//		return selectedAgents
-//	}
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+	// Initialize selected agents slice
+	// selectedAgents := make([]uuid.UUID, 0)
+
+	// Set trust threshold for accepting/sending invitations
+	// trustThreshold := 70 // This can be adjusted based on desired behavior
+	maxThreshold := 0 // Maximum trust score
 	invitationList := []uuid.UUID{}
+	// Iterate through all agents
 	for _, agentInfo := range agentInfoList {
-		// exclude the agent itself
-		if agentInfo.AgentUUID == t2a.GetID() {
+		agentUUID := agentInfo.AgentUUID
+		// Initialize trust score map if it hasn't been initialized yet
+		if t2a.trustScore[agentUUID] == 0 {
+			t2a.SetTrustScore(agentUUID)
+		}
+
+		// Skip if it's our own ID
+		if agentUUID == t2a.GetID() {
 			continue
 		}
-		if agentInfo.AgentTeamID == (uuid.UUID{}) {
-			invitationList = append(invitationList, agentInfo.AgentUUID)
+
+		// Get current trust score for this agent
+		trustScore := t2a.trustScore[agentUUID]
+
+		// // Check if we're a leader and they're not
+		// if t2a.rank {
+		// 	// Leaders are more selective and only accept followers with high trust
+		// 	if trustScore >= trustThreshold {
+		// 		selectedAgents = append(selectedAgents, agentUUID)
+		// 	}
+		// 	continue
+		// }
+
+		// Choose agent with highest trust score
+		if trustScore > maxThreshold {
+			invitationList = append(invitationList, agentUUID)
+			maxThreshold = trustScore
 		}
-	}
 
-	// random choice from the invitation list
-	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
-	if len(invitationList) == 0 {
-		return []uuid.UUID{}
 	}
-	chosenAgent := invitationList[0]
+	lenInviteList := len(invitationList)
+	chosenAgent := invitationList[lenInviteList-1]
 
-	// Return a slice containing the chosen agent
 	return []uuid.UUID{chosenAgent}
 }
+
+// func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+// 	invitationList := []uuid.UUID{}
+// 	for _, agentInfo := range agentInfoList {
+// 		// exclude the agent itself
+// 		if agentInfo.AgentUUID == t2a.GetID() {
+// 			continue
+// 		}
+// 		if agentInfo.AgentTeamID == (uuid.UUID{}) {
+// 			invitationList = append(invitationList, agentInfo.AgentUUID)
+// 		}
+// 	}
+
+// 	// random choice from the invitation list
+// 	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
+// 	if len(invitationList) == 0 {
+// 		return []uuid.UUID{}
+// 	}
+// 	chosenAgent := invitationList[0]
+
+// 	// Return a slice containing the chosen agent
+// 	return []uuid.UUID{chosenAgent}
+// }
 
 // ----- 2.2 Decision to stick -----
 
@@ -335,9 +339,9 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 	// 1: Setup
 
 	// experiment with these;
-	var auditThreshold int = 5   // decision to audit based on if an agents trust score is lower than this
-	var suspicionFactor int = 2  // how much we lower everyone's trust scores if there is a discrepancy.
-	var discrepancyThreshold = 4 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
+	var auditThreshold int = 50   // decision to audit based on if an agents trust score is lower than this
+	var suspicionFactor int = 20  // how much we lower everyone's trust scores if there is a discrepancy.
+	var discrepancyThreshold = 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
 	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
@@ -396,9 +400,9 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	// 1: Setup
 
 	// experiment with these;
-	var auditThreshold int = 5   // decision to audit based on if an agents trust score is lower than this
-	var suspicionFactor int = 2  // how much we lower everyone's trust scores if there is a discrepancy.
-	var discrepancyThreshold = 4 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
+	var auditThreshold int = 50   // decision to audit based on if an agents trust score is lower than this
+	var suspicionFactor int = 20  // how much we lower everyone's trust scores if there is a discrepancy.
+	var discrepancyThreshold = 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
 	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
@@ -506,7 +510,7 @@ func WeightedRandom(category string) bool {
 
 func (t2a *Team2Agent) GetLeaderVote() common.Vote {
 	// Experiment with this - it is our threshold to decide leader worthiness
-	var leaderThreshold int = 6
+	var leaderThreshold int = 60
 
 	// Get list of UUIDs in our team
 	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
