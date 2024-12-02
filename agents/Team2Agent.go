@@ -18,6 +18,7 @@ type Team2Agent struct {
 	trustScore      map[uuid.UUID]int
 	strikeCount     map[uuid.UUID]int
 	thresholdBounds []int
+	commonPoolEstimate int
 }
 
 // constructor for team2agent - initialised as all followers
@@ -224,6 +225,11 @@ func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage
 	// Call the underlying function
 	fmt.Println("Overriding contribution message!")
 	t2a.ExtendedAgent.HandleContributionMessage(msg) // Enables logging
+
+	// increment the common pool estimate by the stated amount
+	t2a.commonPoolEstimate += msg.StatedAmount
+
+
 }
 
 func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
@@ -231,6 +237,10 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 
 	fmt.Println("Overriding withdrawal message!")
 	t2a.ExtendedAgent.HandleWithdrawalMessage(msg)
+
+	// decrement the common pool estimate by the stated amount
+	t2a.commonPoolEstimate -= msg.StatedAmount
+
 }
 
 
@@ -348,13 +358,10 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 	// get the actual size of common pool post contributions, and the supposed size based on what agents have stated about their contributions.
 	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	var supposedCommonPoolSize = 10 //placeholder for now
-	// for _, agentID := range agentsInTeam {
-	// 	// TODO:
-	// 	// get the agents stated contribution
-	// 	// increment the supposed common pool size.
-	// }
-	var discrepancy int = supposedCommonPoolSize - actualCommonPoolSize
+	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
+
+	// after finding discrepancy, reset common pool estimate to the actual size of the common pool in preparation for withdrawal stage
+	t2a.commonPoolEstimate = t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
 
 	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
 	// then check to see if the least trusted agent in your team is below the threshold
@@ -409,14 +416,9 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	// get the actual size of common pool after withdrawals, and the supposed size based on what agents have stated about their withdrawals.
 	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	var supposedCommonPoolSize int = 10 // starts out as the size of the common pool before withdrawals
-	// for _, agentID := range agentsInTeam {
-	// 	// TODO:
-	// 	// get the agents stated withdrawal
-	// 	// take this away from the supposed common pool size.
-	// }
+	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
 
-	var discrepancy int = supposedCommonPoolSize - actualCommonPoolSize
+	t2a.commonPoolEstimate = 0
 
 	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
 	// then check to see if the least trusted agent in your team is below the threshold
