@@ -1,7 +1,7 @@
 package agents
 
 import (
-	"SOMAS_Extended/common"
+	common "github.com/ADimoska/SOMASExtended/common"
 	"fmt"
 	"math"
 	"math/rand"
