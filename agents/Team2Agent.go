@@ -146,7 +146,10 @@ func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, 
 
 func (t2a *Team2Agent) DecideContribution() int {
 	// MVP: contribute exactly as defined in AoA
+
+	// if we have a an aoa (expected case) ...
 	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
+		// contribute our aoa expected contribution.
 		aoaExpectedContribution := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
 		// double check if score in agent is sufficient (this should be handled by AoA though)
 		if t2a.GetTrueScore() < aoaExpectedContribution {
@@ -162,8 +165,11 @@ func (t2a *Team2Agent) DecideContribution() int {
 	}
 }
 
-// Decide the withdrawal amount based on AoA and current pool size
+
 func (t2a *Team2Agent) DecideWithdrawal() int {
+	// MVP: contribute exactly as defined in AoA
+
+	// if we have a an aoa (expected case) ...
 	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
 		// double check if score in agent is sufficient (this should be handled by AoA though)
 		commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
