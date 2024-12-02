@@ -3,6 +3,7 @@ package common
 // import "github.com/google/uuid"
 import (
 	"container/list"
+	"fmt"
 	"math"
 	"math/rand"
 
@@ -238,6 +239,7 @@ func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
 }
 
 func CreateTeam2AoA(team *Team, leader uuid.UUID) IArticlesOfAssociation {
+	fmt.Println("Creating Team2AoA")
 	auditMap := make(map[uuid.UUID]*AuditQueue)
 	offenceMap := make(map[uuid.UUID]int)
 

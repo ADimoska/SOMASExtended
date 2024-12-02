@@ -1,9 +1,11 @@
 package common
 
 import (
-	"github.com/google/uuid"
+	"fmt"
 	"math/rand"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type FixedAoA struct {
@@ -65,5 +67,6 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 }
 
 func CreateFixedAoA() IArticlesOfAssociation {
+	fmt.Println("Creating Fixed AoA")
 	return &FixedAoA{}
 }
