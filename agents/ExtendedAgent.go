@@ -6,7 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
-	common "SOMAS_Extended/common"
+	common "github.com/ADimoska/SOMASExtended/common"
 
 	// TODO:
 
@@ -29,6 +29,12 @@ type ExtendedAgent struct {
 	// AoA vote
 	AoARanking []int
 
+	/* Team Ranking - Tracks the teams that the agent would like to join (if /
+	 * when it is an orphan) in order of preference. Lowest index = highest
+	 * priority. If this is empty, the server will not attempt to allocate the
+	 * orphan to a team. */
+	TeamRanking []uuid.UUID
+
 	LastTeamID uuid.UUID // Tracks the last team the agent was part of
 }
 
@@ -44,6 +50,7 @@ func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], c
 		score:        configParam.InitScore,
 		verboseLevel: configParam.VerboseLevel,
 		AoARanking:   []int{3, 2, 1, 0},
+		TeamRanking:  []uuid.UUID{},
 	}
 }
 
@@ -317,6 +324,20 @@ func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.
 	}
 }
 
+func (mi *ExtendedAgent) StateContributionToTeam() {
+	// Broadcast contribution to team
+	statedContribution := mi.GetStatedContribution(mi)
+	contributionMsg := mi.CreateContributionMessage(statedContribution)
+	mi.BroadcastSyncMessageToTeam(contributionMsg)
+}
+
+func (mi *ExtendedAgent) StateWithdrawalToTeam() {
+	// Broadcast withdrawal to team
+	statedWithdrawal := mi.GetStatedWithdrawal(mi)
+	withdrawalMsg := mi.CreateWithdrawalMessage(statedWithdrawal)
+	mi.BroadcastSyncMessageToTeam(withdrawalMsg)
+}
+
 // ----------------------- Info functions -----------------------
 func (mi *ExtendedAgent) GetExposedInfo() common.ExposedAgentInfo {
 	return common.ExposedAgentInfo{
@@ -332,19 +353,17 @@ func (mi *ExtendedAgent) CreateScoreReportMessage() *common.ScoreReportMessage {
 	}
 }
 
-func (mi *ExtendedAgent) CreateContributionMessage(statedAmount int, expectedAmount int) *common.ContributionMessage {
+func (mi *ExtendedAgent) CreateContributionMessage(statedAmount int) *common.ContributionMessage {
 	return &common.ContributionMessage{
-		BaseMessage:    mi.CreateBaseMessage(),
-		StatedAmount:   statedAmount,
-		ExpectedAmount: expectedAmount,
+		BaseMessage:  mi.CreateBaseMessage(),
+		StatedAmount: statedAmount,
 	}
 }
 
-func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int, expectedAmount int) *common.WithdrawalMessage {
+func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.WithdrawalMessage {
 	return &common.WithdrawalMessage{
-		BaseMessage:    mi.CreateBaseMessage(),
-		StatedAmount:   statedAmount,
-		ExpectedAmount: expectedAmount,
+		BaseMessage:  mi.CreateBaseMessage(),
+		StatedAmount: statedAmount,
 	}
 }
 
@@ -461,6 +480,7 @@ func (mi *ExtendedAgent) GetAoARanking() []int {
 	return mi.AoARanking
 }
 
+
 func (mi *ExtendedAgent) DecideLeaveTeam() bool {
 	// Generate a random number between 0 and 9
 	decision := rand.Intn(10)
@@ -478,4 +498,27 @@ func (mi *ExtendedAgent) DecideLeaveTeam() bool {
 		fmt.Printf("Agent %s decided to stay in the team\n", mi.GetID())
 	}
 	return false
+
+/*
+* Decide whether to allow an agent into the team. This will be part of the group
+* strategy, and should be implemented by individual groups. During testing this
+* function is mocked.
+ */
+func (mi *ExtendedAgent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
+	// TODO: Implement strategy for accepting an agent into the team.
+	// Return true to accept them, false to not accept them.
+	return true
+}
+
+// Return the team ranking
+func (mi *ExtendedAgent) GetTeamRanking() []uuid.UUID {
+	return mi.TeamRanking
+}
+
+// Set the team ranking of which teams this agent would like to join - lower
+// index = higher priority. This can be updated as the game goes on, the server
+// will only act on this information when the agent is orphaned.
+func (mi *ExtendedAgent) SetTeamRanking(teamRanking []uuid.UUID) {
+	mi.TeamRanking = teamRanking
+
 }

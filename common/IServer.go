@@ -14,10 +14,13 @@ type IServer interface {
 	CheckAgentAlreadyInTeam(agentID uuid.UUID) bool
 	CreateAndInitTeamWithAgents(agentIDs []uuid.UUID) uuid.UUID
 	UpdateAndGetAgentExposedInfo() []ExposedAgentInfo
+	IsAgentDead(agentID uuid.UUID) bool
 	StartAgentTeamForming()
 
 	GetTeam(agentID uuid.UUID) *Team
+	GetTeamFromTeamID(teamID uuid.UUID) *Team
 
 	// Debug functions
 	LogAgentStatus()
+	PrintOrphanPool()
 }
