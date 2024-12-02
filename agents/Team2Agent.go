@@ -374,6 +374,8 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 }
 
 
+// Misc:
+
 // /////////// ----------------------RANKING SYSTEM---------------------- /////////////
 
 
@@ -420,7 +422,17 @@ func (t2a *Team2Agent) GetRole() bool {
 }
 
 
+func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
+	// Return true to accept them, false to not accept them.
 
+	acceptOrphanThreshold := 20 	// low as we want to accept orphans.
+
+	if (t2a.trustScore[candidateID] > acceptOrphanThreshold ){
+		return true
+	} else {
+		return false
+	}
+}
 
 
 // ---------- MISC TO INCORPORATE ----------
