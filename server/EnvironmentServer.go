@@ -165,7 +165,6 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 // for each member in team, count vote for AoA and then take majority (?) vote
 // assign majority vote back to team struct (team.Strategy)
 func (cs *EnvironmentServer) allocateAoAs() {
-	// var leader = uuid.Nil
 	// Iterate over each team
 	for _, team := range cs.Teams {
 		// ranking cache for each team.
@@ -187,45 +186,23 @@ func (cs *EnvironmentServer) allocateAoAs() {
 				currentMax = voteCount
 				preference = aoa
 			}
-		} 
-		var i int = 0
-		for _, agent := range team.Agents {
-			i += 1
-			if i == 1{
-				leader := agent
-				// Update the team's strategy
-				switch preference {
-				case 0:
-					team.TeamAoA = common.CreateTeam2AoA(team, leader)
-				case 1:
-					team.TeamAoA = common.CreateTeam2AoA(team , leader)
-				case 2:
-					team.TeamAoA = common.CreateTeam2AoA(team , leader)
-				case 3:
-					team.TeamAoA = common.CreateTeam2AoA(team , leader)
-				case 4:
-					team.TeamAoA = common.CreateTeam2AoA(team , leader)
-				default:
-					team.TeamAoA = common.CreateTeam2AoA(team , leader)
-				}
-
-			}
 		}
-		// // Update the team's strategy
-		// switch preference {
-		// case 0:
-		// 	team.TeamAoA = common.CreateTeam2AoA(team, leader)
-		// case 1:
-		// 	team.TeamAoA = common.CreateTeam2AoA()
-		// case 2:
-		// 	team.TeamAoA = common.CreateTeam2AoA()
-		// case 3:
-		// 	team.TeamAoA = common.CreateTeam2AoA()
-		// case 4:
-		// 	team.TeamAoA = common.CreateTeam2AoA()
-		// default:
-		// 	team.TeamAoA = common.CreateTeam2AoA()
-		// }
+
+		// Update the team's strategy
+		switch preference {
+		case 0:
+			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil)
+		case 1:
+			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil)
+		case 2:
+			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil)
+		case 3:
+			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil)
+		case 4:
+			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil)
+		default:
+			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil)
+		}
 
 		cs.Teams[team.TeamID] = team
 	}
