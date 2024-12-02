@@ -120,7 +120,10 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 	t2a.trustScore[agentID] += 2
 }
 
+
+
 // ----- 2.1 Decision to send or accept a team invitiation -----
+
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 	// Initialize selected agents slice
 	selectedAgents := make([]uuid.UUID, 0)
@@ -164,59 +167,14 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 	return selectedAgents
 }
 
+
 // ----- 2.2 Decision to stick -----
 
-func (t2a *Team2Agent) StickorAgain() {
+func (t2a *Team2Agent) StickorAgain() {}
 
-}
 
 // ----- 2.3 Decision to cheat / not cooperate
 
-func (t2a *Team2Agent) DecideContributionCheating() {
-
-}
-
-func (t2a *Team2Agent) GetStatedContribution() {
-	// to implement, for now rely on the implementation already in ExtendedAgent
-}
-
-func (t2a *Team2Agent) GetStatedWithdrawal() {
-	// to implement, for now rely on the implementation already in ExtendedAgent
-}
-
-// EvaluatePerformance calculates the agent's performance relative to the team
-func (t2a *Team2Agent) EvaluatePerformance(rounds int) string {
-	// Calculate the agent's average performance
-	agentID := t2a.GetID()
-	agentTotal := 0
-	for i := len(t2a.rollHistory[agentID]) - 1; i >= 0 && i >= len(t2a.rollHistory[agentID])-rounds; i-- {
-		agentTotal += t2a.rollHistory[agentID][i]
-	}
-	agentAvg := float64(agentTotal) / float64(rounds)
-
-	// Calculate the team's overall average performance
-	teamTotal, totalRounds := 0, 0
-	for _, history := range t2a.rollHistory {
-		for i := len(history) - 1; i >= 0 && i >= len(history)-rounds; i-- {
-			teamTotal += history[i]
-			totalRounds++
-		}
-	}
-	teamAvg := float64(teamTotal) / float64(totalRounds)
-
-	// Categorize performance
-	if agentAvg > teamAvg*1.2 {
-		return "Great"
-	} else if agentAvg >= teamAvg*0.8 {
-		return "Average"
-	} else if agentAvg >= teamAvg*0.5 {
-		return "Bad"
-	} else {
-		return "Terrible"
-	}
-}
-
-// DecideContribution determines how much an agent contributes to the pool
 func (t2a *Team2Agent) DecideContribution() int {
 	// Get AoA expected contribution
 	agentID := t2a.GetID()
@@ -256,19 +214,6 @@ func (t2a *Team2Agent) DecideContribution() int {
 	return contribution
 }
 
-// WeightedRandom returns true if the agent decides to reduce their contribution
-func WeightedRandom(category string) bool {
-	probabilities := map[string]float64{
-		"Great":    0.01, // 0% chance to reduce
-		"Average":  0.1,  // 20% chance to reduce
-		"Bad":      0.25, // 60% chance to reduce
-		"Terrible": 0.5,  // 90% chance to reduce
-	}
-	randVal := rand.Float64()
-	return randVal < probabilities[category]
-}
-
-// DecideWithdrawal determines how much an agent will withdraw
 func (t2a *Team2Agent) DecideWithdrawal() int {
 	// Agent-specific variables
 	agentID := t2a.GetID()
@@ -320,6 +265,10 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 
 	return finalWithdrawal
 }
+
+// removed getStatedContribution and getStatedWithdrawal- TODO later. 
+// for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
+
 
 // 2.4 ----- Decision to Audit Someone
 
@@ -383,7 +332,6 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 		// in this case there is no discrepancy this round, so prefer not audit (-1)
 		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
 	}
-
 }
 
 func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
@@ -446,7 +394,57 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 		// in this case there is no discrepancy this round, so prefer not audit (-1)
 		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
 	}
+}
 
+
+
+
+// Misc:
+
+// Additional Functions written for 2.3 Cheat / not cooperate
+
+// EvaluatePerformance calculates the agent's performance relative to the team
+func (t2a *Team2Agent) EvaluatePerformance(rounds int) string {
+	// Calculate the agent's average performance
+	agentID := t2a.GetID()
+	agentTotal := 0
+	for i := len(t2a.rollHistory[agentID]) - 1; i >= 0 && i >= len(t2a.rollHistory[agentID])-rounds; i-- {
+		agentTotal += t2a.rollHistory[agentID][i]
+	}
+	agentAvg := float64(agentTotal) / float64(rounds)
+
+	// Calculate the team's overall average performance
+	teamTotal, totalRounds := 0, 0
+	for _, history := range t2a.rollHistory {
+		for i := len(history) - 1; i >= 0 && i >= len(history)-rounds; i-- {
+			teamTotal += history[i]
+			totalRounds++
+		}
+	}
+	teamAvg := float64(teamTotal) / float64(totalRounds)
+
+	// Categorize performance
+	if agentAvg > teamAvg*1.2 {
+		return "Great"
+	} else if agentAvg >= teamAvg*0.8 {
+		return "Average"
+	} else if agentAvg >= teamAvg*0.5 {
+		return "Bad"
+	} else {
+		return "Terrible"
+	}
+}
+
+// WeightedRandom returns true if the agent decides to reduce their contribution
+func WeightedRandom(category string) bool {
+	probabilities := map[string]float64{
+		"Great":    0.01, // 0% chance to reduce
+		"Average":  0.1,  // 20% chance to reduce
+		"Bad":      0.25, // 60% chance to reduce
+		"Terrible": 0.5,  // 90% chance to reduce
+	}
+	randVal := rand.Float64()
+	return randVal < probabilities[category]
 }
 
 // /////////// ----------------------RANKING SYSTEM---------------------- /////////////
