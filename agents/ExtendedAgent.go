@@ -427,7 +427,7 @@ func (mi *ExtendedAgent) SendTeamFormingInvitation(agentIDs []uuid.UUID) {
 		}
 		// Debug print to check message contents
 		fmt.Printf("Sending invitation: sender=%v, teamID=%v, receiver=%v\n", mi.GetID(), mi.teamID, agentID)
-		mi.SendMessage(invitationMsg, agentID)
+		mi.SendSynchronousMessage(invitationMsg, agentID)
 	}
 }
 
