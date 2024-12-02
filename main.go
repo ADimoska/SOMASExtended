@@ -33,8 +33,8 @@ func main() {
 
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
-		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
-		agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
+		//agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
+		//agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		agentPopulation = append(agentPopulation, agents.Team2_CreateAgent(serv, agentConfig))
 		// Add other teams' agents here
 	}

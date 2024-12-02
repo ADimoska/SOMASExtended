@@ -129,49 +129,70 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 
 // ----- 2.1 Decision to send or accept a team invitiation -----
 
+// func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+// 	// Initialize selected agents slice
+// 	selectedAgents := make([]uuid.UUID, 0)
+
+// 	// Set trust threshold for accepting/sending invitations
+// 	trustThreshold := 7 // This can be adjusted based on desired behavior
+
+// 	// Iterate through all agents
+// 	for _, agentInfo := range agentInfoList {
+// 		agentUUID := agentInfo.AgentUUID
+// 		// Initialize trust score map if it hasn't been initialized yet
+// 		if t2a.trustScore == nil {
+// 			t2a.SetTrustScore(agentUUID)
+// 		}
+
+// 		// Skip if it's our own ID
+// 		if agentUUID == t2a.GetID() {
+// 			continue
+// 		}
+
+// 		// Get current trust score for this agent
+// 		trustScore := t2a.trustScore[agentUUID]
+
+// 		// Check if we're a leader and they're not
+// 		if t2a.rank {
+// 			// Leaders are more selective and only accept followers with high trust
+// 			if trustScore >= trustThreshold {
+// 				selectedAgents = append(selectedAgents, agentUUID)
+// 			}
+// 			continue
+// 		}
+
+// 		// If we're not a leader (follower), be more open to invitations
+// 		// Accept/send invitation if trust score is above threshold
+// 		if trustScore > trustThreshold {
+// 			selectedAgents = append(selectedAgents, agentUUID)
+// 		}
+
+// 	}
+
+// 	return selectedAgents
+// }
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	// Initialize selected agents slice
-	selectedAgents := make([]uuid.UUID, 0)
-
-	// Set trust threshold for accepting/sending invitations
-	trustThreshold := 7 // This can be adjusted based on desired behavior
-
-	// Iterate through all agents
+	invitationList := []uuid.UUID{}
 	for _, agentInfo := range agentInfoList {
-		agentUUID := agentInfo.AgentUUID
-		// Initialize trust score map if it hasn't been initialized yet
-		if t2a.trustScore == nil {
-			t2a.SetTrustScore(agentUUID)
-		}
-
-		// Skip if it's our own ID
-		if agentUUID == t2a.GetID() {
+		// exclude the agent itself
+		if agentInfo.AgentUUID == t2a.GetID() {
 			continue
 		}
-
-		// Get current trust score for this agent
-		trustScore := t2a.trustScore[agentUUID]
-
-		// Check if we're a leader and they're not
-		if t2a.rank {
-			// Leaders are more selective and only accept followers with high trust
-			if trustScore >= trustThreshold {
-				selectedAgents = append(selectedAgents, agentUUID)
-			}
-			continue
+		if agentInfo.AgentTeamID == (uuid.UUID{}) {
+			invitationList = append(invitationList, agentInfo.AgentUUID)
 		}
-
-		// If we're not a leader (follower), be more open to invitations
-		// Accept/send invitation if trust score is above threshold
-		if trustScore > trustThreshold {
-			selectedAgents = append(selectedAgents, agentUUID)
-		}
-
 	}
 
-	return selectedAgents
-}
+	// random choice from the invitation list
+	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
+	if len(invitationList) == 0 {
+		return []uuid.UUID{}
+	}
+	chosenAgent := invitationList[0]
 
+	// Return a slice containing the chosen agent
+	return []uuid.UUID{chosenAgent}
+}
 // ----- 2.2 Decision to stick -----
 
 func (t2a *Team2Agent) StickorAgain() {}
