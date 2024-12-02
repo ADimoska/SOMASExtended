@@ -24,7 +24,7 @@ func (team *Team) SetCommonPool(amount int) {
 
 // constructor: NewTeam creates a new Team with a unique TeamID and initializes other fields as blank.
 func NewTeam(teamID uuid.UUID) *Team {
-	teamAoA := CreateFixedAoA()
+	teamAoA := CreateFixedAoA(1)
 	return &Team{
 		TeamID:     teamID,        // Generate a unique TeamID
 		commonPool: 0,             // Initialize commonPool to 0

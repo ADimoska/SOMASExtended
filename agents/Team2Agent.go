@@ -17,6 +17,8 @@ type Team2Agent struct {
 	rank            bool
 	trustScore      map[uuid.UUID]int
 	strikeCount     map[uuid.UUID]int
+	statedWithdrawal map[uuid.UUID]int
+	statedContribution map[uuid.UUID]int
 	thresholdBounds []int
 	commonPoolEstimate int
 }
@@ -38,10 +40,9 @@ func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
 }
 
 // Overall function to update one agents trust score for other agents
-// (can either implement like this or call functions underneath during each event)
 func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, strikeCount int) {
-	auditContributionResult := t2a.server.GetTeam(t2a.GetID()).TeamAoA.GetContributionAuditResult(agentID) //fix
-	auditWithdrawalResult := t2a.server.GetTeam(t2a.GetID()).TeamAoA.GetWithdrawalAuditResult(agentID)
+	auditContributionResult := t2a.Server.GetTeam(agentID).TeamAoA.GetContributionAuditResult(agentID) //fix
+	auditWithdrawalResult := t2a.Server.GetTeam(agentID).TeamAoA.GetWithdrawalAuditResult(agentID)
 	switch eventType {
 	case "strike":
 		if auditContributionResult || auditWithdrawalResult{
@@ -149,15 +150,15 @@ func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, 
 
 func (t2a *Team2Agent) DecideContribution() int {
 	// MVP: contribute exactly as defined in AoA
-	if t2a.server.GetTeam(t2a.GetID()).TeamAoA != nil {
-		aoaExpectedContribution := t2a.server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
+	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
+		aoaExpectedContribution := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
 		// double check if score in agent is sufficient (this should be handled by AoA though)
 		if t2a.GetTrueScore() < aoaExpectedContribution {
 			return t2a.GetTrueScore() // give all score if less than expected
 		}
 		return aoaExpectedContribution
 	} else {
-		if t2a.verboseLevel > 6 {
+		if t2a.VerboseLevel > 6 {
 			// should not happen!
 			fmt.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", t2a.GetID())
 		}
@@ -167,16 +168,16 @@ func (t2a *Team2Agent) DecideContribution() int {
 
 // Decide the withdrawal amount based on AoA and current pool size
 func (t2a *Team2Agent) DecideWithdrawal() int {
-	if t2a.server.GetTeam(t2a.GetID()).TeamAoA != nil {
+	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
 		// double check if score in agent is sufficient (this should be handled by AoA though)
-		commonPool := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-		aoaExpectedWithdrawal := t2a.server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedWithdrawal(t2a.GetID(), t2a.GetTrueScore(), commonPool)
+		commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
+		aoaExpectedWithdrawal := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedWithdrawal(t2a.GetID(), t2a.GetTrueScore(), commonPool)
 		if commonPool < aoaExpectedWithdrawal {
 			return commonPool
 		}
 		return aoaExpectedWithdrawal
 	} else {
-		if t2a.verboseLevel > 6 {
+		if t2a.VerboseLevel > 6 {
 			fmt.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", t2a.GetID())
 		}
 		return 0
@@ -187,10 +188,10 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 	fmt.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
 
 	// Already in a team - reject invitation
-	if t2a.teamID != (uuid.UUID{}) {
-		if t2a.verboseLevel > 6 {
+	if t2a.TeamID != (uuid.UUID{}) {
+		if t2a.VerboseLevel > 6 {
 			fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
-			t2a.GetID(), msg.GetSender(), t2a.teamID)
+			t2a.GetID(), msg.GetSender(), t2a.TeamID)
 		}
 		return
 	}
@@ -207,21 +208,21 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 	if senderTrustScore > 60 {
 		// Handle team creation/joining based on sender's team status
 		sender := msg.GetSender()
-		if t2a.server.CheckAgentAlreadyInTeam(sender) {
-			existingTeamID := t2a.server.AccessAgentByID(sender).GetTeamID()
+		if t2a.Server.CheckAgentAlreadyInTeam(sender) {
+			existingTeamID := t2a.Server.AccessAgentByID(sender).GetTeamID()
 			t2a.joinExistingTeam(existingTeamID)
 		} else {
 			t2a.createNewTeam(sender)
 		}
 	}else {
 		fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
-		t2a.GetID(), msg.GetSender(), t2a.teamID)
+		t2a.GetID(), msg.GetSender(), t2a.TeamID)
 	}
 }
 
 func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
 	// TODO: Adjust suspicion based on the contribution of this agent and the AoA
-	
+
 	// Call the underlying function
 	fmt.Println("Overriding contribution message!")
 	t2a.ExtendedAgent.HandleContributionMessage(msg) // Enables logging
@@ -249,7 +250,7 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 // 	// Get AoA expected contribution
 // 	agentID := t2a.GetID()
 // 	agentScore := t2a.trustScore[agentID]
-// 	aoaContribution := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedContribution(t2a.GetID(), agentScore)
+// 	aoaContribution := t2a.Server.GetTeam(t2a.TeamID).TeamAoA.(*common.Team2AoA).GetExpectedContribution(t2a.GetID(), agentScore)
 
 // 	// Evaluate performance
 // 	// performance := t2a.EvaluatePerformance(5) // Evaluate over the last 5 rounds
@@ -288,10 +289,10 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 // 	// Agent-specific variables
 // 	agentID := t2a.GetID()
 // 	agentScore := t2a.score
-// 	commonPool := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+// 	commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
 
 // 	// Expected withdrawal from AoA
-// 	aoaWithdrawal := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), agentScore, commonPool)
+// 	aoaWithdrawal := t2a.Server.GetTeam(t2a.TeamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), agentScore, commonPool)
 // 	// performance := t2a.EvaluatePerformance(5) // Evaluate over the last 5 rounds
 // 	// Evaluate performance
 // 	performance := "Great" // Performance over the last 5 rounds
@@ -317,7 +318,7 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 // 	}
 
 // 	// Adjust for team size
-// 	teamAgents := t2a.server.GetAgentsInTeam(t2a.teamID) // Get agents in the team
+// 	teamAgents := t2a.Server.GetAgentsInTeam(t2a.TeamID) // Get agents in the team
 // 	teamSize := len(teamAgents)                          // Calculate team size
 // 	teamSizeModifier := 1.0                              // Default modifier
 
@@ -342,7 +343,6 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 // 2.4 ----- Decision to Audit Someone
 
 func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
-
 	// 1: Setup
 
 	// experiment with these;
@@ -351,7 +351,7 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 	discrepancyThreshold := 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
-	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
+	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
 
 	// 2: Main logic
 
@@ -409,7 +409,7 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	discrepancyThreshold := 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
-	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
+	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
 
 	// 2: Main logic
 
@@ -512,7 +512,7 @@ func (t2a *Team2Agent) GetLeaderVote() common.Vote {
 	var leaderThreshold int = 60
 
 	// Get list of UUIDs in our team
-	var agentsInTeam []uuid.UUID = t2a.server.GetAgentsInTeam(t2a.teamID)
+	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
 
 	var highestTrustScore int = math.MinInt // Start with the minimum possible int
 	var mostTrustedAgent uuid.UUID

@@ -1,7 +1,6 @@
 package common
 
 import (
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -9,22 +8,27 @@ import (
 )
 
 type FixedAoA struct {
-	ContributionAuditMap map[uuid.UUID]bool
-	WithdrawalAuditMap   map[uuid.UUID]bool
+	auditRecord *AuditRecord
 }
-
-func (f *FixedAoA) ResetAuditMap() {}
 
 func (f *FixedAoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
 	return agentScore
 }
 
 func (f *FixedAoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
+	// If the agent's actual contribution is not equal to the stated contribution, then the agent is cheating
+	infraction := 0
+	if agentActualContribution != agentStatedContribution {
+		infraction = 1
+	}
+	f.auditRecord.AddRecord(agentId, infraction)
 }
 
 func (f *FixedAoA) GetContributionAuditResult(agentId uuid.UUID) bool {
 	// true means agent failed the audit (cheated)
-	return f.ContributionAuditMap[agentId]
+	infractions := f.auditRecord.GetAllInfractions(agentId) > 0
+	f.auditRecord.ClearAllInfractions(agentId)
+	return infractions
 }
 
 func (f *FixedAoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
@@ -32,15 +36,21 @@ func (f *FixedAoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 }
 
 func (f *FixedAoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
+	// If the agent's actual withdrawal is not equal to the stated withdrawal, then the agent is cheating
+	if agentActualWithdrawal != agentStatedWithdrawal {
+		f.auditRecord.IncrementLastRecord(agentId)
+	}
 }
 
 func (f *FixedAoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
 	// true means agent failed the audit (cheated)
-	return f.WithdrawalAuditMap[agentId]
+	infractions := f.auditRecord.GetAllInfractions(agentId) > 0
+	f.auditRecord.ClearAllInfractions(agentId)
+	return infractions
 }
 
 func (f *FixedAoA) GetAuditCost(commonPool int) int {
-	return 0
+	return f.auditRecord.GetAuditCost()
 }
 
 // MUST return UUID nil if audit should not be executed
@@ -66,7 +76,9 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
-func CreateFixedAoA() IArticlesOfAssociation {
-	fmt.Println("Creating Fixed AoA")
-	return &FixedAoA{}
+func CreateFixedAoA(duration int) IArticlesOfAssociation {
+	auditRecord := NewAuditRecord(duration)
+	return &FixedAoA{
+		auditRecord: auditRecord,
+	}
 }
