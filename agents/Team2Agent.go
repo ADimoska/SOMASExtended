@@ -94,7 +94,7 @@ func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
 
 // Section 2:
 
-// ----- 2.1 Decision to send or accept a team invitiation -----
+// ---------- Team Forming ----------
 
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 
@@ -134,58 +134,6 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 	return []uuid.UUID{chosenAgent}
 }
 
-// ----- 2.2 Decision to stick -----
-
-func (t2a *Team2Agent) StickorAgain() {}
-
-func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
-	return 0
-}
-
-// ----- 2.3 Decision to cheat / not cooperate -----
-
-func (t2a *Team2Agent) DecideContribution() int {
-	// MVP: contribute exactly as defined in AoA
-
-	// if we have a an aoa (expected case) ...
-	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
-		// contribute our aoa expected contribution.
-		aoaExpectedContribution := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		if t2a.GetTrueScore() < aoaExpectedContribution {
-			return t2a.GetTrueScore() // give all score if less than expected
-		}
-		return aoaExpectedContribution
-	} else {
-		if t2a.VerboseLevel > 6 {
-			// should not happen!
-			fmt.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", t2a.GetID())
-		}
-		return 0
-	}
-}
-
-
-func (t2a *Team2Agent) DecideWithdrawal() int {
-	// MVP: contribute exactly as defined in AoA
-
-	// if we have a an aoa (expected case) ...
-	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
-		aoaExpectedWithdrawal := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedWithdrawal(t2a.GetID(), t2a.GetTrueScore(), commonPool)
-		if commonPool < aoaExpectedWithdrawal {
-			return commonPool
-		}
-		return aoaExpectedWithdrawal
-	} else {
-		if t2a.VerboseLevel > 6 {
-			fmt.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", t2a.GetID())
-		}
-		return 0
-	}
-}
-
 func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
 	fmt.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
 
@@ -222,6 +170,40 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 	}
 }
 
+
+// ---------- Decision to stick  ----------
+
+func (t2a *Team2Agent) StickorAgain() {}
+
+func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
+	return 0
+}
+
+// ---------- Contributing/Audit Contributing and Withdrawing/Audit Withdrawing ----------
+
+func (t2a *Team2Agent) DecideContribution() int {
+	// MVP: contribute exactly as defined in AoA
+
+	// if we have a an aoa (expected case) ...
+	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
+		// contribute our aoa expected contribution.
+		aoaExpectedContribution := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
+		// double check if score in agent is sufficient (this should be handled by AoA though)
+		if t2a.GetTrueScore() < aoaExpectedContribution {
+			return t2a.GetTrueScore() // give all score if less than expected
+		}
+		return aoaExpectedContribution
+	} else {
+		if t2a.VerboseLevel > 6 {
+			// should not happen!
+			fmt.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", t2a.GetID())
+		}
+		return 0
+	}
+}
+
+// TODO: getStatedContribution - for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
+
 func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
 	// TODO: Adjust suspicion based on the contribution of this agent and the AoA
 
@@ -231,9 +213,88 @@ func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage
 
 	// increment the common pool estimate by the stated amount
 	t2a.commonPoolEstimate += msg.StatedAmount
-
-
 }
+
+func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
+	// 1: Setup
+
+	// experiment with these;
+	auditThreshold := 50       // decision to audit based on if an agents trust score is lower than this
+	suspicionFactor := 20      // how much we lower everyone's trust scores if there is a discrepancy.
+	discrepancyThreshold := 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
+
+	// get list of uuids in our team
+	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
+
+	// 2: Main logic
+
+	// get the actual size of common pool post contributions, and the supposed size based on what agents have stated about their contributions.
+	// compare them to find the discrepancy.
+	var actualCommonPoolSize = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
+	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
+
+	// after finding discrepancy, reset common pool estimate to the actual size of the common pool in preparation for withdrawal stage
+	t2a.commonPoolEstimate = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
+
+	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
+	// then check to see if the least trusted agent in your team is below the threshold
+	if discrepancy > discrepancyThreshold {
+
+		// decrement all team trust scores
+		for _, agentID := range agentsInTeam {
+			t2a.trustScore[agentID] -= suspicionFactor
+		}
+
+		var lowestTrustScore int = math.MaxInt
+		var lowestAgent uuid.UUID
+
+		// find the agent with the lowest trust score.
+		for _, agentID := range agentsInTeam {
+			agentTrustScore := t2a.trustScore[agentID]
+
+			if agentTrustScore < lowestTrustScore {
+				lowestAgent = agentID
+				lowestTrustScore = agentTrustScore
+			}
+		}
+
+		// if the lowest agent is below the threshold, submit a vote for them
+		// if they still aren't, abstain.
+		if lowestTrustScore < auditThreshold {
+			// 1 means vote for audit of this person
+			return common.CreateVote(1, t2a.GetID(), lowestAgent)
+		} else {
+			// 0 means abstain / no preference
+			return common.CreateVote(0, t2a.GetID(), uuid.Nil)
+		}
+	} else {
+		// in this case there is no discrepancy this round, so prefer not audit (-1)
+		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
+	}
+}
+
+
+func (t2a *Team2Agent) DecideWithdrawal() int {
+	// MVP: contribute exactly as defined in AoA
+
+	// if we have a an aoa (expected case) ...
+	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
+		// double check if score in agent is sufficient (this should be handled by AoA though)
+		commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
+		aoaExpectedWithdrawal := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedWithdrawal(t2a.GetID(), t2a.GetTrueScore(), commonPool)
+		if commonPool < aoaExpectedWithdrawal {
+			return commonPool
+		}
+		return aoaExpectedWithdrawal
+	} else {
+		if t2a.VerboseLevel > 6 {
+			fmt.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", t2a.GetID())
+		}
+		return 0
+	}
+}
+
+//TODO: getStatedWithdrawal - for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
 
 func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	// TODO: Adjust suspicion based on the withdrawal by this agent, the AoA
@@ -246,6 +307,114 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 
 }
 
+func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
+	// 1: Setup
+
+	// experiment with these;
+	auditThreshold := 50       // decision to audit based on if an agents trust score is lower than this
+	suspicionFactor := 20      // how much we lower everyone's trust scores if there is a discrepancy.
+	discrepancyThreshold := 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
+
+	// get list of uuids in our team
+	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
+
+	// 2: Main logic
+
+	// get the actual size of common pool after withdrawals, and the supposed size based on what agents have stated about their withdrawals.
+	// compare them to find the discrepancy.
+	var actualCommonPoolSize = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
+	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
+
+	t2a.commonPoolEstimate = 0
+
+	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
+	// then check to see if the least trusted agent in your team is below the threshold
+	if discrepancy > discrepancyThreshold {
+
+		// decrement all team trust scores
+		for _, agentID := range agentsInTeam {
+			t2a.trustScore[agentID] -= suspicionFactor
+		}
+
+		var lowestTrustScore int = math.MaxInt
+		var lowestAgent uuid.UUID
+
+		// find the agent with the lowest trust score.
+		for _, agentID := range agentsInTeam {
+			agentTrustScore := t2a.trustScore[agentID]
+
+			if agentTrustScore < lowestTrustScore {
+				lowestAgent = agentID
+				lowestTrustScore = agentTrustScore
+			}
+		}
+
+		// if the lowest agent is below the threshold, submit a vote for them
+		// if they still aren't, abstain.
+		if lowestTrustScore < auditThreshold {
+			// 1 means vote for audit of this person
+			return common.CreateVote(1, t2a.GetID(), lowestAgent)
+		} else {
+			// 0 means abstain / no preference
+			return common.CreateVote(0, t2a.GetID(), uuid.Nil)
+		}
+	} else {
+		// in this case there is no discrepancy this round, so prefer not audit (-1)
+		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
+	}
+}
+
+
+// /////////// ----------------------RANKING SYSTEM---------------------- /////////////
+
+
+func (t2a *Team2Agent) GetLeaderVote() common.Vote {
+	// Experiment with this - it is our threshold to decide leader worthiness
+	var leaderThreshold int = 60
+
+	// Get list of UUIDs in our team
+	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
+
+	var highestTrustScore int = math.MinInt // Start with the minimum possible int
+	var mostTrustedAgent uuid.UUID
+
+	// Iterate over our team, finding the agent with the highest trust score
+	for _, agentID := range agentsInTeam {
+		agentTrustScore := t2a.trustScore[agentID]
+		// Initialize trust score map if it hasn't been initialized yet
+		if t2a.trustScore == nil {
+			t2a.SetTrustScore(agentID)
+		}
+
+		if agentTrustScore > highestTrustScore {
+			mostTrustedAgent = agentID
+			highestTrustScore = agentTrustScore
+		}
+	}
+
+	// If the most trusted agent is above the threshold, vote for them as leader
+	if highestTrustScore > leaderThreshold {
+		// 1 means vote for this agent as leader
+		return common.CreateVote(1, t2a.GetID(), mostTrustedAgent)
+	} else {
+		// 0 means abstain / no preference
+		return common.CreateVote(0, t2a.GetID(), uuid.Nil)
+	}
+}
+
+func (t2a *Team2Agent) ToggleLeader() {
+	t2a.rank = !t2a.rank
+}
+
+func (t2a *Team2Agent) GetRole() bool {
+	return t2a.rank // If true, they are the leader
+}
+
+
+
+
+
+// ---------- MISC TO INCORPORATE ----------
 
 
 // func (t2a *Team2Agent) DecideContribution() int {
@@ -339,130 +508,6 @@ func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 // 	return finalWithdrawal
 // }
 
-// removed getStatedContribution and getStatedWithdrawal- TODO later.
-// for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
-
-// 2.4 ----- Decision to Audit Someone
-
-func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
-	// 1: Setup
-
-	// experiment with these;
-	auditThreshold := 50       // decision to audit based on if an agents trust score is lower than this
-	suspicionFactor := 20      // how much we lower everyone's trust scores if there is a discrepancy.
-	discrepancyThreshold := 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
-
-	// get list of uuids in our team
-	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
-
-	// 2: Main logic
-
-	// get the actual size of common pool post contributions, and the supposed size based on what agents have stated about their contributions.
-	// compare them to find the discrepancy.
-	var actualCommonPoolSize = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
-	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
-
-	// after finding discrepancy, reset common pool estimate to the actual size of the common pool in preparation for withdrawal stage
-	t2a.commonPoolEstimate = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
-
-	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
-	// then check to see if the least trusted agent in your team is below the threshold
-	if discrepancy > discrepancyThreshold {
-
-		// decrement all team trust scores
-		for _, agentID := range agentsInTeam {
-			t2a.trustScore[agentID] -= suspicionFactor
-		}
-
-		var lowestTrustScore int = math.MaxInt
-		var lowestAgent uuid.UUID
-
-		// find the agent with the lowest trust score.
-		for _, agentID := range agentsInTeam {
-			agentTrustScore := t2a.trustScore[agentID]
-
-			if agentTrustScore < lowestTrustScore {
-				lowestAgent = agentID
-				lowestTrustScore = agentTrustScore
-			}
-		}
-
-		// if the lowest agent is below the threshold, submit a vote for them
-		// if they still aren't, abstain.
-		if lowestTrustScore < auditThreshold {
-			// 1 means vote for audit of this person
-			return common.CreateVote(1, t2a.GetID(), lowestAgent)
-		} else {
-			// 0 means abstain / no preference
-			return common.CreateVote(0, t2a.GetID(), uuid.Nil)
-		}
-	} else {
-		// in this case there is no discrepancy this round, so prefer not audit (-1)
-		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
-	}
-}
-
-func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
-	// 1: Setup
-
-	// experiment with these;
-	auditThreshold := 50       // decision to audit based on if an agents trust score is lower than this
-	suspicionFactor := 20      // how much we lower everyone's trust scores if there is a discrepancy.
-	discrepancyThreshold := 40 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
-
-	// get list of uuids in our team
-	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
-
-	// 2: Main logic
-
-	// get the actual size of common pool after withdrawals, and the supposed size based on what agents have stated about their withdrawals.
-	// compare them to find the discrepancy.
-	var actualCommonPoolSize = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
-	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
-
-	t2a.commonPoolEstimate = 0
-
-	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
-	// then check to see if the least trusted agent in your team is below the threshold
-	if discrepancy > discrepancyThreshold {
-
-		// decrement all team trust scores
-		for _, agentID := range agentsInTeam {
-			t2a.trustScore[agentID] -= suspicionFactor
-		}
-
-		var lowestTrustScore int = math.MaxInt
-		var lowestAgent uuid.UUID
-
-		// find the agent with the lowest trust score.
-		for _, agentID := range agentsInTeam {
-			agentTrustScore := t2a.trustScore[agentID]
-
-			if agentTrustScore < lowestTrustScore {
-				lowestAgent = agentID
-				lowestTrustScore = agentTrustScore
-			}
-		}
-
-		// if the lowest agent is below the threshold, submit a vote for them
-		// if they still aren't, abstain.
-		if lowestTrustScore < auditThreshold {
-			// 1 means vote for audit of this person
-			return common.CreateVote(1, t2a.GetID(), lowestAgent)
-		} else {
-			// 0 means abstain / no preference
-			return common.CreateVote(0, t2a.GetID(), uuid.Nil)
-		}
-	} else {
-		// in this case there is no discrepancy this round, so prefer not audit (-1)
-		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
-	}
-}
-
-// Misc:
-
-// Additional Functions written for 2.3 Cheat / not cooperate
-
 // // EvaluatePerformance calculates the agent's performance relative to the team
 // func (t2a *Team2Agent) EvaluatePerformance(rounds int) string {
 // 	// Calculate the agent's average performance
@@ -495,58 +540,15 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 // 	}
 // }
 
-// WeightedRandom returns true if the agent decides to reduce their contribution
-func WeightedRandom(category string) bool {
-	probabilities := map[string]float64{
-		"Great":    0.01, // 0% chance to reduce
-		"Average":  0.1,  // 20% chance to reduce
-		"Bad":      0.25, // 60% chance to reduce
-		"Terrible": 0.5,  // 90% chance to reduce
-	}
-	randVal := rand.Float64()
-	return randVal < probabilities[category]
-}
+// // WeightedRandom returns true if the agent decides to reduce their contribution
+// func WeightedRandom(category string) bool {
+// 	probabilities := map[string]float64{
+// 		"Great":    0.01, // 0% chance to reduce
+// 		"Average":  0.1,  // 20% chance to reduce
+// 		"Bad":      0.25, // 60% chance to reduce
+// 		"Terrible": 0.5,  // 90% chance to reduce
+// 	}
+// 	randVal := rand.Float64()
+// 	return randVal < probabilities[category]
+// }
 
-// /////////// ----------------------RANKING SYSTEM---------------------- /////////////
-
-func (t2a *Team2Agent) GetLeaderVote() common.Vote {
-	// Experiment with this - it is our threshold to decide leader worthiness
-	var leaderThreshold int = 60
-
-	// Get list of UUIDs in our team
-	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
-
-	var highestTrustScore int = math.MinInt // Start with the minimum possible int
-	var mostTrustedAgent uuid.UUID
-
-	// Iterate over our team, finding the agent with the highest trust score
-	for _, agentID := range agentsInTeam {
-		agentTrustScore := t2a.trustScore[agentID]
-		// Initialize trust score map if it hasn't been initialized yet
-		if t2a.trustScore == nil {
-			t2a.SetTrustScore(agentID)
-		}
-
-		if agentTrustScore > highestTrustScore {
-			mostTrustedAgent = agentID
-			highestTrustScore = agentTrustScore
-		}
-	}
-
-	// If the most trusted agent is above the threshold, vote for them as leader
-	if highestTrustScore > leaderThreshold {
-		// 1 means vote for this agent as leader
-		return common.CreateVote(1, t2a.GetID(), mostTrustedAgent)
-	} else {
-		// 0 means abstain / no preference
-		return common.CreateVote(0, t2a.GetID(), uuid.Nil)
-	}
-}
-
-func (t2a *Team2Agent) ToggleLeader() {
-	t2a.rank = !t2a.rank
-}
-
-func (t2a *Team2Agent) GetRole() bool {
-	return t2a.rank // If true, they are the leader
-}
