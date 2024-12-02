@@ -17,6 +17,8 @@ type Team2Agent struct {
 	rank            bool
 	trustScore      map[uuid.UUID]int
 	strikeCount     map[uuid.UUID]int
+	statedWithdrawal map[uuid.UUID]int
+	statedContribution map[uuid.UUID]int
 	thresholdBounds []int
 }
 
@@ -216,10 +218,18 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 		t2a.GetID(), msg.GetSender(), t2a.teamID)
 	}
 }
+func (mi *ExtendedAgent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
+	if mi.verboseLevel > 8 {
+		fmt.Printf("Agent %s received withdrawal notification from %s: amount=%d\n",
+			mi.GetID(), msg.GetSender(), msg.StatedAmount)
+	}
+
+	// Team's agent should implement logic to store or process the reported withdrawal amount as desired
+}
 
 func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
 	// TODO: Adjust suspicion based on the contribution of this agent and the AoA
-	
+	if 
 	// Call the underlying function
 	fmt.Println("Overriding contribution message!")
 	t2a.ExtendedAgent.HandleContributionMessage(msg) // Enables logging
