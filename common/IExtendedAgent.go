@@ -21,8 +21,6 @@ type IExtendedAgent interface {
 	StartRollingDice(instance IExtendedAgent)
 	GetActualContribution(instance IExtendedAgent) int
 	GetActualWithdrawal(instance IExtendedAgent) int
-	GetStatedContribution(instance IExtendedAgent) int
-	GetStatedWithdrawal(instance IExtendedAgent) int
 
 	// Setters
 	SetTeamID(teamID uuid.UUID)
@@ -41,9 +39,10 @@ type IExtendedAgent interface {
 	DecideWithdrawal() int
 	VoteOnAgentEntry(candidateID uuid.UUID) bool
 	StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int
-	//moved these here
 	GetContributionAuditVote() Vote
 	GetWithdrawalAuditVote() Vote
+	GetStatedContribution(instance IExtendedAgent) int
+	GetStatedWithdrawal(instance IExtendedAgent) int
 
 	// Messaging functions
 	HandleTeamFormationMessage(msg *TeamFormationMessage)

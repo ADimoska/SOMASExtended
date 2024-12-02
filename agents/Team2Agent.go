@@ -202,19 +202,18 @@ func (t2a *Team2Agent) DecideContribution() int {
 	}
 }
 
-// TODO: getStatedContribution - for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
 func (t2a *Team2Agent) GetStatedContribution(instance common.IExtendedAgent) int {
 	// Currently, stated contribution matches actual contribution
+	// can edit this in the future to lie
 	statedContribution := instance.DecideContribution()
 	return statedContribution
 }
-
 
 func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
 	// TODO: Adjust suspicion based on the contribution of this agent and the AoA
 
 	// Call the underlying function
-	fmt.Println("Overriding contribution message!")
+	// fmt.Println("Overriding contribution message!")
 	t2a.ExtendedAgent.HandleContributionMessage(msg) // Enables logging
 
 	// increment the common pool estimate by the stated amount
@@ -279,7 +278,6 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 	}
 }
 
-
 func (t2a *Team2Agent) DecideWithdrawal() int {
 	// MVP: contribute exactly as defined in AoA
 
@@ -302,15 +300,15 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 
 func (t2a *Team2Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 	// Currently, stated withdrawal matches actual withdrawal
+	// can edit this in the future to lie
 	statedWithdrawal := instance.DecideWithdrawal()
 	return statedWithdrawal
 }
 
-
 func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	// TODO: Adjust suspicion based on the withdrawal by this agent, the AoA
 
-	fmt.Println("Overriding withdrawal message!")
+	// fmt.Println("Overriding withdrawal message!")
 	t2a.ExtendedAgent.HandleWithdrawalMessage(msg)
 
 	// decrement the common pool estimate by the stated amount
