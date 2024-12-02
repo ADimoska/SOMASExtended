@@ -30,7 +30,7 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 }
 
-// Section 1:
+// Trust Score Functions:
 
 // ----- 1.2 Trust Score Update -----
 func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
@@ -97,12 +97,8 @@ func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
 // ----- 2.1 Decision to send or accept a team invitiation -----
 
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	// Initialize selected agents slice
-	// selectedAgents := make([]uuid.UUID, 0)
 
-	// Set trust threshold for accepting/sending invitations
-	// trustThreshold := 70 // This can be adjusted based on desired behavior
-	maxThreshold := 0 // Maximum trust score
+	highestTrustScore := 0 // record the highest trust score of an agent
 	invitationList := []uuid.UUID{}
 	// Iterate through all agents
 	for _, agentInfo := range agentInfoList {
@@ -125,16 +121,16 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 		// }
 
 		// Choose agent with highest trust score
-		if trustScore > maxThreshold {
+		if trustScore > highestTrustScore {
 			invitationList = append(invitationList, agentUUID)
-			maxThreshold = trustScore
+			highestTrustScore = trustScore
 		}
 
 	}
 
+	// agent at the end of the list will be the agent with the highest trust score
 	lenInviteList := len(invitationList)
 	chosenAgent := invitationList[lenInviteList-1]
-
 	return []uuid.UUID{chosenAgent}
 }
 
