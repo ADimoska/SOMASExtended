@@ -182,6 +182,59 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 	}
 }
 
+func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
+	fmt.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
+
+	// Already in a team - reject invitation
+	if t2a.teamID != (uuid.UUID{}) {
+		if t2a.verboseLevel > 6 {
+			fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
+			t2a.GetID(), msg.GetSender(), t2a.teamID)
+		}
+		return
+	}
+
+	sender := msg.GetSender()
+	// Set the trust score if there is no previous record of this agent
+	if _, ok := t2a.trustScore[sender]; !ok {
+		t2a.SetTrustScore(sender)
+	}
+
+	// Get the sender's trust score
+	senderTrustScore := t2a.trustScore[sender]
+
+	if senderTrustScore > 60 {
+		// Handle team creation/joining based on sender's team status
+		sender := msg.GetSender()
+		if t2a.server.CheckAgentAlreadyInTeam(sender) {
+			existingTeamID := t2a.server.AccessAgentByID(sender).GetTeamID()
+			t2a.joinExistingTeam(existingTeamID)
+		} else {
+			t2a.createNewTeam(sender)
+		}
+	}else {
+		fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
+		t2a.GetID(), msg.GetSender(), t2a.teamID)
+	}
+}
+
+func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
+	// TODO: Adjust suspicion based on the contribution of this agent and the AoA
+	
+	// Call the underlying function
+	fmt.Println("Overriding contribution message!")
+	t2a.ExtendedAgent.HandleContributionMessage(msg) // Enables logging
+}
+
+func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
+	// TODO: Adjust suspicion based on the withdrawal by this agent, the AoA
+
+	fmt.Println("Overriding withdrawal message!")
+	t2a.ExtendedAgent.HandleWithdrawalMessage(msg)
+}
+
+
+
 // func (t2a *Team2Agent) DecideContribution() int {
 // 	// Get AoA expected contribution
 // 	agentID := t2a.GetID()

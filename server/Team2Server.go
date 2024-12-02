@@ -10,21 +10,6 @@ import (
 	"github.com/google/uuid"
 )
 
-func (cs *EnvironmentServer) AoA2_gameLoop(teamId uuid.UUID) {
-	team := cs.Teams[teamId]
-	agentsInTeam := cs.GetAgentsInTeam(teamId)
-
-	team.TeamAoA.(*common.Team2AoA).RunAoAStuff()
-
-	for _, agentId := range agentsInTeam {
-		agent := cs.GetAgentMap()[agentId]
-		switch a := agent.(type) {
-		case *agents.Team2Agent:
-			a.SetTrustScore(agentId)
-		}
-	}
-}
-
 /*
  * In case the leader is caught cheating, they will be deposed,
  * this calls a vote for the leader among agents on the current team.
