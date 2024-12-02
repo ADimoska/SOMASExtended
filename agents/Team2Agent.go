@@ -3,7 +3,7 @@ package agents
 import (
 	"fmt"
 	"math"
-	"math/rand"
+	// "math/rand"
 
 	common "github.com/ADimoska/SOMASExtended/common"
 
