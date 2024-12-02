@@ -3,6 +3,8 @@ package common
 import (
 	"container/list"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -75,6 +77,45 @@ func CreateTeam3AoA() *Team3AoA {
 	}
 }
 
+// ResetAuditMap clears all audit data, effectively resetting the state of the audits.
+func (t *Team3AoA) ResetAuditMap() {
+	t.AuditMap = make(map[uuid.UUID]*Team3AuditQueue)
+}
+
+// GetExpectedContribution calculates how much of their score an agent is expected to contribute
+// based on the size of the team.
+func (t *Team3AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
+	teamSize := len(t.AuditMap)
+	var sharePercentage float64
+
+	if teamSize < 5 {
+		sharePercentage = 1.0 // Small team: contribute 100%
+	} else if teamSize < 10 {
+		sharePercentage = 0.75 // Medium team: contribute 75%
+	} else {
+		sharePercentage = 0.5 // Large team: contribute 50%
+	}
+
+	return int(float64(agentScore)*sharePercentage + 0.5) // Round up the result
+}
+
+// GetExpectedWithdrawal determines the amount an agent is allowed to withdraw based on their score.
+func (t *Team3AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
+	switch {
+	case agentScore < 6:
+		return 6 // Low score: withdraw 6
+	case agentScore <= 12:
+		return 2 // Medium score: withdraw 2
+	default:
+		return 0 // High score: withdraw nothing
+	}
+}
+
+// GetAuditCost always returns 0, as audits are free in this implementation.
+func (t *Team3AoA) GetAuditCost(commonPool int) int {
+	return 0
+}
+
 // DetermineStrategy calculates the majority vote using Instant Runoff Voting (IRV).
 func (t *Team3AoA) DetermineStrategy(votes []Vote) Strategy {
 	voteCounts := make(map[Strategy]int)  // Maps strategy to its vote count
@@ -137,6 +178,72 @@ func (t *Team3AoA) DetermineStrategy(votes []Vote) Strategy {
 	}
 }
 
+// ApplyPunishment applies the calculated punishment to the agent, reducing their score.
+func (t *Team3AoA) ApplyPunishment(agentId uuid.UUID, strategy Strategy, liedBy int) {
+	punishment := t.CalculatePunishment(agentId, strategy, liedBy)
+
+	if punishment.ScoreReduction > 0 {
+		// Reduce the agent's score
+		t.OffenceMap[agentId] -= punishment.ScoreReduction
+		fmt.Printf("Agent %s's score reduced by %d.\n", agentId, punishment.ScoreReduction)
+	} else {
+		// Lenient or no reduction applied
+		fmt.Printf("Agent %s's score remains unchanged under Lenient strategy.\n", agentId)
+	}
+}
+
+// Audit checks whether an agent lied in a round and applies the appropriate punishment.
+func (t *Team3AoA) Audit(agentId uuid.UUID, actual int, stated int, votes []Vote) {
+	strategy := t.DetermineStrategy(votes) // Determine the punishment strategy
+	liedBy := stated - actual              // Calculate the amount the agent lied by
+	if liedBy > 0 {                        // Apply punishment only if lying occurred
+		t.ApplyPunishment(agentId, strategy, liedBy)
+	}
+}
+
+// GetVoteResult calculates the majority vote and returns the winning agent's UUID.
+func (t *Team3AoA) GetVoteResult(votes []Vote) uuid.UUID {
+	voteMap := make(map[uuid.UUID]int)
+	for _, vote := range votes {
+		voteMap[vote.VotedForID]++
+		if voteMap[vote.VotedForID] > 4 {
+			return vote.VotedForID
+		}
+	}
+	return uuid.Nil
+}
+
+// GetWithdrawalOrder sorts agents into non-liars and liars.
+// Non-liars are shuffled randomly and appear first; liars appear at the bottom.
+func (t *Team3AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
+	liars := []uuid.UUID{}
+	nonLiars := []uuid.UUID{}
+
+	// Separate agents into liars and non-liars
+	for _, agentID := range agentIDs {
+		if t.AuditMap[agentID] != nil && t.AuditMap[agentID].rounds.Len() > 0 {
+			lastResult := t.AuditMap[agentID].rounds.Back().Value.(bool)
+			if lastResult {
+				liars = append(liars, agentID) // Agent lied
+			} else {
+				nonLiars = append(nonLiars, agentID) // Agent did not lie
+			}
+		} else {
+			// No audit data; assume the agent did not lie
+			nonLiars = append(nonLiars, agentID)
+		}
+	}
+
+	// Shuffle non-liars randomly
+	rand.Seed(time.Now().UnixNano())
+	rand.Shuffle(len(nonLiars), func(i, j int) {
+		nonLiars[i], nonLiars[j] = nonLiars[j], nonLiars[i]
+	})
+
+	// Combine non-liars and liars
+	return append(nonLiars, liars...)
+}
+
 // CalculatePunishment computes the punishment for lying, including score reduction.
 func (t *Team3AoA) CalculatePunishment(agentId uuid.UUID, strategy Strategy, liedBy int) Punishment {
 	// Get or initialize the lying history for the agent
@@ -176,25 +283,33 @@ func (t *Team3AoA) CalculatePunishment(agentId uuid.UUID, strategy Strategy, lie
 	}
 }
 
-// ApplyPunishment applies the calculated punishment to the agent, reducing their score.
-func (t *Team3AoA) ApplyPunishment(agentId uuid.UUID, strategy Strategy, liedBy int) {
-	punishment := t.CalculatePunishment(agentId, strategy, liedBy)
-
-	if punishment.ScoreReduction > 0 {
-		// Reduce the agent's score
-		t.OffenceMap[agentId] -= punishment.ScoreReduction
-		fmt.Printf("Agent %s's score reduced by %d.\n", agentId, punishment.ScoreReduction)
-	} else {
-		// Lenient or no reduction applied
-		fmt.Printf("Agent %s's score remains unchanged under Lenient strategy.\n", agentId)
+func (t *Team3AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
+	expected := t.GetExpectedWithdrawal(agentId, agentScore, commonPool)
+	auditResult := (agentActualWithdrawal > expected) || (agentActualWithdrawal != agentStatedWithdrawal)
+	if t.AuditMap[agentId] == nil {
+		t.AuditMap[agentId] = NewTeam3AuditQueue(t.PunishmentPeriod)
 	}
+	t.AuditMap[agentId].AddToQueue(auditResult)
 }
 
-// Audit checks whether an agent lied in a round and applies the appropriate punishment.
-func (t *Team3AoA) Audit(agentId uuid.UUID, actual int, stated int, votes []Vote) {
-	strategy := t.DetermineStrategy(votes) // Determine the punishment strategy
-	liedBy := stated - actual              // Calculate the amount the agent lied by
-	if liedBy > 0 {                        // Apply punishment only if lying occurred
-		t.ApplyPunishment(agentId, strategy, liedBy)
+func (t *Team3AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
+	if queue, exists := t.AuditMap[agentId]; exists && queue.rounds.Len() > 0 {
+		return queue.rounds.Back().Value.(bool)
 	}
+	return false
+}
+
+func (t *Team3AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
+	if queue, exists := t.AuditMap[agentId]; exists && queue.rounds.Len() > 0 {
+		return queue.rounds.Back().Value.(bool)
+	}
+	return false
+}
+
+func (t *Team3AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
+	auditResult := agentActualContribution != agentStatedContribution
+	if t.AuditMap[agentId] == nil {
+		t.AuditMap[agentId] = NewTeam3AuditQueue(t.PunishmentPeriod)
+	}
+	t.AuditMap[agentId].AddToQueue(auditResult)
 }
