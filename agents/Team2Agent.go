@@ -203,6 +203,12 @@ func (t2a *Team2Agent) DecideContribution() int {
 }
 
 // TODO: getStatedContribution - for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
+func (t2a *Team2Agent) GetStatedContribution(instance common.IExtendedAgent) int {
+	// Currently, stated contribution matches actual contribution
+	statedContribution := instance.DecideContribution()
+	return statedContribution
+}
+
 
 func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
 	// TODO: Adjust suspicion based on the contribution of this agent and the AoA
@@ -294,7 +300,12 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 	}
 }
 
-//TODO: getStatedWithdrawal - for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
+func (t2a *Team2Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
+	// Currently, stated withdrawal matches actual withdrawal
+	statedWithdrawal := instance.DecideWithdrawal()
+	return statedWithdrawal
+}
+
 
 func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	// TODO: Adjust suspicion based on the withdrawal by this agent, the AoA
