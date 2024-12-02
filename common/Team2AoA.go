@@ -262,3 +262,11 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID) IArticlesOfAssociation {
 		Leader:     leader,
 	}
 }
+
+func (t *Team2AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
+	return t.auditResult[agentId].Back().Value.(int) == 1
+}
+
+func (t *Team2AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
+	return t.auditResult[agentId].Back().Value.(int) == 1
+}

@@ -39,8 +39,10 @@ func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
 // Overall function to update one agents trust score for other agents
 // (can either implement like this or call functions underneath during each event)
 func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, strikeCount int) {
-	auditContributionResult := t2a.server.GetContributionAuditResult(agentID) //fix
-	auditWithdrawalResult := t2a.server.GetWithdrawalAuditResult(agentID) //fix
+	// auditContributionResult := t2a.server.GetContributionAuditResult(agentID) //fix
+	// auditWithdrawalResult := t2a.server.GetWithdrawalAuditResult(agentID) //fix
+	auditWithdrawalResult := false
+	auditContributionResult := false
 	switch eventType {
 	case "strike":
 		if auditContributionResult {
@@ -186,8 +188,8 @@ func (t2a *Team2Agent) DecideContribution() int {
 	aoaContribution := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedContribution(t2a.GetID(), agentScore)
 
 	// Evaluate performance
-	performance := t2a.EvaluatePerformance(5) // Evaluate over the last 5 rounds
-
+	// performance := t2a.EvaluatePerformance(5) // Evaluate over the last 5 rounds
+	performance := "Great" // Performance over the last 5 rounds
 	// Adjust contribution based on performance
 	contribution := aoaContribution
 	switch performance {
@@ -226,9 +228,9 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 
 	// Expected withdrawal from AoA
 	aoaWithdrawal := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), agentScore, commonPool)
-
+	// performance := t2a.EvaluatePerformance(5) // Evaluate over the last 5 rounds
 	// Evaluate performance
-	performance := t2a.EvaluatePerformance(5) // Performance over the last 5 rounds
+	performance := "Great" // Performance over the last 5 rounds
 
 	// Base withdrawal starts from AoA expectation
 	baseWithdrawal := aoaWithdrawal
@@ -407,37 +409,37 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 
 // Additional Functions written for 2.3 Cheat / not cooperate
 
-// EvaluatePerformance calculates the agent's performance relative to the team
-func (t2a *Team2Agent) EvaluatePerformance(rounds int) string {
-	// Calculate the agent's average performance
-	agentID := t2a.GetID()
-	agentTotal := 0
-	for i := len(t2a.rollHistory[agentID]) - 1; i >= 0 && i >= len(t2a.rollHistory[agentID])-rounds; i-- {
-		agentTotal += t2a.rollHistory[agentID][i]
-	}
-	agentAvg := float64(agentTotal) / float64(rounds)
+// // EvaluatePerformance calculates the agent's performance relative to the team
+// func (t2a *Team2Agent) EvaluatePerformance(rounds int) string {
+// 	// Calculate the agent's average performance
+// 	agentID := t2a.GetID()
+// 	agentTotal := 0
+// 	for i := len(t2a.rollHistory[agentID]) - 1; i >= 0 && i >= len(t2a.rollHistory[agentID])-rounds; i-- {
+// 		agentTotal += t2a.rollHistory[agentID][i]
+// 	}
+// 	agentAvg := float64(agentTotal) / float64(rounds)
 
-	// Calculate the team's overall average performance
-	teamTotal, totalRounds := 0, 0
-	for _, history := range t2a.rollHistory {
-		for i := len(history) - 1; i >= 0 && i >= len(history)-rounds; i-- {
-			teamTotal += history[i]
-			totalRounds++
-		}
-	}
-	teamAvg := float64(teamTotal) / float64(totalRounds)
+// 	// Calculate the team's overall average performance
+// 	teamTotal, totalRounds := 0, 0
+// 	for _, history := range t2a.rollHistory {
+// 		for i := len(history) - 1; i >= 0 && i >= len(history)-rounds; i-- {
+// 			teamTotal += history[i]
+// 			totalRounds++
+// 		}
+// 	}
+// 	teamAvg := float64(teamTotal) / float64(totalRounds)
 
-	// Categorize performance
-	if agentAvg > teamAvg*1.2 {
-		return "Great"
-	} else if agentAvg >= teamAvg*0.8 {
-		return "Average"
-	} else if agentAvg >= teamAvg*0.5 {
-		return "Bad"
-	} else {
-		return "Terrible"
-	}
-}
+// 	// Categorize performance
+// 	if agentAvg > teamAvg*1.2 {
+// 		return "Great"
+// 	} else if agentAvg >= teamAvg*0.8 {
+// 		return "Average"
+// 	} else if agentAvg >= teamAvg*0.5 {
+// 		return "Bad"
+// 	} else {
+// 		return "Terrible"
+// 	}
+// }
 
 // WeightedRandom returns true if the agent decides to reduce their contribution
 func WeightedRandom(category string) bool {
