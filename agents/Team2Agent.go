@@ -1,10 +1,11 @@
 package agents
 
 import (
-	common "github.com/ADimoska/SOMASExtended/common"
 	"fmt"
 	"math"
 	"math/rand"
+
+	common "github.com/ADimoska/SOMASExtended/common"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 	"github.com/google/uuid"
@@ -26,8 +27,7 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 }
 
-
-// Section 1: 
+// Section 1:
 
 // ----- 1.2 Trust Score Update -----
 func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
@@ -46,11 +46,11 @@ func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, str
 	switch eventType {
 	case "strike":
 		if auditContributionResult {
-            t2a.ApplyStrike(agentID) // from helper function
-        }
+			t2a.ApplyStrike(agentID) // from helper function
+		}
 		if auditWithdrawalResult {
-            t2a.ApplyStrike(agentID) // from helper function
-        }
+			t2a.ApplyStrike(agentID) // from helper function
+		}
 
 	case "notAudited":
 		// If the target agent was not audited
@@ -125,7 +125,6 @@ func (t2a *Team2Agent) ApplyAuditOther(agentID uuid.UUID) {
 	t2a.trustScore[agentID] += 2
 }
 
-
 // Section 2:
 
 // ----- 2.1 Decision to send or accept a team invitiation -----
@@ -173,37 +172,44 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 	return selectedAgents
 }
 
-
 // ----- 2.2 Decision to stick -----
 
 func (t2a *Team2Agent) StickorAgain() {}
 
-func (t2a *Team2Agent) DecideContribution() int {
-
-	// Get the current points in the common pool
-	currentPoints := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-	// Get the expected contribution from the AOA - currently just ou rAoA but can change this to whichever AoA is currently in use
-	expectedContribution := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedContribution(t2a.GetID(), currentPoints)
-	// If the expected contribution is less than or equal to current points just contribute expected
-	if expectedContribution <= currentPoints {
-		return expectedContribution
+func (t2a *Team2Agent) GetActualContribution(instance common.IExtendedAgent) int {
+	if t2a.HasTeam() {
+		contribution := instance.DecideContribution()
+		if t2a.verboseLevel > 6 {
+			fmt.Printf("%s is contributing %d to the common pool and thinks the common pool size is %d\n", t2a.GetID(), contribution, t2a.server.GetTeam(t2a.GetID()).GetCommonPool())
+		}
+		return contribution
+	} else {
+		if t2a.verboseLevel > 6 {
+			fmt.Printf("%s has no team, skipping contribution\n", t2a.GetID())
+		}
+		return 0
 	}
-
-	// If the expected contribution is more than current points, contribute all current points
-	return currentPoints
 }
 
-func (t2a *Team2Agent) DecideWithdrawal() int {
-    // Get the current points in the common pool
-    currentPoints := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-    // Get common pool size
-	commonPoolSize := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
-    // Get the expected withdrawal from the AOA
-    expectedWithdrawal := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), currentPoints, commonPoolSize)
-    
-    // If the expected withdrawal is more than current points, withdraw all current points
-    return expectedWithdrawal
+// make withdrawal from common pool
+func (t2a *Team2Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
+	currentPool := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+	withdrawal := instance.DecideWithdrawal()
+	fmt.Printf("%s is withdrawing %d from the common pool of size %d\n", t2a.GetID(), withdrawal, currentPool)
+	return withdrawal
 }
+
+// func (t2a *Team2Agent) DecideWithdrawal() int {
+//     // Get the current points in the common pool
+//     currentPoints := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+//     // Get common pool size
+// 	commonPoolSize := t2a.server.GetTeam(t2a.GetID()).GetCommonPool()
+//     // Get the expected withdrawal from the AOA
+//     expectedWithdrawal := t2a.server.GetTeam(t2a.teamID).TeamAoA.(*common.Team2AoA).GetExpectedWithdrawal(t2a.GetID(), currentPoints, commonPoolSize)
+
+//     // If the expected withdrawal is more than current points, withdraw all current points
+//     return expectedWithdrawal
+// }
 // ----- 2.3 Decision to cheat / not cooperate
 
 // func (t2a *Team2Agent) DecideContribution() int {
@@ -297,9 +303,8 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 // 	return finalWithdrawal
 // }
 
-// removed getStatedContribution and getStatedWithdrawal- TODO later. 
+// removed getStatedContribution and getStatedWithdrawal- TODO later.
 // for now rely on the extended agent implementation, which just states the actual contribution. (i.e. 100% honest)
-
 
 // 2.4 ----- Decision to Audit Someone
 
@@ -426,9 +431,6 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
 	}
 }
-
-
-
 
 // Misc:
 
