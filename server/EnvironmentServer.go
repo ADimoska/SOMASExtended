@@ -160,11 +160,11 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
 		for _, agent := range cs.GetAgentMap() {
 			cs.teamsMutex.Unlock()
-			if agent != nil {
-				agent.SetTrueScore(0)
-			}
 			if !cs.IsAgentDead(agent.GetID()) {
 				cs.killAgentBelowThreshold(agent.GetID())
+			}
+			if agent != nil {
+				agent.SetTrueScore(0)
 			}
 			cs.teamsMutex.Lock()
 		}
