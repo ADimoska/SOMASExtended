@@ -2,6 +2,7 @@ package gameRecorder
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sort"
@@ -26,7 +27,7 @@ func CreatePlaybackHTML(recorder *ServerDataRecorder) {
 	outputDir := "visualization_output"
 	err := os.MkdirAll(outputDir, 0755)
 	if err != nil {
-		fmt.Printf("Error creating output directory: %v\n", err)
+		log.Printf("Error creating output directory: %v\n", err)
 		return
 	}
 
@@ -72,7 +73,7 @@ func CreatePlaybackHTML(recorder *ServerDataRecorder) {
 	filepath := filepath.Join(outputDir, "game_visualization.html")
 	f, err := os.Create(filepath)
 	if err != nil {
-		fmt.Printf("Error creating visualization file: %v\n", err)
+		log.Printf("Error creating visualization file: %v\n", err)
 		return
 	}
 	defer f.Close()
@@ -101,7 +102,7 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 	}
 
 	if len(initialAgentRecords) == 0 {
-		fmt.Printf("Warning: No agent records found in iteration %d\n", iteration)
+		log.Printf("Warning: No agent records found in iteration %d\n", iteration)
 		return nil
 	}
 
@@ -237,7 +238,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 	}
 
 	if len(initialAgentRecords) == 0 {
-		fmt.Printf("Warning: No agent records found in iteration %d\n", iteration)
+		log.Printf("Warning: No agent records found in iteration %d\n", iteration)
 		return nil
 	}
 
@@ -382,7 +383,7 @@ func getTeamColor(teamID int) string {
 func createScorePlots(recorder *ServerDataRecorder, outputDir string) {
 	// Add safety check at the start
 	if len(recorder.TurnRecords) == 0 {
-		fmt.Println("Warning: No turn records to visualize")
+		log.Println("Warning: No turn records to visualize")
 		return
 	}
 
@@ -413,7 +414,7 @@ func createScorePlots(recorder *ServerDataRecorder, outputDir string) {
 		}
 
 		if len(initialAgentRecords) == 0 {
-			fmt.Printf("Warning: No agent records found in iteration %d\n", iteration)
+			log.Printf("Warning: No agent records found in iteration %d\n", iteration)
 			continue
 		}
 
@@ -543,7 +544,7 @@ func createScorePlots(recorder *ServerDataRecorder, outputDir string) {
 		filepath := filepath.Join(outputDir, "agent_scores.html")
 		f, err := os.Create(filepath)
 		if err != nil {
-			fmt.Printf("Error creating score plots file: %v\n", err)
+			log.Printf("Error creating score plots file: %v\n", err)
 			return
 		}
 		defer f.Close()
@@ -559,7 +560,7 @@ func createScorePlots(recorder *ServerDataRecorder, outputDir string) {
 // New function to create contribution visualization
 func createContributionPlots(recorder *ServerDataRecorder, outputDir string) {
 	if len(recorder.TurnRecords) == 0 {
-		fmt.Println("Warning: No turn records to visualize")
+		log.Println("Warning: No turn records to visualize")
 		return
 	}
 
@@ -588,7 +589,7 @@ func createContributionPlots(recorder *ServerDataRecorder, outputDir string) {
 		}
 
 		if len(initialAgentRecords) == 0 {
-			fmt.Printf("Warning: No agent records found in iteration %d\n", iteration)
+			log.Printf("Warning: No agent records found in iteration %d\n", iteration)
 			continue
 		}
 
@@ -711,7 +712,7 @@ func createContributionPlots(recorder *ServerDataRecorder, outputDir string) {
 		filepath := filepath.Join(outputDir, "agent_contributions.html")
 		f, err := os.Create(filepath)
 		if err != nil {
-			fmt.Printf("Error creating contribution plots file: %v\n", err)
+			log.Printf("Error creating contribution plots file: %v\n", err)
 			return
 		}
 		defer f.Close()

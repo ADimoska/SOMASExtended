@@ -1,7 +1,7 @@
 package gameRecorder
 
 import (
-	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 )
@@ -45,13 +45,13 @@ func NewTeamRecord(teamID uuid.UUID) TeamRecord {
 }
 
 func (ar *AgentRecord) DebugPrint() {
-	// fmt.Printf("Agent ID: %v\n", ar.AgentID)
+	// log.Printf("Agent ID: %v\n", ar.AgentID)
 	if !ar.IsAlive {
-		fmt.Printf("[DEAD] ")
+		log.Printf("[DEAD] ")
 	}
-	fmt.Printf("Agent Score: %v\n", ar.Score)
-	// fmt.Printf("Agent Contribution: %v\n", ar.agent.GetActualContribution(ar.agent))
-	// fmt.Printf("Agent Stated Contribution: %v\n", ar.agent.GetStatedContribution(ar.agent))
-	// fmt.Printf("Agent Withdrawal: %v\n", ar.agent.GetActualWithdrawal(ar.agent))
-	// fmt.Printf("Agent Stated Withdrawal: %v\n", ar.agent.GetStatedWithdrawal(ar.agent))
+	log.Printf("Agent Score: %v\n", ar.Score)
+	// log.Printf("Agent Contribution: %v\n", ar.agent.GetActualContribution(ar.agent))
+	// log.Printf("Agent Stated Contribution: %v\n", ar.agent.GetStatedContribution(ar.agent))
+	// log.Printf("Agent Withdrawal: %v\n", ar.agent.GetActualWithdrawal(ar.agent))
+	// log.Printf("Agent Stated Withdrawal: %v\n", ar.agent.GetStatedWithdrawal(ar.agent))
 }

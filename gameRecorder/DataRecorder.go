@@ -1,13 +1,13 @@
 package gameRecorder
 
 import (
-	"fmt"
+	"log"
 	"sort"
 )
 
 // --------- General External Functions ---------
 func Log(message string) {
-	fmt.Println(message)
+	log.Println(message)
 }
 
 type TurnRecord struct {
@@ -97,15 +97,15 @@ func (sdr *ServerDataRecorder) RecordNewTurn(agentRecords []AgentRecord, teamRec
 }
 
 func (sdr *ServerDataRecorder) GamePlaybackSummary() {
-	fmt.Printf("\n\nGamePlaybackSummary - playing %v turn records\n", len(sdr.TurnRecords))
+	log.Printf("\n\nGamePlaybackSummary - playing %v turn records\n", len(sdr.TurnRecords))
 	for _, turnRecord := range sdr.TurnRecords {
-		fmt.Printf("\nIteration %v, Turn %v:\n", turnRecord.IterationNumber, turnRecord.TurnNumber)
+		log.Printf("\nIteration %v, Turn %v:\n", turnRecord.IterationNumber, turnRecord.TurnNumber)
 		// Sort agent records by ID for consistent ordering
 		sort.Slice(turnRecord.AgentRecords, func(i, j int) bool {
 			return turnRecord.AgentRecords[i].AgentID.String() < turnRecord.AgentRecords[j].AgentID.String()
 		})
 		for _, agentRecord := range turnRecord.AgentRecords {
-			fmt.Printf("Agent %v: ", agentRecord.AgentID)
+			log.Printf("Agent %v: ", agentRecord.AgentID)
 			agentRecord.DebugPrint()
 		}
 	}
