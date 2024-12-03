@@ -156,22 +156,12 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	// TODO: Reallocate agents who left their teams during the turn
 
+	cs.teamsMutex.Unlock()
 	// check if threshold turn
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
-		for _, agent := range cs.GetAgentMap() {
-			cs.teamsMutex.Unlock()
-			if !cs.IsAgentDead(agent.GetID()) {
-				cs.killAgentBelowThreshold(agent.GetID())
-			}
-			if agent != nil {
-				agent.SetTrueScore(0)
-			}
-			cs.teamsMutex.Lock()
-		}
-		for _, team := range cs.Teams {
-			team.SetCommonPool(0)
-		}
+		cs.ApplyThreshold()
 	}
+	cs.teamsMutex.Lock()
 
 	// record data
 	cs.RecordTurnInfo()
@@ -513,6 +503,20 @@ func (cs *EnvironmentServer) ResetAgents() {
 	for _, agent := range cs.GetAgentMap() {
 		agent.SetTrueScore(0)
 		agent.SetTeamID(uuid.UUID{})
+	}
+}
+
+func (cs *EnvironmentServer) ApplyThreshold() {
+	for _, team := range cs.Teams {
+		team.SetCommonPool(0)
+		for _, agentID := range team.Agents {
+			if !cs.IsAgentDead(agentID) {
+				cs.killAgentBelowThreshold(agentID)
+			}
+			if agent := cs.GetAgentMap()[agentID]; agent != nil {
+				agent.SetTrueScore(0)
+			}
+		}
 	}
 }
 
