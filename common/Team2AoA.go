@@ -134,6 +134,9 @@ func (t *Team2AoA) GetAuditCost(commonPool int) int {
 ///////////////////////////////////////////////imp,e ent helped map fn here ////////////////////
 // TODO: Implement a borda vote here instead?
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
+	if len(votes) == 0 {
+		return uuid.Nil
+	}
 	voteMap := make(map[uuid.UUID]int)
 	duration := 0
 	count := len(t.Team.Agents)
