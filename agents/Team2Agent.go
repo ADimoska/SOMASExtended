@@ -403,23 +403,19 @@ func (t2a *Team2Agent) ThresholdGuessStrategy() int {
 // ---------- CONTRIBUTION, WITHDRAWAL AND ASSOCIATED AUDITING ----------
 
 func (t2a *Team2Agent) DecideContribution() int {
-	// MVP: contribute exactly as defined in AoA
-
-	// if we have a an aoa (expected case) ...
-	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
-		// contribute our aoa expected contribution.
-		aoaExpectedContribution := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		if t2a.GetTrueScore() < aoaExpectedContribution {
-			return t2a.GetTrueScore() // give all score if less than expected
-		}
-		return aoaExpectedContribution
-	} else {
-		if t2a.VerboseLevel > 6 {
-			// should not happen!
-			fmt.Printf("[WARNING] Agent %s has no AoA, contributing 0\n", t2a.GetID())
-		}
-		return 0
+	
+	switch aoa := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.(type) {
+		case *common.Team2AoA:
+			// under our aoa contribute as defined in the aoa.
+			aoaExpectedContribution := aoa.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
+			// double check if score in agent is sufficient (this should be handled by AoA though)
+			if t2a.GetTrueScore() < aoaExpectedContribution {
+				return t2a.GetTrueScore() // give all score if less than expected
+			}
+			return aoaExpectedContribution
+		default:
+			// TODO: under other aoas, follow the trsut score system. leaders and followers act differently.
+			return 0
 	}
 }
 
