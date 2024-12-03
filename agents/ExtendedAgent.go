@@ -338,18 +338,18 @@ func (mi *ExtendedAgent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) 
 	// Team's agent should implement logic to store or process the reported withdrawal amount as desired
 }
 
-func (mi *ExtendedAgent) HandleOpinionRequestMessage(msg *common.OpinionRequestMessage) {
+func (mi *ExtendedAgent) HandleAgentOpinionRequestMessage(msg *common.AgentOpinionRequestMessage) {
 	// Team's agent should implement logic to respond to opinion request as desired
 	log.Printf("Agent %s received opinion request from %s\n", mi.GetID(), msg.AgentID)
 	opinion := 70
-	opinionResponseMsg := mi.CreateOpinionResponseMessage(msg.AgentID, opinion)
+	opinionResponseMsg := mi.CreateAgentOpinionResponseMessage(msg.AgentID, opinion)
 	log.Printf("Sending opinion response to %s\n", msg.AgentID)
 	mi.SendMessage(opinionResponseMsg, msg.AgentID) // Sent asynchronously, because this is "extra information"
 }
 
-func (mi *ExtendedAgent) HandleOpinionResponseMessage(msg *common.OpinionResponseMessage) {
+func (mi *ExtendedAgent) HandleAgentOpinionResponseMessage(msg *common.AgentOpinionResponseMessage) {
 	// Team's agent should implement logic to store or process opinion response as desired
-	log.Printf("Agent %s received opinion response from %s: opinion=%d\n", mi.GetID(), msg.GetSender(), msg.Opinion)
+	log.Printf("Agent %s received opinion response from %s: opinion=%d\n", mi.GetID(), msg.GetSender(), msg.AgentOpinion)
 }
 
 func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.IExtendedAgent]) {
@@ -405,18 +405,18 @@ func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.Withd
 	}
 }
 
-func (mi *ExtendedAgent) CreateOpinionRequestMessage(agentID uuid.UUID) *common.OpinionRequestMessage {
-	return &common.OpinionRequestMessage{
+func (mi *ExtendedAgent) CreateAgentOpinionRequestMessage(agentID uuid.UUID) *common.AgentOpinionRequestMessage {
+	return &common.AgentOpinionRequestMessage{
 		BaseMessage: mi.CreateBaseMessage(),
 		AgentID:     agentID,
 	}
 }
 
-func (mi *ExtendedAgent) CreateOpinionResponseMessage(agentID uuid.UUID, opinion int) *common.OpinionResponseMessage {
-	return &common.OpinionResponseMessage{
-		BaseMessage: mi.CreateBaseMessage(),
-		AgentID:     agentID,
-		Opinion:     opinion,
+func (mi *ExtendedAgent) CreateAgentOpinionResponseMessage(agentID uuid.UUID, opinion int) *common.AgentOpinionResponseMessage {
+	return &common.AgentOpinionResponseMessage{
+		BaseMessage:  mi.CreateBaseMessage(),
+		AgentID:      agentID,
+		AgentOpinion: opinion,
 	}
 }
 

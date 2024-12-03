@@ -29,15 +29,15 @@ type WithdrawalMessage struct {
 	ExpectedAmount int
 }
 
-type OpinionRequestMessage struct {
+type AgentOpinionRequestMessage struct {
 	message.BaseMessage
 	AgentID uuid.UUID
 }
 
-type OpinionResponseMessage struct {
+type AgentOpinionResponseMessage struct {
 	message.BaseMessage
-	AgentID uuid.UUID
-	Opinion int
+	AgentID      uuid.UUID
+	AgentOpinion int
 }
 
 func (msg *TeamFormationMessage) InvokeMessageHandler(agent IExtendedAgent) {
@@ -56,10 +56,10 @@ func (msg *WithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.HandleWithdrawalMessage(msg)
 }
 
-func (msg *OpinionRequestMessage) InvokeMessageHandler(agent IExtendedAgent) {
-	agent.HandleOpinionRequestMessage(msg)
+func (msg *AgentOpinionRequestMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.HandleAgentOpinionRequestMessage(msg)
 }
 
-func (msg *OpinionResponseMessage) InvokeMessageHandler(agent IExtendedAgent) {
-	agent.HandleOpinionResponseMessage(msg)
+func (msg *AgentOpinionResponseMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.HandleAgentOpinionResponseMessage(msg)
 }

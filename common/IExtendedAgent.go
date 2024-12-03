@@ -52,8 +52,8 @@ type IExtendedAgent interface {
 	HandleWithdrawalMessage(msg *WithdrawalMessage)
 	BroadcastSyncMessageToTeam(msg message.IMessage[IExtendedAgent])
 	HandleContributionMessage(msg *ContributionMessage)
-	HandleOpinionRequestMessage(msg *OpinionRequestMessage)
-	HandleOpinionResponseMessage(msg *OpinionResponseMessage)
+	HandleAgentOpinionRequestMessage(msg *AgentOpinionRequestMessage)
+	HandleAgentOpinionResponseMessage(msg *AgentOpinionResponseMessage)
 	StateContributionToTeam()
 	StateWithdrawalToTeam()
 
@@ -62,8 +62,8 @@ type IExtendedAgent interface {
 	CreateScoreReportMessage() *ScoreReportMessage
 	CreateContributionMessage(statedAmount int) *ContributionMessage
 	CreateWithdrawalMessage(statedAmount int) *WithdrawalMessage
-	CreateOpinionRequestMessage(agentID uuid.UUID) *OpinionRequestMessage
-	CreateOpinionResponseMessage(agentID uuid.UUID, opinion int) *OpinionResponseMessage
+	CreateAgentOpinionRequestMessage(agentID uuid.UUID) *AgentOpinionRequestMessage
+	CreateAgentOpinionResponseMessage(agentID uuid.UUID, opinion int) *AgentOpinionResponseMessage
 	LogSelfInfo()
 	GetAoARanking() []int
 	SetAoARanking(Preferences []int)
