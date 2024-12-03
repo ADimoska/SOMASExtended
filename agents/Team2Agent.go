@@ -352,16 +352,21 @@ func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 	// Calculate the expected value of the current roll
 	expectedValue := t2a.CalculateExpectedValue(prevRoll)
-
-	// Determine agent risk tolerance
-	riskTolerance := t2a.DetermineRiskTolerance()
-
-	// Scale the expected value with risk tolerance
-	// If high risk tolerance then more likely to re-roll
-	// If low risk tolerance less likely to re-roll
-	if (expectedValue * riskTolerance) > float64(prevRoll) {
-		return false // Re-roll
+	if t2a.rank{
+		// Determine agent risk tolerance
+		riskTolerance := t2a.DetermineRiskTolerance()
+		if (expectedValue * riskTolerance) > float64(prevRoll) {
+			return false // Re-roll
+		}
+	}else{
+		// Scale the expected value with risk tolerance
+		// If high risk tolerance then more likely to re-roll
+		// If low risk tolerance less likely to re-roll
+		if (expectedValue ) > float64(prevRoll) {
+			return false // Re-roll
+		}
 	}
+
 	return true // Stick
 }
 
