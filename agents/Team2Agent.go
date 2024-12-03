@@ -523,22 +523,36 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 }
 
 func (t2a *Team2Agent) DecideWithdrawal() int {
-	// MVP: contribute exactly as defined in AoA
+	// dependent on:
+	// 1. team AoA
+	// 2. average team trust score
 
-	// if we have a an aoa (expected case) ...
-	if t2a.Server.GetTeam(t2a.GetID()).TeamAoA != nil {
-		// double check if score in agent is sufficient (this should be handled by AoA though)
-		commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
-		aoaExpectedWithdrawal := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.GetExpectedWithdrawal(t2a.GetID(), t2a.GetTrueScore(), commonPool)
+	commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
+
+	switch aoa := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.(type) {
+	case *common.Team2AoA:
+		// under our own AoA, for now we just withdraw what is expected of us.
+
+		aoaExpectedWithdrawal := aoa.GetExpectedWithdrawal(t2a.GetID(), t2a.GetTrueScore(), commonPool)
 		if commonPool < aoaExpectedWithdrawal {
 			return commonPool
 		}
 		return aoaExpectedWithdrawal
-	} else {
-		if t2a.VerboseLevel > 6 {
-			fmt.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", t2a.GetID())
+
+	default:
+		// under other aoas, adapt based on the average team trust score
+
+		aoaExpectedWithdrawal := aoa.GetExpectedWithdrawal(t2a.GetID(), t2a.GetTrueScore(), commonPool)
+		if commonPool < aoaExpectedWithdrawal {
+			return commonPool
 		}
-		return 0
+
+		// otherwise, look at the average team trust score and base withdrawal decision on this.
+		if t2a.getAverageTeamTrustScore() > 60 {
+			return aoaExpectedWithdrawal
+		} else {
+			return int(1.2 * float64(aoaExpectedWithdrawal)) // withdraw more if our team is untrustworthy (cover ourselves)
+		}
 	}
 }
 
