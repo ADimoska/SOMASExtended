@@ -1,7 +1,8 @@
 package environmentServer
 
 import (
-	"fmt"
+	"log"
+
 	"github.com/google/uuid"
 )
 
@@ -64,11 +65,11 @@ func (cs *EnvironmentServer) AllocateOrphans() {
 
 	// for each orphan currently in the pool / shelter
 	for orphanID, teamsList := range cs.orphanPool {
-		fmt.Printf("allocating %v\n", orphanID)
+		log.Printf("allocating %v\n", orphanID)
 		var accepted = false
 		// for each team that orphan wants to join
 		for _, teamID := range teamsList {
-			fmt.Printf("team id testing is %v\n", teamID)
+			log.Printf("team id testing is %v\n", teamID)
 			// Skip if already accepted into a team
 			if accepted {
 				break
@@ -80,14 +81,14 @@ func (cs *EnvironmentServer) AllocateOrphans() {
 			if accepted {
 				agent_map[orphanID].SetTeamID(teamID) // Update agent's knowledge of its team
 				cs.AddAgentToTeam(orphanID, teamID)   // Update team's knowledge of its agents
-				fmt.Printf("%v accepted by team %v !!\n", orphanID, teamID)
+				log.Printf("%v accepted by team %v !!\n", orphanID, teamID)
 			}
 			// Otherwise, continue to the next team in the preference list.
 		}
 
 		if !accepted {
 			unallocated[orphanID] = teamsList // add to unallocated
-			fmt.Printf("%v remains in the orphan pool after allocation...\n", orphanID)
+			log.Printf("%v remains in the orphan pool after allocation...\n", orphanID)
 		}
 	}
 
@@ -125,15 +126,15 @@ func (cs *EnvironmentServer) PickUpOrphans() {
 			// this even for orphans that are already in the pool because we want
 			// them to be able to update their preferences on which teams they
 			// would like to join
-			fmt.Printf("testing %v\n", agentID)
+			log.Printf("testing %v\n", agentID)
 			cs.orphanPool[agentID] = agent.GetTeamRanking()
 
 			for _, x := range cs.orphanPool[agentID] {
-				fmt.Printf("wants to join %v\n", x)
+				log.Printf("wants to join %v\n", x)
 			}
 
 			if !exists {
-				fmt.Printf("%v was added to the orphan pool \n", agentID)
+				log.Printf("%v was added to the orphan pool \n", agentID)
 			}
 		}
 	}

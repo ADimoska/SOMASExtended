@@ -1,11 +1,12 @@
 package environmentServer
 
 import (
-	"fmt"
-	"github.com/google/uuid"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/server"
 
@@ -25,7 +26,7 @@ type EnvironmentServer struct {
 }
 
 func (cs *EnvironmentServer) RunTurn(i, j int) {
-	fmt.Printf("\n\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
+	log.Printf("\n\nIteration %v, Turn %v, current agent count: %v\n", i, j, len(cs.GetAgentMap()))
 
 	// Go over the list of all agents and add orphans to the orphan pool if
 	// they are not already there
@@ -38,7 +39,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	defer cs.teamsMutex.Unlock()
 
 	for _, team := range cs.Teams {
-		fmt.Println("\nRunning turn for team ", team.TeamID)
+		log.Println("\nRunning turn for team ", team.TeamID)
 		// Sum of contributions from all agents in the team for this turn
 		agentContributionsTotal := 0
 		for _, agentID := range team.Agents {
@@ -106,7 +107,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			// Update the common pool after each withdrawal so agents can see the updated pool before deciding their withdrawal.
 			//  Different to the contribution phase!
 			team.SetCommonPool(currentPool - agentActualWithdrawal)
-			fmt.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
+			log.Printf("[server] Agent %v withdrew %v. Remaining pool: %v\n", agentID, agentActualWithdrawal, team.GetCommonPool())
 		}
 
 		stateWithdrawOrder := make([]uuid.UUID, len(team.Agents))
@@ -146,7 +147,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 }
 
 func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
-	fmt.Printf("--------Start of iteration %v---------\n", iteration)
+	log.Printf("--------Start of iteration %v---------\n", iteration)
 
 	// Initialise random threshold
 	cs.createNewRoundScoreThreshold()
@@ -190,15 +191,17 @@ func (cs *EnvironmentServer) allocateAoAs() {
 
 		// Update the team's strategy
 		switch preference {
-		case 0:
-			team.TeamAoA = common.CreateFixedAoA()
 		case 1:
-			team.TeamAoA = common.CreateFixedAoA()
+			team.TeamAoA = common.CreateTeam1AoA(team)
 		case 2:
-			team.TeamAoA = common.CreateFixedAoA()
+			team.TeamAoA = common.CreateTeam2AoA(5)
 		case 3:
 			team.TeamAoA = common.CreateFixedAoA()
 		case 4:
+			team.TeamAoA = common.CreateFixedAoA()
+		case 5:
+			team.TeamAoA = common.CreateFixedAoA()
+		case 6:
 			team.TeamAoA = common.CreateFixedAoA()
 		default:
 			team.TeamAoA = common.CreateFixedAoA()
@@ -224,7 +227,7 @@ func (cs *EnvironmentServer) Start() {
 
 func (cs *EnvironmentServer) reviveDeadAgents() {
 	for _, agent := range cs.deadAgents {
-		fmt.Printf("[server] Agent %v is being revived\n", agent.GetID())
+		log.Printf("[server] Agent %v is being revived\n", agent.GetID())
 		agent.SetTrueScore(0) // new agents start with a score of 0
 		cs.AddAgent(agent)    // re-add the agent to the server map
 	}
@@ -236,12 +239,12 @@ func (cs *EnvironmentServer) reviveDeadAgents() {
 // debug log printing
 func (cs *EnvironmentServer) LogAgentStatus() {
 	// log agent count, and their scores
-	fmt.Printf("Agent count: %v\n", len(cs.GetAgentMap()))
+	log.Printf("Agent count: %v\n", len(cs.GetAgentMap()))
 	for _, agent := range cs.GetAgentMap() {
 		agent.LogSelfInfo()
 	}
 	for _, agent := range cs.deadAgents {
-		fmt.Printf("Agent %v is dead\n", agent.GetID())
+		log.Printf("Agent %v is dead\n", agent.GetID())
 	}
 }
 
@@ -260,24 +263,24 @@ func (cs *EnvironmentServer) PrintOrphanPool() {
 			shortTeamIds = append(shortTeamIds, teamID.String()[:8])
 		}
 
-		fmt.Println(shortAgentId, " Wants to join : ", shortTeamIds)
+		log.Println(shortAgentId, " Wants to join : ", shortTeamIds)
 	}
 }
 
 // pretty logging to show all team status
 func (cs *EnvironmentServer) LogTeamStatus() {
 	for _, team := range cs.Teams {
-		fmt.Printf("Team %v: %v\n", team.TeamID, team.Agents)
+		log.Printf("Team %v: %v\n", team.TeamID, team.Agents)
 	}
 	// Log agents with no team
 	for _, agent := range cs.GetAgentMap() {
 		if agent.GetTeamID() == uuid.Nil {
-			fmt.Printf("Agent %v has no team\n", agent.GetID())
+			log.Printf("Agent %v has no team\n", agent.GetID())
 		}
 	}
 	// Log dead agents
 	for _, agent := range cs.deadAgents {
-		fmt.Printf("Agent %v is dead, last team: %v\n", agent.GetID(), agent.GetLastTeamID())
+		log.Printf("Agent %v is dead, last team: %v\n", agent.GetID(), agent.GetLastTeamID())
 	}
 }
 
@@ -294,7 +297,7 @@ func (cs *EnvironmentServer) UpdateAndGetAgentExposedInfo() []common.ExposedAgen
 func (cs *EnvironmentServer) createNewRoundScoreThreshold() {
 	// random one between 10 to 20 (TODO)
 	cs.roundScoreThreshold = rand.Intn(10) + 10
-	fmt.Printf("[server] New round score threshold: %v\n", cs.roundScoreThreshold)
+	log.Printf("[server] New round score threshold: %v\n", cs.roundScoreThreshold)
 }
 
 // check agent score
@@ -330,7 +333,7 @@ func (cs *EnvironmentServer) killAgent(agentID uuid.UUID) {
 		// Add the agent to the dead agent list and remove it from the server's agent map
 		cs.deadAgents = append(cs.deadAgents, agent)
 		cs.RemoveAgent(agent)
-		fmt.Printf("[server] Agent %v killed\n", agentID)
+		log.Printf("[server] Agent %v killed\n", agentID)
 	}
 }
 
@@ -355,7 +358,7 @@ func (cs *EnvironmentServer) StartAgentTeamForming() {
 	// Get updated agent info and let agents form teams
 	agentInfo := cs.UpdateAndGetAgentExposedInfo()
 
-	fmt.Printf("------------- [server] Starting team formation -------------\n\n")
+	log.Printf("------------- [server] Starting team formation -------------\n\n")
 
 	// Launch team formation for each agent
 	for _, agent := range cs.GetAgentMap() {
@@ -374,7 +377,7 @@ func (cs *EnvironmentServer) AddAgentToTeam(agentID uuid.UUID, teamID uuid.UUID)
 	// Check if agent is already in this team
 	team, exists := cs.Teams[teamID]
 	if !exists {
-		fmt.Printf("[server] Team %v does not exist\n", teamID)
+		log.Printf("[server] Team %v does not exist\n", teamID)
 		return
 	}
 
@@ -416,7 +419,7 @@ func (cs *EnvironmentServer) CreateAndInitTeamWithAgents(agentIDs []uuid.UUID) u
 	// check if any agent is already in a team
 	for _, agentID := range agentIDs {
 		if cs.CheckAgentAlreadyInTeam(agentID) {
-			fmt.Printf("[server] Agent %v is already in a team\n", agentID)
+			log.Printf("[server] Agent %v is already in a team\n", agentID)
 			return uuid.UUID{}
 		}
 	}
@@ -437,7 +440,7 @@ func (cs *EnvironmentServer) CreateAndInitTeamWithAgents(agentIDs []uuid.UUID) u
 		}
 	}
 
-	fmt.Printf("[server] Created team %v with agents %v\n", teamID, agentIDs)
+	log.Printf("[server] Created team %v with agents %v\n", teamID, agentIDs)
 	return teamID
 }
 
@@ -475,20 +478,20 @@ func (cs *EnvironmentServer) overrideAgentRolls(agentId uuid.UUID, controllerIds
 
 		if numStickDecisions >= stickThreshold {
 			rollingComplete = true
-			fmt.Printf("%s decided to [STICK], score accumulated: %v", agentId, accumulatedScore)
+			log.Printf("%s decided to [STICK], score accumulated: %v", agentId, accumulatedScore)
 			break
 		}
 
 		if rounds > 1 {
-			fmt.Printf("%s decided to [CONTINUE ROLLING], previous roll: %v", agentId, prevRoll)
+			log.Printf("%s decided to [CONTINUE ROLLING], previous roll: %v", agentId, prevRoll)
 		}
 
 		currentRoll := generateScore()
-		fmt.Printf("%s rolled: %v\n this turn", agentId, currentRoll)
+		log.Printf("%s rolled: %v\n this turn", agentId, currentRoll)
 		if currentRoll <= prevRoll {
 			// Gone bust, so reset the accumulated score and break out of the loop
 			accumulatedScore = 0
-			fmt.Printf("%s **[HAS GONE BUST!]** round: %v, current score: %v\n", agentId, rounds, currentScore)
+			log.Printf("%s **[HAS GONE BUST!]** round: %v, current score: %v\n", agentId, rounds, currentScore)
 			break
 		}
 
@@ -499,7 +502,7 @@ func (cs *EnvironmentServer) overrideAgentRolls(agentId uuid.UUID, controllerIds
 	// In case the agent has gone bust, this does nothing
 	controlled.SetTrueScore(currentScore + accumulatedScore)
 	// Log the updated score
-	fmt.Printf("%s turn score: %v, total score: %v\n", agentId, accumulatedScore, controlled.GetTrueScore())
+	log.Printf("%s turn score: %v, total score: %v\n", agentId, accumulatedScore, controlled.GetTrueScore())
 }
 
 func generateScore() int {
