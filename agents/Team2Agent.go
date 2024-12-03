@@ -699,7 +699,9 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	}
 }
 
+// Send opinion messages to the top n most trusted agents
 func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
+	// Convert to different form for ease of sorting
     type entry struct {
         Key   uuid.UUID
         Value int
@@ -711,6 +713,7 @@ func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
         entries = append(entries, entry{Key: id, Value: score})
     }
 
+	// Sort in decreasing order of trust score (most trusted first)
     sort.Slice(entries, func(i, j int) bool {
         return entries[i].Value > entries[j].Value
     })
@@ -719,12 +722,13 @@ func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
         numAgents = len(entries)
     }
 
+	// Create an opinion request for the given agent
     agentOpinionMessage := t2a.CreateAgentOpinionRequestMessage(agentID)
 
     for i := 0; i < numAgents; i++ {
 		receiver := entries[i].Key
 		if receiver == agentID {
-			continue // So we can't ask an agent about its opinion of itself lol
+			continue // Don't ask an agent for its opinion of itself
 		}
         t2a.SendMessage(agentOpinionMessage, entries[i].Key)
     }
