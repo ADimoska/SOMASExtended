@@ -409,8 +409,7 @@ func (t2a *Team2Agent) ThresholdGuessStrategy() int {
 func (t2a *Team2Agent) DecideContribution() int {
 	// dependent on:
 	// 1. team AoA
-	// 2. our current trustScore
-	// 3. average team trust score
+	// 2. average team trust score
 
 	switch aoa := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.(type) {
 	case *common.Team2AoA:
@@ -454,12 +453,12 @@ func (t2a *Team2Agent) GetStatedContribution(instance common.IExtendedAgent) int
 }
 
 func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
-	// TODO: Adjust suspicion based on the contribution of this agent and the AoA
+	t2a.ExtendedAgent.HandleContributionMessage(msg) // Call extendedagent version to enable logging
 
-	// Call the underlying function
-	// fmt.Println("Overriding contribution message!")
-	t2a.ExtendedAgent.HandleContributionMessage(msg) // Enables logging
+	// updating our agents "mind":
 
+	// store this agents stated contribution in our map for use in deciding who to audit
+	t2a.statedContribution[msg.GetSender()] = msg.StatedAmount
 	// increment the common pool estimate by the stated amount
 	t2a.commonPoolEstimate += msg.StatedAmount
 }
@@ -477,13 +476,29 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 
 	// 2: Main logic
 
+	// Step 1: Check if there is someone obvious to audit based on stated contributions
+	for _, agentID := range agentsInTeam {
+		
+		// if somones stated contribution is ridiculously high.
+		if t2a.statedContribution[agentID] > 30 {
+			return common.CreateVote(1, t2a.GetID(), agentID)
+		}
+
+		// if somones stated contribution is ridiculously low.
+		if t2a.statedContribution[agentID] < 2 {
+			return common.CreateVote(1, t2a.GetID(), agentID)
+		}
+
+	}
+
+	// Step 2: If there is no one obvious to audit based on stated contributions, then:
 	// get the actual size of common pool post contributions, and the supposed size based on what agents have stated about their contributions.
 	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
 	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
 
-	// after finding discrepancy, reset common pool estimate to the actual size of the common pool in preparation for withdrawal stage
-	t2a.commonPoolEstimate = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
+	// after finding discrepancy, set our common pool estimate to the actual size of the common pool in preparation for withdrawal stage
+	t2a.commonPoolEstimate = actualCommonPoolSize
 
 	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
 	// then check to see if the least trusted agent in your team is below the threshold
@@ -521,6 +536,8 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
 	}
 }
+
+// ----------
 
 func (t2a *Team2Agent) DecideWithdrawal() int {
 	// dependent on:
@@ -564,11 +581,12 @@ func (t2a *Team2Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 }
 
 func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
-	// TODO: Adjust suspicion based on the withdrawal by this agent, the AoA
+	t2a.ExtendedAgent.HandleWithdrawalMessage(msg) // Call extendedagent version to enable logging
 
-	// fmt.Println("Overriding withdrawal message!")
-	t2a.ExtendedAgent.HandleWithdrawalMessage(msg)
+	// updating our agents "mind":
 
+	// store this agents stated withdrawal in our map for use in deciding who to audit
+	t2a.statedWithdrawal[msg.GetSender()] = msg.StatedAmount
 	// decrement the common pool estimate by the stated amount
 	t2a.commonPoolEstimate -= msg.StatedAmount
 }
