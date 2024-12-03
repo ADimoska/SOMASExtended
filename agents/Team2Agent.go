@@ -407,19 +407,42 @@ func (t2a *Team2Agent) ThresholdGuessStrategy() int {
 // ---------- CONTRIBUTION, WITHDRAWAL AND ASSOCIATED AUDITING ----------
 
 func (t2a *Team2Agent) DecideContribution() int {
+	// dependent on:
+	// 1. team AoA
+	// 2. our current trustScore
+	// 3. average team trust score
 
 	switch aoa := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.(type) {
 	case *common.Team2AoA:
-		// under our aoa contribute as defined in the aoa.
+		// under our own AoA, for now we just return what is expected of us.
+
+		// get the contribution we are expected to make
 		aoaExpectedContribution := aoa.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
-		// double check if score in agent is sufficient (this should be handled by AoA though)
+		
+		// if we have less than the expected, just contribute whats left
 		if t2a.GetTrueScore() < aoaExpectedContribution {
 			return t2a.GetTrueScore() // give all score if less than expected
 		}
+
 		return aoaExpectedContribution
+
 	default:
-		// TODO: under other aoas, follow the trsut score system. leaders and followers act differently.
-		return 0
+		// under other aoas, adapt based on the average team trust score
+
+		// get the contribution we are expected to make
+		aoaExpectedContribution := aoa.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
+		
+		// if we have less than the expected, just contribute whats left
+		if t2a.GetTrueScore() < aoaExpectedContribution {
+			return t2a.GetTrueScore() // give all score if less than expected
+		}
+
+		// otherwise, look at the average team trust score and base contribution decision on this.
+		if t2a.getAverageTeamTrustScore() > 60 {
+			return aoaExpectedContribution
+		} else {
+			return int(0.8 * float64(aoaExpectedContribution)) // contribute less if we don't trust our team very much.
+		}
 	}
 }
 
