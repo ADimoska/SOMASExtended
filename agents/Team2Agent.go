@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"math/rand"
+	// "math/rand"
 
 	common "github.com/ADimoska/SOMASExtended/common"
 
@@ -156,55 +156,34 @@ func (t2a *Team2Agent) GetRole() bool {
 
 // ---------- TEAM FORMING ----------
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	invitationList := []uuid.UUID{}
-	for _, agentInfo := range agentInfoList {
-		// exclude the agent itself
-		if agentInfo.AgentUUID == t2a.GetID() {
-			continue
-		}
-		if agentInfo.AgentTeamID == (uuid.UUID{}) {
-			invitationList = append(invitationList, agentInfo.AgentUUID)
-		}
-	}
 
-	// random choice from the invitation list
-	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
-	if len(invitationList) == 0 {
-		return []uuid.UUID{}
-	}
-	chosenAgent := invitationList[0]
+	// trustThreshold := 10 // invite agents who are above this threshold
+	// invitationList := []uuid.UUID{}
+	// // Iterate through all agents and add those with
+	// for _, agentInfo := range agentInfoList {
+	// 	agentUUID := agentInfo.AgentUUID
+	// 	// Initialize trust score map if it hasn't been initialized yet
+	// 	if t2a.trustScore[agentUUID] == 0 {
+	// 		t2a.SetTrustScore(agentUUID)
+	// 	}
 
-	// Return a slice containing the chosen agent
-	return []uuid.UUID{chosenAgent}
+	// 	// Skip if it's our own ID
+	// 	if agentUUID == t2a.GetID() {
+	// 		continue
+	// 	}
+
+	// 	// Get current trust score for this agent
+	// 	trustScore := t2a.trustScore[agentUUID]
+
+	// 	// If agent is above threshold, append to invite list
+	// 	if trustScore > trustThreshold {
+	// 		invitationList = append(invitationList, agentUUID)
+	// 	}
+	// }
+
+	// return invitationList
+	return t2a.ExtendedAgent.DecideTeamForming(agentInfoList)
 }
-// func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-
-// 	trustThreshold := 10 // invite agents who are above this threshold
-// 	invitationList := []uuid.UUID{}
-// 	// Iterate through all agents and add those with
-// 	for _, agentInfo := range agentInfoList {
-// 		agentUUID := agentInfo.AgentUUID
-// 		// Initialize trust score map if it hasn't been initialized yet
-// 		if t2a.trustScore[agentUUID] == 0 {
-// 			t2a.SetTrustScore(agentUUID)
-// 		}
-
-// 		// Skip if it's our own ID
-// 		if agentUUID == t2a.GetID() {
-// 			continue
-// 		}
-
-// 		// Get current trust score for this agent
-// 		trustScore := t2a.trustScore[agentUUID]
-
-// 		// If agent is above threshold, append to invite list
-// 		if trustScore > trustThreshold {
-// 			invitationList = append(invitationList, agentUUID)
-// 		}
-// 	}
-
-// 	return invitationList
-// }
 
 func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
 	fmt.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
