@@ -156,7 +156,6 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	// TODO: Reallocate agents who left their teams during the turn
 
-	cs.teamsMutex.Unlock()
 	// check if threshold turn
 
 	cs.teamsMutex.Unlock()
@@ -164,7 +163,6 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
 		cs.ApplyThreshold()
 	}
-	cs.teamsMutex.Lock()
 
 	cs.teamsMutex.Lock()
 
