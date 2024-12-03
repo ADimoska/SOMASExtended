@@ -18,6 +18,8 @@ import (
  * - Write some tests for the audit functionality here
  * - Implement the functionality on the server to work with this (so with offences)
  * - Implement the kick functionality on the server
+ * - Change the scaling of expected contribution depending on how many members are still in the team
+ * - Write about the above in the report (so how we adapted our AoA to adapt to this).
  */
 
 // ---------------------------------------- Articles of Association Functionality ----------------------------------------
