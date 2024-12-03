@@ -158,7 +158,7 @@ func (t2a *Team2Agent) GetRole() bool {
 
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 
-	trustThreshold := 40 // invite agents who are above this threshold
+	trustThreshold := 10 // invite agents who are above this threshold
 	invitationList := []uuid.UUID{}
 	// Iterate through all agents and add those with
 	for _, agentInfo := range agentInfoList {
