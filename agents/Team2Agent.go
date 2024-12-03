@@ -3,6 +3,7 @@ package agents
 import (
 	"fmt"
 	"math"
+
 	// "math/rand"
 
 	common "github.com/ADimoska/SOMASExtended/common"
@@ -34,38 +35,15 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 
 // ---------- TRUST SCORE SYSTEM ----------
 
-func (t2a *Team2Agent) SetTrustScore(id uuid.UUID) {
-	if _, exists := t2a.trustScore[id]; !exists {
-		t2a.trustScore[id] = 70
-	}
-}
-
-// Overall function to update one agents trust score for other agents
-func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, strikeCount int) {
-	auditContributionResult := t2a.Server.GetTeam(agentID).TeamAoA.GetContributionAuditResult(agentID) //fix
-	auditWithdrawalResult := t2a.Server.GetTeam(agentID).TeamAoA.GetWithdrawalAuditResult(agentID)
-	switch eventType {
-	case "strike":
-		if auditContributionResult || auditWithdrawalResult {
-			t2a.ApplyStrike(agentID)
-		}
-	case "notAudited":
-		if !auditContributionResult || !auditWithdrawalResult {
-			// If the target agent was not audited
-			t2a.ApplyNotAudited(agentID)
-		}
-	default:
-		fmt.Println("Invalid event type")
-	}
-}
-
-// update when not cooperating based on strikes
-func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
-	if t2a.trustScore == nil {
-		t2a.SetTrustScore(agentID)
+func (t2a *Team2Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
+	//apply strike and decrease trust score for agent audited
+	// Check if the trust score for this agent exists; if not, initialize it to 70
+	if _, exists := t2a.trustScore[agentID]; !exists {
+		t2a.trustScore[agentID] = 70
 	}
 	t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 	var penalty int
+
 	strikeCount := t2a.strikeCount[agentID]
 	if strikeCount == 1 {
 		penalty = 10
@@ -81,15 +59,37 @@ func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
 	}
 	// Update trust score based on strike count
 	t2a.trustScore[agentID] -= penalty
+
+	// TO-DO: increase trust score for agents that were not audited
+
 }
 
-// update if agent not audited for that round
-func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
-	if t2a.trustScore == nil {
-		t2a.SetTrustScore(agentID)
+func (t2a *Team2Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) {
+	//apply strike and decrease trust score for agent audited
+	// Check if the trust score for this agent exists; if not, initialize it to 70
+	if _, exists := t2a.trustScore[agentID]; !exists {
+		t2a.trustScore[agentID] = 70
 	}
-	// Update trust score based on not being audited
-	t2a.trustScore[agentID] += 2
+	t2a.strikeCount[agentID]++ // Increment the strike count for this agent
+	var penalty int
+
+	strikeCount := t2a.strikeCount[agentID]
+	if strikeCount == 1 {
+		penalty = 10
+	}
+	if strikeCount == 2 {
+		penalty = 20
+	}
+	if strikeCount == 3 {
+		penalty = 30
+	} else {
+		// should never reach this point
+		penalty = 40
+	}
+	// Update trust score based on strike count
+	t2a.trustScore[agentID] -= penalty
+
+	// TO-DO: increase trust score for agents that were not audited
 }
 
 // ----------- RANKING SYSTEM ----------
