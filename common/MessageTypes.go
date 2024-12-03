@@ -2,6 +2,7 @@ package common
 
 import (
 	"github.com/MattSScott/basePlatformSOMAS/v2/pkg/message"
+	"github.com/google/uuid"
 )
 
 type TeamFormationMessage struct {
@@ -28,6 +29,17 @@ type WithdrawalMessage struct {
 	ExpectedAmount int
 }
 
+type OpinionRequestMessage struct {
+	message.BaseMessage
+	AgentID uuid.UUID
+}
+
+type OpinionResponseMessage struct {
+	message.BaseMessage
+	AgentID uuid.UUID
+	Opinion int
+}
+
 func (msg *TeamFormationMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.HandleTeamFormationMessage(msg)
 }
@@ -42,4 +54,12 @@ func (msg *ContributionMessage) InvokeMessageHandler(agent IExtendedAgent) {
 
 func (msg *WithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.HandleWithdrawalMessage(msg)
+}
+
+func (msg *OpinionRequestMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.HandleOpinionRequestMessage(msg)
+}
+
+func (msg *OpinionResponseMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.HandleOpinionResponseMessage(msg)
 }

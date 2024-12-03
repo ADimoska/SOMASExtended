@@ -338,6 +338,20 @@ func (mi *ExtendedAgent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) 
 	// Team's agent should implement logic to store or process the reported withdrawal amount as desired
 }
 
+func (mi *ExtendedAgent) HandleOpinionRequestMessage(msg *common.OpinionRequestMessage) {
+	// Team's agent should implement logic to respond to opinion request as desired
+	log.Printf("Agent %s received opinion request from %s\n", mi.GetID(), msg.AgentID)
+	opinion := 70
+	opinionResponseMsg := mi.CreateOpinionResponseMessage(msg.AgentID, opinion)
+	log.Printf("Sending opinion response to %s\n", msg.AgentID)
+	mi.SendMessage(opinionResponseMsg, msg.AgentID) // Sent asynchronously, because this is "extra information"
+}
+
+func (mi *ExtendedAgent) HandleOpinionResponseMessage(msg *common.OpinionResponseMessage) {
+	// Team's agent should implement logic to store or process opinion response as desired
+	log.Printf("Agent %s received opinion response from %s: opinion=%d\n", mi.GetID(), msg.GetSender(), msg.Opinion)
+}
+
 func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.IExtendedAgent]) {
 	// Send message to all team members synchronously
 	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
@@ -388,6 +402,21 @@ func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.Withd
 	return &common.WithdrawalMessage{
 		BaseMessage:  mi.CreateBaseMessage(),
 		StatedAmount: statedAmount,
+	}
+}
+
+func (mi *ExtendedAgent) CreateOpinionRequestMessage(agentID uuid.UUID) *common.OpinionRequestMessage {
+	return &common.OpinionRequestMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		AgentID:     agentID,
+	}
+}
+
+func (mi *ExtendedAgent) CreateOpinionResponseMessage(agentID uuid.UUID, opinion int) *common.OpinionResponseMessage {
+	return &common.OpinionResponseMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		AgentID:     agentID,
+		Opinion:     opinion,
 	}
 }
 
