@@ -4,6 +4,8 @@ github.com/MattSScott/basePlatformSOMAS/v2 v2.1.0 h1:VajDTjo0rqcZbTcuq5zICNqG6nQ
 github.com/MattSScott/basePlatformSOMAS/v2 v2.1.0/go.mod h1:U3HB8aYWfq+1xo1eHQhZz6yzY4kCTssrf2oDI0VvOY4=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
+github.com/go-echarts/go-echarts/v2 v2.4.5 h1:gwDqxdi5x329sg+g2ws2OklreJ1K34FCimraInurzwk=
+github.com/go-echarts/go-echarts/v2 v2.4.5/go.mod h1:56YlvzhW/a+du15f3S2qUGNDfKnFOeJSThBIrVFHDtI=
 github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
 github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=

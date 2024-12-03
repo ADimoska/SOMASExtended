@@ -24,9 +24,16 @@ func main() {
 
 	serv := &envServer.EnvironmentServer{
 		// note: the zero turn is used for team forming
-		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](2, 3, 1000*time.Millisecond, 10),
-		Teams:      make(map[uuid.UUID]*common.Team),
+		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
+			2,                    //  iterations
+			12,                   //  turns per iteration
+			100*time.Millisecond, //  max duration
+			10),                  //  message bandwidth
+		Teams: make(map[uuid.UUID]*common.Team),
 	}
+	serv.Init(
+		3, // turns to apply threshold once
+	)
 	serv.SetGameRunner(serv)
 
 	const numAgents int = 2
@@ -49,4 +56,7 @@ func main() {
 	// custom function to see agent result
 	serv.LogAgentStatus()
 	serv.LogTeamStatus()
+
+	// // record data
+	serv.DataRecorder.GamePlaybackSummary()
 }

@@ -25,6 +25,7 @@ Thumbs.db
 # Logs and temporary files
 *.log
 *.tmp
+visualization_output/
 
 # Environment files
 .env

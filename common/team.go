@@ -4,6 +4,8 @@ import (
 	// TODO: should it be structured this way?
 
 	"github.com/google/uuid"
+
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 )
 
 type Team struct {
@@ -31,4 +33,9 @@ func NewTeam(teamID uuid.UUID) *Team {
 		Agents:     []uuid.UUID{}, // Initialize an empty slice of agent UUIDs
 		TeamAoA:    teamAoA,       // Initialize strategy as 0
 	}
+}
+
+// --------- Recording Functions ---------
+func (team *Team) RecordTeamStatus() gameRecorder.TeamRecord {
+	return gameRecorder.NewTeamRecord(team.TeamID)
 }

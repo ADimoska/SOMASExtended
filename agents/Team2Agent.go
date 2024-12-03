@@ -176,6 +176,9 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 
 	// agent at the end of the list will be the agent with the highest trust score
 	lenInviteList := len(invitationList)
+	if lenInviteList == 0 {
+		return []uuid.UUID{}
+	}
 	chosenAgent := invitationList[lenInviteList-1]
 	return []uuid.UUID{chosenAgent}
 }

@@ -6,6 +6,8 @@ import (
 
 	"github.com/google/uuid"
 
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
+
 	common "github.com/ADimoska/SOMASExtended/common"
 
 	// TODO:
@@ -36,6 +38,9 @@ type ExtendedAgent struct {
 	TeamRanking []uuid.UUID
 
 	LastTeamID uuid.UUID // Tracks the last team the agent was part of
+
+	// for recording purpose
+	trueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
 }
 
 type AgentConfig struct {
@@ -168,6 +173,10 @@ func (mi *ExtendedAgent) GetActualContribution(instance common.IExtendedAgent) i
 }
 
 func (mi *ExtendedAgent) DecideContribution() int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
 	// MVP: contribute exactly as defined in AoA
 	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
 		aoaExpectedContribution := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedContribution(mi.GetID(), mi.GetTrueScore())
@@ -189,6 +198,10 @@ func (mi *ExtendedAgent) DecideContribution() int {
 // TODO: the value returned by this should be broadcasted to the team via a message
 // This function MUST return the same value when called multiple times in the same turn
 func (mi *ExtendedAgent) GetStatedContribution(instance common.IExtendedAgent) int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
 	// Hardcoded stated
 	statedContribution := instance.GetActualContribution(instance)
 	return statedContribution
@@ -196,6 +209,10 @@ func (mi *ExtendedAgent) GetStatedContribution(instance common.IExtendedAgent) i
 
 // make withdrawal from common pool
 func (mi *ExtendedAgent) GetActualWithdrawal(instance common.IExtendedAgent) int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
 	currentPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
 	withdrawal := instance.DecideWithdrawal()
 	fmt.Printf("%s is withdrawing %d from the common pool of size %d\n", mi.GetID(), withdrawal, currentPool)
@@ -205,12 +222,20 @@ func (mi *ExtendedAgent) GetActualWithdrawal(instance common.IExtendedAgent) int
 // The value returned by this should be broadcasted to the team via a message
 // This function MUST return the same value when called multiple times in the same turn
 func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
 	// Currently, assume stated withdrawal matches actual withdrawal
 	return instance.DecideWithdrawal()
 }
 
 // Decide the withdrawal amount based on AoA and current pool size
 func (mi *ExtendedAgent) DecideWithdrawal() int {
+	// first check if the agent has a team
+	if !mi.HasTeam() {
+		return 0
+	}
 	if mi.Server.GetTeam(mi.GetID()).TeamAoA != nil {
 		// double check if score in agent is sufficient (this should be handled by AoA though)
 		commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
@@ -500,4 +525,19 @@ func (mi *ExtendedAgent) GetTeamRanking() []uuid.UUID {
 // will only act on this information when the agent is orphaned.
 func (mi *ExtendedAgent) SetTeamRanking(teamRanking []uuid.UUID) {
 	mi.TeamRanking = teamRanking
+}
+
+// ----------------------- Data Recording Functions -----------------------
+func (mi *ExtendedAgent) RecordAgentStatus() gameRecorder.AgentRecord {
+	record := gameRecorder.NewAgentRecord(
+		mi.GetID(),
+		mi.trueSomasTeamID, // mi.GetTrueSomasTeamID()
+		mi.GetTrueScore(),
+		mi.GetActualContribution(mi),
+		mi.GetStatedContribution(mi),
+		mi.GetActualWithdrawal(mi),
+		mi.GetStatedWithdrawal(mi),
+		mi.GetTeamID(),
+	)
+	return record
 }

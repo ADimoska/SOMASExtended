@@ -7,6 +7,7 @@ require (
 	github.com/google/uuid v1.3.0
 )
 
+require github.com/go-echarts/go-echarts/v2 v2.4.5 // indirect
 require (
 	bou.ke/monkey v1.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
