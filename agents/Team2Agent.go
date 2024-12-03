@@ -327,12 +327,9 @@ func (t2a *Team2Agent) GetDeadTeammates() []struct {
 
 // Function to determine the probability of improvement of the next re-roll compared to previous roll
 func (t2a *Team2Agent) probabilityOfImprovement(prevRoll int) float64 {
-	if prevRoll == 0 { // First roll of the iteration
-		// return 10.5 // Average value of 3 dice rolls with a uniform distribution
+	if prevRoll == 0 { // First roll of the iteration so guaranteed probability of improvement
 		return 1
 	}
-
-	// totalProbability := 0.0
 
 	// Probabilities of sums with 3 dice (precomputed distribution of 3d6 outcomes)
 	probabilities := map[int]float64{
@@ -341,24 +338,6 @@ func (t2a *Team2Agent) probabilityOfImprovement(prevRoll int) float64 {
 		11: 27.0 / 216, 12: 25.0 / 216, 13: 21.0 / 216, 14: 15.0 / 216,
 		15: 10.0 / 216, 16: 6.0 / 216, 17: 3.0 / 216, 18: 1.0 / 216,
 	}
-
-	// sumWeightedOutcomes := 0.0 // Sum of the weighted likeliness of outcomes where a bust does not occur
-
-	// // Only consider outcomes greater than prevRoll
-	// for outcome := t2a.LastScore + 1; outcome <= 18; outcome++ {
-	// 	prob := probabilities[outcome]
-	// 	sumWeightedOutcomes += float64(outcome) * prob
-	// 	totalProbability += prob
-	// }
-
-	// expectedValue := 0.0
-
-	// // Normalize to determine expected value
-	// if totalProbability > 0 {
-	// 	expectedValue = sumWeightedOutcomes / totalProbability
-	// }
-
-	// return expectedValue
 
 	// Calculate the cumulative probability of rolling higher than `prevRoll`
 	cumulativeProbability := 0.0
@@ -371,26 +350,14 @@ func (t2a *Team2Agent) probabilityOfImprovement(prevRoll int) float64 {
 }
 
 // Function to determine risk tolerance which determines how risk averse or risky agent should be
-// Risk tolerance is based on current common pool size and trust scores
-func (t2a *Team2Agent) DetermineRiskTolerance() float64 {
-	// Current, actual common pool size
-	actualCommonPoolSize := float64(t2a.Server.GetTeam(t2a.GetID()).GetCommonPool())
+// Risk tolerance is based on trust scores and accumulated score up till current roll
+func (t2a *Team2Agent) DetermineRiskTolerance(accumulatedScore int) float64 {
 
 	// Current team size
 	agentCount := 0
 	for range t2a.Server.GetAgentsInTeam(t2a.TeamID) {
 		agentCount += 1
 	}
-
-	// Ensure that each agent has at least 20 points (change accordingly) to withdraw from common pool
-	minAgentWithdrawl := 20.0
-
-	// Determine ideal common pool size based on minAgentWithdrawl
-	idealCommonPoolSize := minAgentWithdrawl * float64(agentCount)
-
-	// If very high common pool size then agent can be risk averse so riskTolerance is lower.
-	// If very low common pool size then agent must be more risky so riskTolerance is higher.
-	riskToleranceFromPoolSize := 1.0 - min((actualCommonPoolSize/idealCommonPoolSize), 1.0)
 
 	// Determine risk tolerance from trust scores of other agents in the team
 	totalTrust := 0
@@ -405,40 +372,47 @@ func (t2a *Team2Agent) DetermineRiskTolerance() float64 {
 	// If very low trust score for other agents then highly likely agents will cheat so agent needs to over-compensate the common pool so must be risky so riskTolerance is higher.
 	riskToleranceFromTrust := 1.0 - averageScaledTrust
 
-	// Overall risk tolerance is equal parts: riskToleranceFromPoolSize, riskToleranceFromTrust
-	return (riskToleranceFromPoolSize + riskToleranceFromTrust) / 2.0
+	// Use accumulatedScore to determine risk tolerance
+	// If high accumulated score then more risk averse
+	// If low accumulated score can be more risky
+	riskToleranceFromAccumScore := 1.0 / (float64(accumulatedScore) / 10.0)
+
+	// Overall risk tolerance is equal parts: riskToleranceFromTrust, riskToleranceFromAccumScore
+	return (riskToleranceFromTrust + riskToleranceFromAccumScore) / 2.0
 }
 
 // Objective of StickOrAgain is to maximize score after n turns for each agent
 func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
-	// Calculate the expected value of the current roll
-	// expectedValue := t2a.CalculateExpectedValue(prevRoll)
-	// expectedValue := 10.5
 
-	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)
-
+	log.Printf("*****Total Score before deciding to re-roll or stick: %d\n", accumulatedScore)
+	
 	log.Printf("*****Prev Roll: %d\n", prevRoll)
 
+	// Determine cumulative probability of improvement
+	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)	
 	log.Printf("*****Cumulative Probability of Improvement: %.2f\n", cumulativeProbability)
 
 	log.Printf("*****Rank is: %t\n", t2a.rank) // true is leader, false is citizen
 
-	// Determine agent risk tolerance
-	riskTolerance := 1.0 + t2a.DetermineRiskTolerance()
+	// Determine agent risk tolerance (lower riskTolerance value indicates more risky, higher indicates more risk averse)
+	riskTolerance := t2a.DetermineRiskTolerance(accumulatedScore)
 	log.Printf("*****Risk Tolerance: %.2f\n", riskTolerance)
 
-	if t2a.rank { // leader - very risky
-		// if (expectedValue) > float64(prevRoll) {
-		if (cumulativeProbability * 18) > float64(prevRoll) {
+	if t2a.rank { // Leader is very risky and has a fixed riskTolerance of 0.2
+		riskTolerance = 0.2
+		threshold := float64(prevRoll) * (1.0 - riskTolerance)
+		if (cumulativeProbability * 18) > threshold {
 			log.Printf("*****Decision: Re-roll\n")
 			return false // Re-roll
 		}
-	} else { // citizens - risk based on risk tolerance
-		// Scale the expected value with risk tolerance
-		// If high risk tolerance then more likely to re-roll
-		// If low risk tolerance less likely to re-roll
-		// if (expectedValue * riskTolerance) > float64(prevRoll) {
-		if (cumulativeProbability * 18 * riskTolerance) > float64(prevRoll) {
+	} else { // Citizens have risk given by a dynamic riskTolerance
+		// Scale prevRoll value with risk tolerance to give threshold
+		// If high risk tolerance then lower threshold hence likely to re-roll
+		// If low risk tolerance then higher threshold hence less likely to re-roll
+		threshold := float64(prevRoll) * (1.0 - riskTolerance)
+		log.Printf("*****Citizen threshold: %d\n", threshold)
+		log.Printf("*****Cumulative Probability * 18: %d\n", (cumulativeProbability * 18))
+		if (cumulativeProbability * 18) > threshold {
 			log.Printf("*****Decision: Re-roll\n")
 			return false // Re-roll
 		}
