@@ -81,6 +81,11 @@ func (a *AuditRecord) GetLastRecord(agentId uuid.UUID) int {
 	}
 
 	records := a.auditMap[agentId]
+
+	if len(records) == 0 {
+		return 0
+	}
+
 	return records[len(records)-1]
 }
 

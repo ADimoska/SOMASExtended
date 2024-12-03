@@ -2,7 +2,7 @@ package common
 
 // import "github.com/google/uuid"
 import (
-	"fmt"
+	"log"
 	"math"
 	"math/rand"
 
@@ -31,7 +31,7 @@ type Team2AoA struct {
 	// Used by the server in order to track which agents need to be kicked/fined/rolling privileges revoked
 	OffenceMap map[uuid.UUID]int
 	Leader     uuid.UUID
-	Team 	 *Team
+	Team       *Team
 }
 
 func (t *Team2AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
@@ -78,38 +78,38 @@ func (t *Team2AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
 }
 
 func (t *Team2AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
-    // Get the precomputed withdrawal map
-    expectedWithdrawals := t.mapExpectedWithdrawal()
-    if amount, exists := expectedWithdrawals[agentId]; exists {
-        return amount
-    }
-    return 0
+	// Get the precomputed withdrawal map
+	expectedWithdrawals := t.mapExpectedWithdrawal()
+	if amount, exists := expectedWithdrawals[agentId]; exists {
+		return amount
+	}
+	return 0
 }
 
 func (t *Team2AoA) mapExpectedWithdrawal() map[uuid.UUID]int {
-    team := t.Team
+	team := t.Team
 	commonPool := team.GetCommonPool()
-    count := len(team.Agents)
+	count := len(team.Agents)
 
-    reserved := float64(commonPool) * 0.15 // 15% reserved from the common pool
-    availablePool := float64(commonPool) - reserved
+	reserved := float64(commonPool) * 0.15 // 15% reserved from the common pool
+	availablePool := float64(commonPool) - reserved
 
-    // Calculate the multipliers
-    leaderMultiplier := 2.0
-    citizenMultiplier := 1.0
-    totalMultiplier := leaderMultiplier + (citizenMultiplier * float64(count-1))
-    multForLeader := (availablePool * leaderMultiplier) / totalMultiplier
-    multForCitizen := (availablePool * citizenMultiplier) / totalMultiplier
+	// Calculate the multipliers
+	leaderMultiplier := 2.0
+	citizenMultiplier := 1.0
+	totalMultiplier := leaderMultiplier + (citizenMultiplier * float64(count-1))
+	multForLeader := (availablePool * leaderMultiplier) / totalMultiplier
+	multForCitizen := (availablePool * citizenMultiplier) / totalMultiplier
 
 	expectedWithdrawals := make(map[uuid.UUID]int)
-    for _, agentId := range team.Agents {
-        if agentId == t.Leader {
-            expectedWithdrawals[agentId] = int(multForLeader)
-        } else {
-            expectedWithdrawals[agentId] = int(multForCitizen)
-        }
-    }
-    return expectedWithdrawals
+	for _, agentId := range team.Agents {
+		if agentId == t.Leader {
+			expectedWithdrawals[agentId] = int(multForLeader)
+		} else {
+			expectedWithdrawals[agentId] = int(multForCitizen)
+		}
+	}
+	return expectedWithdrawals
 }
 
 func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
@@ -132,7 +132,8 @@ func (t *Team2AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, a
 func (t *Team2AoA) GetAuditCost(commonPool int) int {
 	return t.auditRecord.GetAuditCost()
 }
-///////////////////////////////////////////////imp,e ent helped map fn here ////////////////////
+
+// /////////////////////////////////////////////imp,e ent helped map fn here ////////////////////
 // TODO: Implement a borda vote here instead?
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	if len(votes) == 0 {
@@ -156,7 +157,7 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	duration /= len(votes)
 	t.auditRecord.SetAuditDuration(duration)
 	for votedFor, votes := range voteMap {
-		if votes > ((count / 2)+ 1) {
+		if votes > ((count / 2) + 1) {
 			return votedFor
 		}
 	}
@@ -211,7 +212,7 @@ func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
 }
 
 func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOfAssociation {
-	fmt.Println("Creating Team2AoA")
+	log.Println("Creating Team2AoA")
 	offenceMap := make(map[uuid.UUID]int)
 
 	if leader == uuid.Nil {
@@ -227,6 +228,6 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOf
 		auditRecord: NewAuditRecord(auditDuration),
 		OffenceMap:  offenceMap,
 		Leader:      leader,
-		Team: 		 team,
+		Team:        team,
 	}
 }

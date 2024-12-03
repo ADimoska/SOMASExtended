@@ -1,7 +1,7 @@
 package agents
 
 import (
-	"fmt"
+	"log"
 	"math"
 	"sort"
 
@@ -48,7 +48,7 @@ func (t2a *Team2Agent) getAverageTeamTrustScore() int {
 
 	numAgentsinTeam := totalTrustScore / len(t2a.Server.GetAgentsInTeam(t2a.TeamID))
 	averageTrustScore := totalTrustScore / numAgentsinTeam
-	
+
 	return averageTrustScore
 }
 
@@ -104,7 +104,7 @@ func (t2a *Team2Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result b
 
 	if result {
 		t2a.strikeCount[agentID]++ // Increment the strike count for this agent
-		
+
 		strikeCount := t2a.strikeCount[agentID]
 		if strikeCount == 1 {
 			penalty = 10
@@ -209,12 +209,12 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 }
 
 func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
-	fmt.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
+	log.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
 
 	// Already in a team - reject invitation
 	if t2a.TeamID != (uuid.UUID{}) {
 		if t2a.VerboseLevel > 6 {
-			fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
+			log.Printf("Agent %s rejected invitation from %s - already in team %v\n",
 				t2a.GetID(), msg.GetSender(), t2a.TeamID)
 		}
 		return
@@ -241,7 +241,7 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 			t2a.createNewTeam(sender)
 		}
 	} else {
-		fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
+		log.Printf("Agent %s rejected invitation from %s - already in team %v\n",
 			t2a.GetID(), msg.GetSender(), t2a.TeamID)
 	}
 }
@@ -366,7 +366,7 @@ func (t2a *Team2Agent) probabilityOfImprovement(prevRoll int) float64 {
 		cumulativeProbability += probabilities[outcome]
 	}
 
-	return cumulativeProbability;
+	return cumulativeProbability
 
 }
 
@@ -417,34 +417,34 @@ func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)
 
-	fmt.Printf("*****Prev Roll: %s\n", prevRoll) 
+	log.Printf("*****Prev Roll: %d\n", prevRoll)
 
-	fmt.Printf("*****Cumulative Probability of Improvement: %.2f\n", cumulativeProbability) 
+	log.Printf("*****Cumulative Probability of Improvement: %.2f\n", cumulativeProbability)
 
-	fmt.Printf("*****Rank is: %s\n", t2a.rank) // true is leader, false is citizen
+	log.Printf("*****Rank is: %t\n", t2a.rank) // true is leader, false is citizen
 
 	// Determine agent risk tolerance
 	riskTolerance := 1.0 + t2a.DetermineRiskTolerance()
-	fmt.Printf("*****Risk Tolerance: %.2f\n", riskTolerance) 
+	log.Printf("*****Risk Tolerance: %.2f\n", riskTolerance)
 
-	if t2a.rank{ // leader - very risky
+	if t2a.rank { // leader - very risky
 		// if (expectedValue) > float64(prevRoll) {
 		if (cumulativeProbability * 18) > float64(prevRoll) {
-			fmt.Printf("*****Decision: Re-roll\n") 
+			log.Printf("*****Decision: Re-roll\n")
 			return false // Re-roll
 		}
-	}else{ // citizens - risk based on risk tolerance
+	} else { // citizens - risk based on risk tolerance
 		// Scale the expected value with risk tolerance
 		// If high risk tolerance then more likely to re-roll
 		// If low risk tolerance less likely to re-roll
 		// if (expectedValue * riskTolerance) > float64(prevRoll) {
 		if (cumulativeProbability * 18 * riskTolerance) > float64(prevRoll) {
-			fmt.Printf("*****Decision: Re-roll\n") 
+			log.Printf("*****Decision: Re-roll\n")
 			return false // Re-roll
 		}
 	}
 
-	fmt.Printf("*****Decision: Stick\n") 
+	log.Printf("*****Decision: Stick\n")
 	return true // Stick
 }
 
@@ -500,7 +500,7 @@ func (t2a *Team2Agent) DecideContribution() int {
 
 		// get the contribution we are expected to make
 		aoaExpectedContribution := aoa.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
-		
+
 		// if we have less than the expected, just contribute whats left
 		if t2a.GetTrueScore() < aoaExpectedContribution {
 			return t2a.GetTrueScore() // give all score if less than expected
@@ -513,7 +513,7 @@ func (t2a *Team2Agent) DecideContribution() int {
 
 		// get the contribution we are expected to make
 		aoaExpectedContribution := aoa.GetExpectedContribution(t2a.GetID(), t2a.GetTrueScore())
-		
+
 		// if we have less than the expected, just contribute whats left
 		if t2a.GetTrueScore() < aoaExpectedContribution {
 			return t2a.GetTrueScore() // give all score if less than expected
@@ -551,7 +551,7 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 
 	// experiment with these;
 	auditThreshold := 50       // decision to audit based on if an agents trust score is lower than this
-	suspicionFactor := 2      // how much we lower everyone's trust scores if there is a discrepancy.
+	suspicionFactor := 2       // how much we lower everyone's trust scores if there is a discrepancy.
 	discrepancyThreshold := 10 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
@@ -561,7 +561,7 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 
 	// Step 1: Check if there is someone obvious to audit based on stated contributions
 	for _, agentID := range agentsInTeam {
-		
+
 		// if somones stated contribution is ridiculously high.
 		if t2a.statedContribution[agentID] > 30 {
 			return common.CreateVote(1, t2a.GetID(), agentID)
@@ -679,8 +679,8 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 
 	// experiment with these;
 	auditThreshold := 50       // decision to audit based on if an agents trust score is lower than this
-	suspicionFactor := 2      // how much we lower everyone's trust scores if there is a discrepancy.
-	discrepancyThreshold := 10// if discrepancy between stated and actual common pool is greater than this, lower trust scores.
+	suspicionFactor := 2       // how much we lower everyone's trust scores if there is a discrepancy.
+	discrepancyThreshold := 10 // if discrepancy between stated and actual common pool is greater than this, lower trust scores.
 
 	// get list of uuids in our team
 	var agentsInTeam []uuid.UUID = t2a.Server.GetAgentsInTeam(t2a.TeamID)
@@ -689,7 +689,7 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 
 	// Step 1: Check if there is someone obvious to audit based on stated withdrawals
 	for _, agentID := range agentsInTeam {
-		
+
 		// if someones stated withdrawal is ridiculously high. (agent may be stupid and greedy)
 		if t2a.statedWithdrawal[agentID] > 30 {
 			return common.CreateVote(1, t2a.GetID(), agentID)
@@ -750,38 +750,37 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 // Send opinion messages to the top n most trusted agents
 func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
 	// Convert to different form for ease of sorting
-    type entry struct {
-        Key   uuid.UUID
-        Value int
-    }
+	type entry struct {
+		Key   uuid.UUID
+		Value int
+	}
 
-    entries := make([]entry, 0, len(t2a.trustScore))
+	entries := make([]entry, 0, len(t2a.trustScore))
 
-    for id, score := range t2a.trustScore {
-        entries = append(entries, entry{Key: id, Value: score})
-    }
+	for id, score := range t2a.trustScore {
+		entries = append(entries, entry{Key: id, Value: score})
+	}
 
 	// Sort in decreasing order of trust score (most trusted first)
-    sort.Slice(entries, func(i, j int) bool {
-        return entries[i].Value > entries[j].Value
-    })
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Value > entries[j].Value
+	})
 
-    if numAgents > len(entries) {
-        numAgents = len(entries)
-    }
+	if numAgents > len(entries) {
+		numAgents = len(entries)
+	}
 
 	// Create an opinion request for the given agent
-    agentOpinionMessage := t2a.CreateAgentOpinionRequestMessage(agentID)
+	agentOpinionMessage := t2a.CreateAgentOpinionRequestMessage(agentID)
 
-    for i := 0; i < numAgents; i++ {
+	for i := 0; i < numAgents; i++ {
 		receiver := entries[i].Key
 		if receiver == agentID {
 			continue // Don't ask an agent for its opinion of itself
 		}
-        t2a.SendMessage(agentOpinionMessage, entries[i].Key)
-    }
+		t2a.SendMessage(agentOpinionMessage, entries[i].Key)
+	}
 }
-
 
 // ---------- MISC TO INCORPORATE ----------
 
@@ -818,7 +817,7 @@ func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
 // 		contribution = 0
 // 	}
 
-// 	fmt.Printf("Agent %s decided to contribute: %d (Performance: %s)\n",
+// 	log.Printf("Agent %s decided to contribute: %d (Performance: %s)\n",
 // 		t2a.GetID(), contribution, performance)
 
 // 	return contribution
@@ -870,7 +869,7 @@ func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
 // 	// Calculate final withdrawal amount
 // 	finalWithdrawal := int(float64(baseWithdrawal) * trustModifier * teamSizeModifier)
 
-// 	fmt.Printf("Agent %s decided to withdraw: %d (AoA: %d, Performance: %s, Trust: %.2f, TeamSize: %d)\n",
+// 	log.Printf("Agent %s decided to withdraw: %d (AoA: %d, Performance: %s, Trust: %.2f, TeamSize: %d)\n",
 // 		agentID, finalWithdrawal, aoaWithdrawal, performance, trust, teamSize)
 
 // 	return finalWithdrawal

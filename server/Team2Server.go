@@ -1,7 +1,6 @@
 package environmentServer
 
 import (
-	"fmt"
 	"log"
 	"math/rand"
 
@@ -85,20 +84,20 @@ func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, leaderId uuid
 	for !rollingComplete {
 		stickDecision := leader.StickOrAgainFor(agentId, accumulatedScore, prevRoll)
 		if stickDecision > 0 {
-			fmt.Printf("%s decided to [STICK], score accumulated: %v", agentId, accumulatedScore)
+			log.Printf("%s decided to [STICK], score accumulated: %v", agentId, accumulatedScore)
 			break
 		}
 
 		if rounds > 1 {
-			fmt.Printf("%s decided to [CONTINUE ROLLING], previous roll: %v", agentId, prevRoll)
+			log.Printf("%s decided to [CONTINUE ROLLING], previous roll: %v", agentId, prevRoll)
 		}
 
 		currentRoll := generateScore()
-		fmt.Printf("%s rolled: %v\n this turn", agentId, currentRoll)
+		log.Printf("%s rolled: %v\n this turn", agentId, currentRoll)
 		if currentRoll <= prevRoll {
 			// Gone bust, so reset the accumulated score and break out of the loop
 			accumulatedScore = 0
-			fmt.Printf("%s **[HAS GONE BUST!]** round: %v, current score: %v\n", agentId, rounds, currentScore)
+			log.Printf("%s **[HAS GONE BUST!]** round: %v, current score: %v\n", agentId, rounds, currentScore)
 			break
 		}
 
@@ -109,7 +108,7 @@ func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, leaderId uuid
 	// In case the agent has gone bust, this does nothing
 	controlled.SetTrueScore(currentScore + accumulatedScore)
 	// Log the updated score
-	fmt.Printf("%s turn score: %v, total score: %v\n", agentId, accumulatedScore, controlled.GetTrueScore())
+	log.Printf("%s turn score: %v, total score: %v\n", agentId, accumulatedScore, controlled.GetTrueScore())
 }
 
 func generateScore() int {
