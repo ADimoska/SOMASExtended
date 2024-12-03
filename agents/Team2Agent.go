@@ -2,6 +2,7 @@ package agents
 
 import (
 	"fmt"
+	"sort"
 	"math"
 
 	// "math/rand"
@@ -666,6 +667,30 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	} else {
 		// in this case there is no discrepancy this round, so prefer not audit (-1)
 		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
+	}
+}
+
+func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
+	type entry struct {
+		Key  uuid.UUID
+		Value int
+	}
+
+	entries := make([]entry, 0, len(t2a.trustScore))
+
+	for id, score := range t2a.trustScore {
+		entries = append(entries, entry{Key: id, Value: score})
+	}
+
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].Value > entries[j].Value
+	})
+
+	agentOpinionMessage := t2a.CreateAgentOpinionRequestMessage(agentID)
+
+	numAgents = min(numAgents, len(entries))
+	for i := 0; i < numAgents; i++ {
+		t2a.SendMessage(agentOpinionMessage, entries[i].Key)
 	}
 }
 

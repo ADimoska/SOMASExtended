@@ -21,6 +21,7 @@ import (
  * - Change the scaling of expected contribution depending on how many members are still in the team
  * - Write about the above in the report (so how we adapted our AoA to adapt to this).
  * - Change the threshold above which an audit vote is successful as well (@hk221)
+ * - Make sure that if the leader dies, or is audited, they have to be re-elected
  */
 
 // ---------------------------------------- Articles of Association Functionality ----------------------------------------
