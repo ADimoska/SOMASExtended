@@ -155,34 +155,34 @@ func (t2a *Team2Agent) GetRole() bool {
 // Part 2: Core Game Flow Functions
 
 // ---------- TEAM FORMING ----------
-
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 
-	trustThreshold := 40 // invite agents who are above this threshold
-	invitationList := []uuid.UUID{}
-	// Iterate through all agents and add those with
-	for _, agentInfo := range agentInfoList {
-		agentUUID := agentInfo.AgentUUID
-		// Initialize trust score map if it hasn't been initialized yet
-		if t2a.trustScore[agentUUID] == 0 {
-			t2a.SetTrustScore(agentUUID)
-		}
+	// trustThreshold := 10 // invite agents who are above this threshold
+	// invitationList := []uuid.UUID{}
+	// // Iterate through all agents and add those with
+	// for _, agentInfo := range agentInfoList {
+	// 	agentUUID := agentInfo.AgentUUID
+	// 	// Initialize trust score map if it hasn't been initialized yet
+	// 	if t2a.trustScore[agentUUID] == 0 {
+	// 		t2a.SetTrustScore(agentUUID)
+	// 	}
 
-		// Skip if it's our own ID
-		if agentUUID == t2a.GetID() {
-			continue
-		}
+	// 	// Skip if it's our own ID
+	// 	if agentUUID == t2a.GetID() {
+	// 		continue
+	// 	}
 
-		// Get current trust score for this agent
-		trustScore := t2a.trustScore[agentUUID]
+	// 	// Get current trust score for this agent
+	// 	trustScore := t2a.trustScore[agentUUID]
 
-		// If agent is above threshold, append to invite list
-		if trustScore > trustThreshold {
-			invitationList = append(invitationList, agentUUID)
-		}
-	}
+	// 	// If agent is above threshold, append to invite list
+	// 	if trustScore > trustThreshold {
+	// 		invitationList = append(invitationList, agentUUID)
+	// 	}
+	// }
 
-	return invitationList
+	// return invitationList
+	return t2a.ExtendedAgent.DecideTeamForming(agentInfoList)
 }
 
 func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
@@ -352,16 +352,21 @@ func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 	// Calculate the expected value of the current roll
 	expectedValue := t2a.CalculateExpectedValue(prevRoll)
-
-	// Determine agent risk tolerance
-	riskTolerance := t2a.DetermineRiskTolerance()
-
-	// Scale the expected value with risk tolerance
-	// If high risk tolerance then more likely to re-roll
-	// If low risk tolerance less likely to re-roll
-	if (expectedValue * riskTolerance) > float64(prevRoll) {
-		return false // Re-roll
+	if t2a.rank{
+		// Determine agent risk tolerance
+		riskTolerance := t2a.DetermineRiskTolerance()
+		if (expectedValue * riskTolerance) > float64(prevRoll) {
+			return false // Re-roll
+		}
+	}else{
+		// Scale the expected value with risk tolerance
+		// If high risk tolerance then more likely to re-roll
+		// If low risk tolerance less likely to re-roll
+		if (expectedValue ) > float64(prevRoll) {
+			return false // Re-roll
+		}
 	}
+
 	return true // Stick
 }
 
