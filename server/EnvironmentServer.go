@@ -158,9 +158,14 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	cs.teamsMutex.Unlock()
 	// check if threshold turn
+
+	cs.teamsMutex.Unlock()
+
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
 		cs.ApplyThreshold()
 	}
+	cs.teamsMutex.Lock()
+
 	cs.teamsMutex.Lock()
 
 	// record data
