@@ -34,12 +34,16 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 // Part 1: Specialised Agent Strategy Functions
 
 // ---------- TRUST SCORE SYSTEM ----------
+func (t2a *Team2Agent) SetTrustScore(agentID uuid.UUID) {
+	// Initialize trust score for this agent
+	t2a.trustScore[agentID] = 70
+}
 
 func (t2a *Team2Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
 	//apply strike and decrease trust score for agent audited
 	// Check if the trust score for this agent exists; if not, initialize it to 70
 	if _, exists := t2a.trustScore[agentID]; !exists {
-		t2a.trustScore[agentID] = 70
+		t2a.SetTrustScore(agentID)
 	}
 	t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 	var penalty int
@@ -68,7 +72,7 @@ func (t2a *Team2Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result b
 	//apply strike and decrease trust score for agent audited
 	// Check if the trust score for this agent exists; if not, initialize it to 70
 	if _, exists := t2a.trustScore[agentID]; !exists {
-		t2a.trustScore[agentID] = 70
+		t2a.SetTrustScore(agentID)
 	}
 	t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 	var penalty int
