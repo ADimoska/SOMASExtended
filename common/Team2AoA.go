@@ -157,7 +157,7 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	duration /= len(votes)
 	t.auditRecord.SetAuditDuration(duration)
 	for votedFor, votes := range voteMap {
-		if votes > ((count / 2) + 1) {
+		if votes >= ((count / 2) + 1) {
 			return votedFor
 		}
 	}
