@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"github.com/go-echarts/go-echarts/v2/charts"
@@ -253,26 +254,28 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 			Show: opts.Bool(true),
 		}),
 		charts.WithLegendOpts(opts.Legend{
-			Show: opts.Bool(showLegends),
-			Top:  "15%",
+			Show:   opts.Bool(true), // Enable the legend
+			Top:    "15%",           // Adjust the position
+			Left:   "right",         // Place legend on the right side
+			Orient: "vertical",      // Display legend vertically
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
 			Name:    "Turn Number",
 			NameGap: 30,
 			AxisLabel: &opts.AxisLabel{
-				Show: opts.Bool(showAxisLabels),
+				Show: opts.Bool(true),
 			},
 		}),
 		charts.WithYAxisOpts(opts.YAxis{
 			Name:    "Contribution",
 			NameGap: 30,
 			AxisLabel: &opts.AxisLabel{
-				Show: opts.Bool(showAxisLabels),
+				Show: opts.Bool(true),
 			},
 		}),
 		charts.WithGridOpts(opts.Grid{
 			Top:          "25%",
-			Right:        "5%",
+			Right:        "15%", // Add more space for the legend
 			Left:         "10%",
 			Bottom:       "15%",
 			ContainLabel: opts.Bool(true),
@@ -293,69 +296,85 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 	teamColors := make(map[string]string)
 	for _, agent := range initialAgentRecords {
 		agentID := agent.AgentID.String()
-		teamColors[agentID] = getTeamColor(agent.TrueSomasTeamID)
+		// Extract the UUID part (assuming it is always the first part)
+		// Use regular expression to find a valid UUID pattern
+		if uuid := extractUUID(agentID); uuid != "" {
+			teamColors[uuid] = getTeamColor(agent.TrueSomasTeamID)
+		}
 	}
+
+	// Add unique agent IDs to the legend
+	agentIDsInLegend := make(map[string]bool)
 
 	// For each agent, create contribution lines
 	for _, initialAgent := range initialAgentRecords {
 		agentID := initialAgent.AgentID.String()
-		actualNet := make([]float64, len(turns))
-		statedNet := make([]float64, len(turns))
-		var deathMarker opts.ScatterData
-		var deathTurn int = -1
+		// Extract only the UUID from the agentID
+		if uuid := extractUUID(agentID); uuid != "" {
+			actualNet := make([]float64, len(turns))
+			statedNet := make([]float64, len(turns))
+			var deathMarker opts.ScatterData
+			var deathTurn int = -1
 
-		for i, turn := range turns {
-			for _, agent := range turn.AgentRecords {
-				if agent.AgentID == initialAgent.AgentID {
-					actualNet[i] = float64(agent.Contribution - agent.Withdrawal)
-					statedNet[i] = float64(agent.StatedContribution - agent.StatedWithdrawal)
+			for i, turn := range turns {
+				for _, agent := range turn.AgentRecords {
+					if agent.AgentID.String() == agentID {
+						actualNet[i] = float64(agent.Contribution - agent.Withdrawal)
+						statedNet[i] = float64(agent.StatedContribution - agent.StatedWithdrawal)
 
-					if !agent.IsAlive {
-						deathTurn = i
-						deathMarker = opts.ScatterData{
-							Value:      []interface{}{xAxis[i], actualNet[i]},
-							Symbol:     "💀",
-							SymbolSize: 20,
+						if !agent.IsAlive {
+							deathTurn = i
+							deathMarker = opts.ScatterData{
+								Value:      []interface{}{xAxis[i], actualNet[i]},
+								Symbol:     "💀",
+								SymbolSize: 20,
+							}
+							break
 						}
-						break
 					}
 				}
+				if deathTurn != -1 {
+					break
+				}
 			}
+
+			// Truncate data after death
 			if deathTurn != -1 {
-				break
+				actualNet = actualNet[:deathTurn+1]
+				statedNet = statedNet[:deathTurn+1]
 			}
-		}
 
-		// Truncate data after death
-		if deathTurn != -1 {
-			actualNet = actualNet[:deathTurn+1]
-			statedNet = statedNet[:deathTurn+1]
-		}
+			// Add actual contribution line if not already added
+			if _, exists := agentIDsInLegend[uuid]; !exists {
+				line.AddSeries(uuid, generateLineItems(xAxis[:len(actualNet)], actualNet),
+					charts.WithLineStyleOpts(opts.LineStyle{
+						Color: teamColors[uuid],
+					}),
+				)
+				agentIDsInLegend[uuid] = true
+			}
 
-		// Add actual contribution line
-		line.AddSeries(agentID+" (Actual)", generateLineItems(xAxis[:len(actualNet)], actualNet),
-			charts.WithLineStyleOpts(opts.LineStyle{
-				Color: teamColors[agentID],
-			}),
-		)
+			// Add stated contribution line if not already added
+			if _, exists := agentIDsInLegend[uuid]; !exists {
+				line.AddSeries(uuid+" (Stated)", generateLineItems(xAxis[:len(statedNet)], statedNet),
+					charts.WithLineStyleOpts(opts.LineStyle{
+						Color: teamColors[uuid],
+						Type:  "dashed",
+					}),
+				)
+				agentIDsInLegend[uuid] = true
+			}
 
-		// Add stated contribution line (dotted)
-		line.AddSeries(agentID+" (Stated)", generateLineItems(xAxis[:len(statedNet)], statedNet),
-			charts.WithLineStyleOpts(opts.LineStyle{
-				Color: teamColors[agentID],
-				Type:  "dashed",
-			}),
-		)
-
-		// Add death marker
-		if deathTurn != -1 {
-			scatter := charts.NewScatter()
-			scatter.AddSeries(agentID+" Death", []opts.ScatterData{deathMarker},
-				charts.WithItemStyleOpts(opts.ItemStyle{
-					Color: "black",
-				}),
-			)
-			line.Overlap(scatter)
+			// Add death marker
+			if deathTurn != -1 {
+				scatter := charts.NewScatter()
+				scatter.AddSeries(uuid+" Death", []opts.ScatterData{deathMarker},
+					charts.WithItemStyleOpts(opts.ItemStyle{
+						Color: "black",
+					}),
+				)
+				line.Overlap(scatter)
+			}
 		}
 	}
 
@@ -363,6 +382,13 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 	return line
 }
 
+// Helper function to extract the UUID part from a given string
+func extractUUID(input string) string {
+	// Regular expression to match UUIDs in the format of xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+	re := regexp.MustCompile(`\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b`)
+	match := re.FindString(input)
+	return match
+}
 // Helper function to get team-based colors
 func getTeamColor(teamID int) string {
 	// Define a color palette for teams
