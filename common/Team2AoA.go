@@ -30,6 +30,7 @@ type Team2AoA struct {
 	// Used by the server in order to track which agents need to be kicked/fined/rolling privileges revoked
 	OffenceMap map[uuid.UUID]int
 	Leader     uuid.UUID
+	Team 	 *Team
 }
 
 func (t *Team2AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
@@ -193,5 +194,6 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOf
 		auditRecord: NewAuditRecord(auditDuration),
 		OffenceMap:  offenceMap,
 		Leader:      leader,
+		Team: 		 team,
 	}
 }
