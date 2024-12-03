@@ -362,16 +362,16 @@ func (mi *ExtendedAgent) BroadcastSyncMessageToTeam(msg message.IMessage[common.
 	}
 }
 
-func (mi *ExtendedAgent) StateContributionToTeam() {
+func (mi *ExtendedAgent) StateContributionToTeam(instance common.IExtendedAgent) {
 	// Broadcast contribution to team
-	statedContribution := mi.GetStatedContribution(mi)
+	statedContribution := instance.GetStatedContribution(instance)
 	contributionMsg := mi.CreateContributionMessage(statedContribution)
 	mi.BroadcastSyncMessageToTeam(contributionMsg)
 }
 
-func (mi *ExtendedAgent) StateWithdrawalToTeam() {
+func (mi *ExtendedAgent) StateWithdrawalToTeam(instance common.IExtendedAgent) {
 	// Broadcast withdrawal to team
-	statedWithdrawal := mi.GetStatedWithdrawal(mi)
+	statedWithdrawal := instance.GetStatedWithdrawal(instance)
 	withdrawalMsg := mi.CreateWithdrawalMessage(statedWithdrawal)
 	mi.BroadcastSyncMessageToTeam(withdrawalMsg)
 }

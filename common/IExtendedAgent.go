@@ -54,8 +54,8 @@ type IExtendedAgent interface {
 	HandleContributionMessage(msg *ContributionMessage)
 	HandleAgentOpinionRequestMessage(msg *AgentOpinionRequestMessage)
 	HandleAgentOpinionResponseMessage(msg *AgentOpinionResponseMessage)
-	StateContributionToTeam()
-	StateWithdrawalToTeam()
+	StateContributionToTeam(instance IExtendedAgent)
+	StateWithdrawalToTeam(instance IExtendedAgent)
 
 	// Info
 	GetExposedInfo() ExposedAgentInfo

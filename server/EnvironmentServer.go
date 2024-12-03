@@ -65,7 +65,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			agentContributionsTotal += agentActualContribution
 			agentStatedContribution := agent.GetStatedContribution(agent)
 
-			agent.StateContributionToTeam()
+			agent.StateContributionToTeam(agent)
 			agentScore := agent.GetTrueScore()
 			// Update audit result for this agent
 			team.TeamAoA.SetContributionAuditResult(agentID, agentScore, agentActualContribution, agentStatedContribution)
@@ -133,7 +133,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentId) {
 				continue
 			}
-			agent.StateWithdrawalToTeam()
+			agent.StateWithdrawalToTeam(agent)
 		}
 
 		// Initiate Withdrawal Audit vote
