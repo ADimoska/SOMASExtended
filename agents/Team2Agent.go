@@ -204,6 +204,8 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 		t2a.SetTrustScore(sender)
 	}
 
+	t2a.sendOpinionMessages(sender, 3) // Ask our top 3 most trusted agent about their opinions of our current agent
+
 	// Get the sender's trust score
 	senderTrustScore := t2a.trustScore[sender]
 
@@ -220,6 +222,33 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 		fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
 			t2a.GetID(), msg.GetSender(), t2a.TeamID)
 	}
+}
+
+func (t2a *Team2Agent) HandleAgentOpinionRequestMessage(msg *common.AgentOpinionRequestMessage) {
+	// Respond to opinion requests from other agents
+	agentID, trustScore := msg.AgentID, 0
+
+	if _, ok := t2a.trustScore[agentID]; ok {
+		t2a.SetTrustScore(agentID)
+		return // Ignore if you don't have an opinion, but set it in the map
+	}
+
+	trustScore = t2a.trustScore[agentID]
+	agentOpinionResponseMessage := t2a.CreateAgentOpinionResponseMessage(agentID, trustScore)
+
+	t2a.SendMessage(agentOpinionResponseMessage, msg.GetSender()) // Respond to the person asking with a trust score, asynchronously
+}
+
+func (t2a *Team2Agent) HandleAgentOpinionResponseMessage(msg *common.AgentOpinionResponseMessage) {
+	agentID, trustScore := msg.AgentID, msg.AgentOpinion
+
+	if _, ok := t2a.trustScore[agentID]; !ok {
+		t2a.SetTrustScore(agentID)
+		return
+	}
+
+	// Update trust score to be the weighted average of the two opinions
+	t2a.trustScore[agentID] = ((trustScore * 2) + t2a.trustScore[agentID]) / 3
 }
 
 // ---------- VOTE ON ORPHANS ----------
@@ -671,28 +700,36 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 }
 
 func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
-	type entry struct {
-		Key  uuid.UUID
-		Value int
-	}
+    type entry struct {
+        Key   uuid.UUID
+        Value int
+    }
 
-	entries := make([]entry, 0, len(t2a.trustScore))
+    entries := make([]entry, 0, len(t2a.trustScore))
 
-	for id, score := range t2a.trustScore {
-		entries = append(entries, entry{Key: id, Value: score})
-	}
+    for id, score := range t2a.trustScore {
+        entries = append(entries, entry{Key: id, Value: score})
+    }
 
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].Value > entries[j].Value
-	})
+    sort.Slice(entries, func(i, j int) bool {
+        return entries[i].Value > entries[j].Value
+    })
 
-	agentOpinionMessage := t2a.CreateAgentOpinionRequestMessage(agentID)
+    if numAgents > len(entries) {
+        numAgents = len(entries)
+    }
 
-	numAgents = min(numAgents, len(entries))
-	for i := 0; i < numAgents; i++ {
-		t2a.SendMessage(agentOpinionMessage, entries[i].Key)
-	}
+    agentOpinionMessage := t2a.CreateAgentOpinionRequestMessage(agentID)
+
+    for i := 0; i < numAgents; i++ {
+		receiver := entries[i].Key
+		if receiver == agentID {
+			continue // So we can't ask an agent about its opinion of itself lol
+		}
+        t2a.SendMessage(agentOpinionMessage, entries[i].Key)
+    }
 }
+
 
 // ---------- MISC TO INCORPORATE ----------
 
