@@ -10,6 +10,16 @@ import (
 	"github.com/google/uuid"
 )
 
+// Loop through the dead agents and return the score of the matching agent
+func (cs *EnvironmentServer) GetAgentKilledScore(agentID uuid.UUID) int {
+	for _, agent := range cs.deadAgents {
+		if agent.GetID() == agentID {
+			return agent.GetTrueScore()
+		}
+	}
+	return 0 // Return 0 if the agent isn't found in the dead agents
+}
+
 /*
  * In case the leader is caught cheating, they will be deposed,
  * this calls a vote for the leader among agents on the current team.

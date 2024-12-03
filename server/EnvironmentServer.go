@@ -285,16 +285,6 @@ func (cs *EnvironmentServer) LogAgentStatus() {
 	}
 }
 
-// Loop through the dead agents and return the score of the matching agent
-func (cs *EnvironmentServer) GetAgentKilledScore(agentID uuid.UUID) int {
-	for _, agent := range cs.deadAgents {
-		if agent.GetID() == agentID {
-			return agent.GetTrueScore()
-		}
-	}
-	return 0 // Return 0 if the agent isn't found in the dead agents
-}
-
 /*
 * Print the contents of the orphan pool. Careful as this will not necessarily
 * print the elements in the order that you added them.
