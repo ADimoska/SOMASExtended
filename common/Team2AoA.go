@@ -20,6 +20,7 @@ import (
  * - Implement the kick functionality on the server
  * - Change the scaling of expected contribution depending on how many members are still in the team
  * - Write about the above in the report (so how we adapted our AoA to adapt to this).
+ * - Change the threshold above which an audit vote is successful as well (@hk221)
  */
 
 // ---------------------------------------- Articles of Association Functionality ----------------------------------------
@@ -105,17 +106,24 @@ func (t *Team2AoA) GetAuditCost(commonPool int) int {
 // TODO: Implement a borda vote here instead?
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	voteMap := make(map[uuid.UUID]int)
+	duration := 0
 	for _, vote := range votes {
-		if vote.IsVote == 1 {
-			if vote.VoterID == t.Leader {
-				voteMap[vote.VotedForID] += 2
-			} else {
-				voteMap[vote.VotedForID]++
-			}
+		durationVote, agentVotedFor := vote.AuditDuration, vote.VotedForID
+		votes := 1
+		if vote.VotedForID == t.Leader {
+			durationVote = durationVote * 2
+			votes = 2
 		}
-		// TODO: 4 is the fixed threshold of votes, this may change depending on team size
-		if voteMap[vote.VotedForID] > 4 {
-			return vote.VotedForID
+		if vote.IsVote == 1 {
+			voteMap[agentVotedFor] += votes
+		}
+		duration += durationVote
+	}
+	duration /= len(votes)
+	t.auditRecord.SetAuditDuration(duration)
+	for votedFor, votes := range voteMap {
+		if votes > 4 {
+			return votedFor
 		}
 	}
 	return uuid.Nil
