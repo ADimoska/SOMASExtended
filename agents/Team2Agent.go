@@ -609,6 +609,21 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 
 	// 2: Main logic
 
+	// Step 1: Check if there is someone obvious to audit based on stated withdrawals
+	for _, agentID := range agentsInTeam {
+		
+		// if someones stated withdrawal is ridiculously high. (agent may be stupid and greedy)
+		if t2a.statedWithdrawal[agentID] > 30 {
+			return common.CreateVote(1, t2a.GetID(), agentID)
+		}
+
+		// if somones stated withdrawal is ridiculously low. (agent is likely trying to decieve)
+		if t2a.statedWithdrawal[agentID] < 2 {
+			return common.CreateVote(1, t2a.GetID(), agentID)
+		}
+
+	}
+
 	// get the actual size of common pool after withdrawals, and the supposed size based on what agents have stated about their withdrawals.
 	// compare them to find the discrepancy.
 	var actualCommonPoolSize = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
