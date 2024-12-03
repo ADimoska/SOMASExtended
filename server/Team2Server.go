@@ -16,7 +16,7 @@ import (
  * TODO: convert this to a borda vote maybe? ->
  * Would need ordered preference of votes
  */
-func (cs *EnvironmentServer) DeposeLeader(teamId uuid.UUID) {
+func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 	agentsInTeam := cs.GetAgentsInTeam(teamId)
 	if len(agentsInTeam) <= 0 {
 		log.Fatal("Team can't have non-positive agent count")
