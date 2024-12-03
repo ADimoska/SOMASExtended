@@ -142,9 +142,9 @@ func (t2a *Team2Agent) GetRole() bool {
 
 func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 
-	highestTrustScore := 0 // record the highest trust score of an agent
+	trustThreshold := 40 // invite agents who are above this threshold
 	invitationList := []uuid.UUID{}
-	// Iterate through all agents
+	// Iterate through all agents and add those with
 	for _, agentInfo := range agentInfoList {
 		agentUUID := agentInfo.AgentUUID
 		// Initialize trust score map if it hasn't been initialized yet
@@ -160,25 +160,13 @@ func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 		// Get current trust score for this agent
 		trustScore := t2a.trustScore[agentUUID]
 
-		// // Check if we're a leader and they're not
-		// if t2a.rank {
-		// }
-
-		// Choose agent with highest trust score
-		if trustScore > highestTrustScore {
+		// If agent is above threshold, append to invite list
+		if trustScore > trustThreshold {
 			invitationList = append(invitationList, agentUUID)
-			highestTrustScore = trustScore
 		}
-
 	}
 
-	// agent at the end of the list will be the agent with the highest trust score
-	lenInviteList := len(invitationList)
-	if lenInviteList == 0 {
-		return []uuid.UUID{}
-	}
-	chosenAgent := invitationList[lenInviteList-1]
-	return []uuid.UUID{chosenAgent}
+		return invitationList
 }
 
 func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
