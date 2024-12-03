@@ -136,6 +136,7 @@ func (t *Team2AoA) GetAuditCost(commonPool int) int {
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	voteMap := make(map[uuid.UUID]int)
 	duration := 0
+	count := len(t.Team.Agents)
 	for _, vote := range votes {
 		durationVote, agentVotedFor := vote.AuditDuration, vote.VotedForID
 		votes := 1
@@ -151,7 +152,7 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	duration /= len(votes)
 	t.auditRecord.SetAuditDuration(duration)
 	for votedFor, votes := range voteMap {
-		if votes > 4 {
+		if votes > ((count / 2)+ 1) {
 			return votedFor
 		}
 	}
