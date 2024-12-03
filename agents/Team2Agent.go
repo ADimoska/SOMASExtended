@@ -325,13 +325,14 @@ func (t2a *Team2Agent) GetDeadTeammates() []struct {
 	return deadTeammates
 }
 
-// Function to determine the expected value of the next re-roll
-func (t2a *Team2Agent) CalculateExpectedValue(prevRoll int) float64 {
+// Function to determine the probability of improvement of the next re-roll compared to previous roll
+func (t2a *Team2Agent) probabilityOfImprovement(prevRoll int) float64 {
 	if prevRoll == 0 { // First roll of the iteration
-		return 10.5 // Average value of 3 dice rolls with a uniform distribution
+		// return 10.5 // Average value of 3 dice rolls with a uniform distribution
+		return 1
 	}
 
-	totalProbability := 0.0
+	// totalProbability := 0.0
 
 	// Probabilities of sums with 3 dice (precomputed distribution of 3d6 outcomes)
 	probabilities := map[int]float64{
@@ -341,23 +342,32 @@ func (t2a *Team2Agent) CalculateExpectedValue(prevRoll int) float64 {
 		15: 10.0 / 216, 16: 6.0 / 216, 17: 3.0 / 216, 18: 1.0 / 216,
 	}
 
-	sumWeightedOutcomes := 0.0 // Sum of the weighted likeliness of outcomes where a bust does not occur
+	// sumWeightedOutcomes := 0.0 // Sum of the weighted likeliness of outcomes where a bust does not occur
 
-	// Only consider outcomes greater than prevRoll
-	for outcome := t2a.LastScore + 1; outcome <= 18; outcome++ {
-		prob := probabilities[outcome]
-		sumWeightedOutcomes += float64(outcome) * prob
-		totalProbability += prob
+	// // Only consider outcomes greater than prevRoll
+	// for outcome := t2a.LastScore + 1; outcome <= 18; outcome++ {
+	// 	prob := probabilities[outcome]
+	// 	sumWeightedOutcomes += float64(outcome) * prob
+	// 	totalProbability += prob
+	// }
+
+	// expectedValue := 0.0
+
+	// // Normalize to determine expected value
+	// if totalProbability > 0 {
+	// 	expectedValue = sumWeightedOutcomes / totalProbability
+	// }
+
+	// return expectedValue
+
+	// Calculate the cumulative probability of rolling higher than `prevRoll`
+	cumulativeProbability := 0.0
+	for outcome := prevRoll + 1; outcome <= 18; outcome++ {
+		cumulativeProbability += probabilities[outcome]
 	}
 
-	expectedValue := 0.0
+	return cumulativeProbability;
 
-	// Normalize to determine expected value
-	if totalProbability > 0 {
-		expectedValue = sumWeightedOutcomes / totalProbability
-	}
-
-	return expectedValue
 }
 
 // Function to determine risk tolerance which determines how risk averse or risky agent should be
@@ -401,24 +411,40 @@ func (t2a *Team2Agent) DetermineRiskTolerance() float64 {
 
 // Objective of StickOrAgain is to maximize score after n turns for each agent
 func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
-
 	// Calculate the expected value of the current roll
-	expectedValue := t2a.CalculateExpectedValue(prevRoll)
-	if t2a.rank{
-		// Determine agent risk tolerance
-		riskTolerance := t2a.DetermineRiskTolerance()
-		if (expectedValue * riskTolerance) > float64(prevRoll) {
+	// expectedValue := t2a.CalculateExpectedValue(prevRoll)
+	// expectedValue := 10.5
+
+	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)
+
+	fmt.Printf("*****Prev Roll: %s\n", prevRoll) 
+
+	fmt.Printf("*****Cumulative Probability of Improvement: %.2f\n", cumulativeProbability) 
+
+	fmt.Printf("*****Rank is: %s\n", t2a.rank) // true is leader, false is citizen
+
+	// Determine agent risk tolerance
+	riskTolerance := 1.0 + t2a.DetermineRiskTolerance()
+	fmt.Printf("*****Risk Tolerance: %.2f\n", riskTolerance) 
+
+	if t2a.rank{ // leader - very risky
+		// if (expectedValue) > float64(prevRoll) {
+		if (cumulativeProbability * 18) > float64(prevRoll) {
+			fmt.Printf("*****Decision: Re-roll\n") 
 			return false // Re-roll
 		}
-	}else{
+	}else{ // citizens - risk based on risk tolerance
 		// Scale the expected value with risk tolerance
 		// If high risk tolerance then more likely to re-roll
 		// If low risk tolerance less likely to re-roll
-		if (expectedValue ) > float64(prevRoll) {
+		// if (expectedValue * riskTolerance) > float64(prevRoll) {
+		if (cumulativeProbability * 18 * riskTolerance) > float64(prevRoll) {
+			fmt.Printf("*****Decision: Re-roll\n") 
 			return false // Re-roll
 		}
 	}
 
+	fmt.Printf("*****Decision: Stick\n") 
 	return true // Stick
 }
 
