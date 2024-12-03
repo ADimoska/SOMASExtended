@@ -35,6 +35,18 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 
 // ---------- TRUST SCORE SYSTEM ----------
 
+func (t2a *Team2Agent) getAverageTeamTrustScore() int {
+	totalTrustScore := 0
+	for _, agentID := range t2a.Server.GetAgentsInTeam(t2a.TeamID) {
+		totalTrustScore += t2a.trustScore[agentID]
+	}
+
+	numAgentsinTeam := totalTrustScore / len(t2a.Server.GetAgentsInTeam(t2a.TeamID))
+	averageTrustScore := totalTrustScore / numAgentsinTeam
+	
+	return averageTrustScore
+}
+
 func (t2a *Team2Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
 	//apply strike and decrease trust score for agent audited
 	// Check if the trust score for this agent exists; if not, initialize it to 70
