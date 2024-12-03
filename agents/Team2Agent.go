@@ -60,7 +60,10 @@ func (t2a *Team2Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result
 	}
 	var penalty int
 
-	if result == true {
+	//increasing audit result for everyone else
+	agentsInTeam := t2a.Server.GetAgentsInTeam(t2a.TeamID)
+
+	if result {
 		t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 
 		strikeCount := t2a.strikeCount[agentID]
@@ -75,9 +78,15 @@ func (t2a *Team2Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result
 		} else {
 			// should never reach this point
 			penalty = 40
-	}
-	// Update trust score based on strike count
-	t2a.trustScore[agentID] -= penalty
+		}
+		// Update trust score based on strike count
+		t2a.trustScore[agentID] -= penalty
+
+		for _, agent := range agentsInTeam {
+			if agent != agentID {
+				t2a.trustScore[agent] += 10
+			}
+		}
 	}
 
 	// TO-DO: increase trust score for agents that were not audited
@@ -91,8 +100,9 @@ func (t2a *Team2Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result b
 		t2a.SetTrustScore(agentID)
 	}
 	var penalty int
+	agentsInTeam := t2a.Server.GetAgentsInTeam(t2a.TeamID)
 
-	if result == true {
+	if result {
 		t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 		
 		strikeCount := t2a.strikeCount[agentID]
@@ -110,6 +120,12 @@ func (t2a *Team2Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result b
 		}
 		// Update trust score based on strike count
 		t2a.trustScore[agentID] -= penalty
+
+		for _, agent := range agentsInTeam {
+			if agent != agentID {
+				t2a.trustScore[agent] += 10
+			}
+		}
 	}
 
 	// TO-DO: increase trust score for agents that were not audited
