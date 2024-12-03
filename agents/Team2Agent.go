@@ -2,8 +2,8 @@ package agents
 
 import (
 	"fmt"
-	"sort"
 	"math"
+	"sort"
 
 	// "math/rand"
 
@@ -58,24 +58,27 @@ func (t2a *Team2Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result
 	if _, exists := t2a.trustScore[agentID]; !exists {
 		t2a.SetTrustScore(agentID)
 	}
-	t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 	var penalty int
 
-	strikeCount := t2a.strikeCount[agentID]
-	if strikeCount == 1 {
-		penalty = 10
-	}
-	if strikeCount == 2 {
-		penalty = 20
-	}
-	if strikeCount == 3 {
-		penalty = 30
-	} else {
-		// should never reach this point
-		penalty = 40
+	if result == true {
+		t2a.strikeCount[agentID]++ // Increment the strike count for this agent
+
+		strikeCount := t2a.strikeCount[agentID]
+		if strikeCount == 1 {
+			penalty = 10
+		}
+		if strikeCount == 2 {
+			penalty = 20
+		}
+		if strikeCount == 3 {
+			penalty = 30
+		} else {
+			// should never reach this point
+			penalty = 40
 	}
 	// Update trust score based on strike count
 	t2a.trustScore[agentID] -= penalty
+	}
 
 	// TO-DO: increase trust score for agents that were not audited
 
@@ -87,24 +90,27 @@ func (t2a *Team2Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result b
 	if _, exists := t2a.trustScore[agentID]; !exists {
 		t2a.SetTrustScore(agentID)
 	}
-	t2a.strikeCount[agentID]++ // Increment the strike count for this agent
 	var penalty int
 
-	strikeCount := t2a.strikeCount[agentID]
-	if strikeCount == 1 {
-		penalty = 10
+	if result == true {
+		t2a.strikeCount[agentID]++ // Increment the strike count for this agent
+		
+		strikeCount := t2a.strikeCount[agentID]
+		if strikeCount == 1 {
+			penalty = 10
+		}
+		if strikeCount == 2 {
+			penalty = 20
+		}
+		if strikeCount == 3 {
+			penalty = 30
+		} else {
+			// should never reach this point
+			penalty = 40
+		}
+		// Update trust score based on strike count
+		t2a.trustScore[agentID] -= penalty
 	}
-	if strikeCount == 2 {
-		penalty = 20
-	}
-	if strikeCount == 3 {
-		penalty = 30
-	} else {
-		// should never reach this point
-		penalty = 40
-	}
-	// Update trust score based on strike count
-	t2a.trustScore[agentID] -= penalty
 
 	// TO-DO: increase trust score for agents that were not audited
 }
