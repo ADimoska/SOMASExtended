@@ -3,9 +3,10 @@ package common
 import "github.com/google/uuid"
 
 type Vote struct {
-	IsVote     int
-	VoterID    uuid.UUID
-	VotedForID uuid.UUID
+	IsVote        int
+	VoterID       uuid.UUID
+	VotedForID    uuid.UUID
+	AuditDuration int
 }
 
 type IArticlesOfAssociation interface {

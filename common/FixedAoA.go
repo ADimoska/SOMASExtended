@@ -57,6 +57,13 @@ func (f *FixedAoA) GetAuditCost(commonPool int) int {
 // Otherwise, implement a voting mechanism to determine the agent to be audited
 // and return its UUID
 func (f *FixedAoA) GetVoteResult(votes []Vote) uuid.UUID {
+	duration := 0
+	for _, vote := range votes {
+		duration += vote.AuditDuration
+	}
+	duration /= len(votes)
+
+	f.auditRecord.SetAuditDuration(duration)
 	return uuid.Nil
 }
 
