@@ -241,7 +241,7 @@ func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 func (t2a *Team2Agent) GetDeadTeammates() []struct {
     AgentID uuid.UUID
     Score   int
-} {
+	} {
     // Slice to store dead agents' information
     deadTeammates := make([]struct {
         AgentID uuid.UUID
@@ -554,7 +554,8 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	var actualCommonPoolSize = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
 	var discrepancy int = t2a.commonPoolEstimate - actualCommonPoolSize
 
-	t2a.commonPoolEstimate = 0
+	// reset to commonpoolestimate after withdrawal
+	t2a.commonPoolEstimate = t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
 
 	// if there is a significant discrepancy, decrement all your teams trust scores by a suspicion factor.
 	// then check to see if the least trusted agent in your team is below the threshold
@@ -592,6 +593,12 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 		return common.CreateVote(-1, t2a.GetID(), uuid.Nil)
 	}
 }
+
+
+
+
+
+
 
 // ---------- MISC TO INCORPORATE ----------
 
