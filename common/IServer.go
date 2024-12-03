@@ -15,6 +15,7 @@ type IServer interface {
 	CreateAndInitTeamWithAgents(agentIDs []uuid.UUID) uuid.UUID
 	UpdateAndGetAgentExposedInfo() []ExposedAgentInfo
 	IsAgentDead(agentID uuid.UUID) bool
+	GetAgentKilledScore(agentID uuid.UUID) int
 	StartAgentTeamForming()
 
 	GetTeam(agentID uuid.UUID) *Team

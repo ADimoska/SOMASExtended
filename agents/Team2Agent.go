@@ -233,10 +233,171 @@ func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 
 // ---------- DECISION TO STICK  ----------
 
-func (t2a *Team2Agent) StickorAgain() {}
+// func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
+// 	return 0
+// }
 
-func (t2a *Team2Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int {
-	return 0
+// Function to retrieve ID and Score of all dead agents in team 
+func (t2a *Team2Agent) GetDeadTeammates() []struct {
+    AgentID uuid.UUID
+    Score   int
+} {
+    // Slice to store dead agents' information
+    deadTeammates := make([]struct {
+        AgentID uuid.UUID
+        Score   int
+    }, 0)
+
+    // Get the IDs of agents in the same team
+    for _, agentID := range t2a.Server.GetAgentsInTeam(t2a.TeamID) {
+        // Skip the agent is the current agent or if the agent is not dead
+        if t2a.GetID() != agentID && t2a.Server.IsAgentDead(agentID) {
+            // Get the score of the dead agent
+            score := t2a.Server.GetAgentKilledScore(agentID)
+
+            // Append the agent's ID and score to the result slice
+            deadTeammates = append(deadTeammates, struct {
+                AgentID uuid.UUID
+                Score   int
+            }{
+                AgentID: agentID,
+                Score:   score,
+            })
+        }
+    }
+
+    return deadTeammates
+}
+
+// Function to determine the expected value of the next re-roll
+func (t2a *Team2Agent) CalculateExpectedValue(prevRoll int) float64 {
+    if prevRoll == 0 { // First roll of the iteration
+        return 10.5 // Average value of 3 dice rolls with a uniform distribution
+    }
+
+    totalProbability := 0.0
+
+    // Probabilities of sums with 3 dice (precomputed distribution of 3d6 outcomes)
+    probabilities := map[int]float64{
+        3:  1.0 / 216, 4:  3.0 / 216, 5:  6.0 / 216, 6:  10.0 / 216,
+        7:  15.0 / 216, 8:  21.0 / 216, 9:  25.0 / 216, 10: 27.0 / 216,
+        11: 27.0 / 216, 12: 25.0 / 216, 13: 21.0 / 216, 14: 15.0 / 216,
+        15: 10.0 / 216, 16: 6.0 / 216, 17: 3.0 / 216, 18: 1.0 / 216,
+    }
+
+    sumWeightedOutcomes := 0.0 // Sum of the weighted likeliness of outcomes where a bust does not occur
+
+    // Only consider outcomes greater than prevRoll
+    for outcome := t2a.LastScore + 1; outcome <= 18; outcome++ {
+        prob := probabilities[outcome]
+        sumWeightedOutcomes += float64(outcome) * prob
+        totalProbability += prob
+    }
+
+    expectedValue := 0.0
+
+    // Normalize to determine expected value
+    if totalProbability > 0 {
+        expectedValue = sumWeightedOutcomes / totalProbability;
+    }
+
+    return expectedValue
+}
+
+// Function to determine risk tolerance which determines how risk averse or risky agent should be 
+// Risk tolerance is based on current common pool size and trust scores
+func (t2a* Team2Agent) DetermineRiskTolerance() float64 {
+    // Current, actual common pool size
+    actualCommonPoolSize := float64(t2a.Server.GetTeam(t2a.GetID()).GetCommonPool())
+
+    // Current team size
+    agentCount := 0
+    for range t2a.Server.GetAgentsInTeam(t2a.TeamID) {
+        agentCount += 1
+    }
+
+    // Ensure that each agent has at least 20 points (change accordingly) to withdraw from common pool
+    minAgentWithdrawl := 20.0
+
+    // Determine ideal common pool size based on minAgentWithdrawl
+    idealCommonPoolSize := minAgentWithdrawl * float64(agentCount)
+
+	// If very high common pool size then agent can be risk averse so riskTolerance is lower.
+    // If very low common pool size then agent must be more risky so riskTolerance is higher.
+    riskToleranceFromPoolSize := 1.0 - min((actualCommonPoolSize / idealCommonPoolSize), 1.0) 
+
+    // Determine risk tolerance from trust scores of other agents in the team
+    totalTrust := 0
+    for _, score := range t2a.trustScore {
+        totalTrust += score
+    }
+
+    // Scale the average trust to between 0 - 1
+    averageScaledTrust := (float64(totalTrust) / float64(agentCount)) / 100.0
+
+	// If very high trust score for other agents then less likely agents will cheat so agent does NOT need to over-compensate to the common pool so can be risk averse so riskTolerance is lower.
+    // If very low trust score for other agents then highly likely agents will cheat so agent needs to over-compensate the common pool so must be risky so riskTolerance is higher.
+    riskToleranceFromTrust := 1.0 - averageScaledTrust
+
+    // Overall risk tolerance is equal parts: riskToleranceFromPoolSize, riskToleranceFromTrust
+    return (riskToleranceFromPoolSize + riskToleranceFromTrust) / 2.0
+}
+
+// Objective of StickOrAgain is to maximize score after n turns for each agent
+func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
+
+    // Calculate the expected value of the current roll
+    expectedValue := t2a.CalculateExpectedValue(prevRoll)
+
+	// Determine agent risk tolerance
+    riskTolerance := t2a.DetermineRiskTolerance()
+
+	// Scale the expected value with risk tolerance
+	// If high risk tolerance then more likely to re-roll
+	// If low risk tolerance less likely to re-roll
+    if (expectedValue * riskTolerance) > float64(prevRoll) {
+        return false // Re-roll
+    }
+	return true // Stick
+}
+
+// Function guesses threshold based on highest dead agent score and current agent score
+// Current agent score must be before contribution or withdrawal to common pool
+// This ensures current agent (which is alive) has score > threshold in current iteration
+// Hence call ThresholdGuessStrategy after application of threshold (before contribution/withdrawal to comomon pool)
+
+// Usage: Can use ThresholdGuessStrategy when contributing or withdrawing from common pool to inform how much to contribute/withdraw
+// If current agent's score is significantly above threshold guess then can contribute more
+// If current agent's score is significantly below threshold guess then can withdraw more
+func (t2a *Team2Agent) ThresholdGuessStrategy() int {
+    // If no dead teammates, no guess can be made
+    // Initially assume threshold is very high this ensures all agents try to contribute little
+	// Ensures agents can survive until threshold is applied and dead agents can be used to guess threshold from
+    initialThresholdGuess := 10000
+
+	deadTeammates := t2a.GetDeadTeammates()
+
+    if len(deadTeammates) == 0 {
+        return initialThresholdGuess; // No valid threshold guess for now
+    }
+
+    // Find the highest score among dead teammates
+    maxDeadScore := 0
+    for _, deadID := range deadTeammates {
+        if deadID.Score > maxDeadScore {
+            maxDeadScore = deadID.Score
+        }
+    }
+
+    // Use current agent true score
+    agentAliveScore := t2a.GetTrueScore()
+
+    // Calculate the new threshold guess by taking the midpoint of maxDeadScore and agentAliveScore
+    // Add a margin of error to ensure threshold guess is above forecasted threshold
+    marginOfError := 10
+
+    thresholdGuess := ((maxDeadScore + agentAliveScore) / 2) + marginOfError
+    return thresholdGuess
 }
 
 // ---------- CONTRIBUTION, WITHDRAWAL AND ASSOCIATED AUDITING ----------
