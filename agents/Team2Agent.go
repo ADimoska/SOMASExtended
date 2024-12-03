@@ -14,12 +14,12 @@ import (
 // this is the third tier of composition - embed the extended agent and add 'user specific' fields
 type Team2Agent struct {
 	*ExtendedAgent
-	rank            bool
-	trustScore      map[uuid.UUID]int
-	strikeCount     map[uuid.UUID]int
-	statedWithdrawal map[uuid.UUID]int
+	rank               bool
+	trustScore         map[uuid.UUID]int
+	strikeCount        map[uuid.UUID]int
+	statedWithdrawal   map[uuid.UUID]int
 	statedContribution map[uuid.UUID]int
-	thresholdBounds []int
+	thresholdBounds    []int
 	commonPoolEstimate int
 }
 
@@ -46,11 +46,11 @@ func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, str
 	auditWithdrawalResult := t2a.Server.GetTeam(agentID).TeamAoA.GetWithdrawalAuditResult(agentID)
 	switch eventType {
 	case "strike":
-		if auditContributionResult || auditWithdrawalResult{
-			t2a.ApplyStrike(agentID) 
+		if auditContributionResult || auditWithdrawalResult {
+			t2a.ApplyStrike(agentID)
 		}
 	case "notAudited":
-		if !auditContributionResult || !auditWithdrawalResult{
+		if !auditContributionResult || !auditWithdrawalResult {
 			// If the target agent was not audited
 			t2a.ApplyNotAudited(agentID)
 		}
@@ -59,7 +59,7 @@ func (t2a *Team2Agent) UpdateTrustScore(agentID uuid.UUID, eventType string, str
 	}
 }
 
-// update when not cooperating based on strikes 
+// update when not cooperating based on strikes
 func (t2a *Team2Agent) ApplyStrike(agentID uuid.UUID) {
 	if t2a.trustScore == nil {
 		t2a.SetTrustScore(agentID)
@@ -91,7 +91,6 @@ func (t2a *Team2Agent) ApplyNotAudited(agentID uuid.UUID) {
 	// Update trust score based on not being audited
 	t2a.trustScore[agentID] += 2
 }
-
 
 // ----------- RANKING SYSTEM ----------
 
@@ -136,7 +135,6 @@ func (t2a *Team2Agent) ToggleLeader() {
 func (t2a *Team2Agent) GetRole() bool {
 	return t2a.rank // If true, they are the leader
 }
-
 
 // Part 2: Core Game Flow Functions
 
@@ -190,7 +188,7 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 	if t2a.TeamID != (uuid.UUID{}) {
 		if t2a.VerboseLevel > 6 {
 			fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
-			t2a.GetID(), msg.GetSender(), t2a.TeamID)
+				t2a.GetID(), msg.GetSender(), t2a.TeamID)
 		}
 		return
 	}
@@ -213,9 +211,9 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 		} else {
 			t2a.createNewTeam(sender)
 		}
-	}else {
+	} else {
 		fmt.Printf("Agent %s rejected invitation from %s - already in team %v\n",
-		t2a.GetID(), msg.GetSender(), t2a.TeamID)
+			t2a.GetID(), msg.GetSender(), t2a.TeamID)
 	}
 }
 
@@ -224,9 +222,9 @@ func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 func (t2a *Team2Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 	// Return true to accept them, false to not accept them.
 
-	acceptOrphanThreshold := 20 	// low as we want to accept orphans.
+	acceptOrphanThreshold := 20 // low as we want to accept orphans.
 
-	if (t2a.trustScore[candidateID] > acceptOrphanThreshold ){
+	if t2a.trustScore[candidateID] > acceptOrphanThreshold {
 		return true
 	} else {
 		return false
@@ -434,10 +432,7 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 	}
 }
 
-
-
 // ---------- MISC TO INCORPORATE ----------
-
 
 // func (t2a *Team2Agent) DecideContribution() int {
 // 	// Get AoA expected contribution
@@ -573,4 +568,3 @@ func (t2a *Team2Agent) GetWithdrawalAuditVote() common.Vote {
 // 	randVal := rand.Float64()
 // 	return randVal < probabilities[category]
 // }
-

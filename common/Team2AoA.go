@@ -181,7 +181,7 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOf
 
 	return &Team2AoA{
 		auditRecord: NewAuditRecord(auditDuration),
-		OffenceMap: offenceMap,
-		Leader:     leader,
+		OffenceMap:  offenceMap,
+		Leader:      leader,
 	}
 }
