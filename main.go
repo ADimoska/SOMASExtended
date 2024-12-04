@@ -68,10 +68,7 @@ func main() {
 		agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		agentPopulation = append(agentPopulation, agents.Team2_CreateAgent(serv, agentConfig))
 		// Add other teams' agents here
-		serv.AgentRecords[agentPopulation[len(agentPopulation)-1].ID()] = &AgentRecord{
-			AgentID:   agentPopulation[len(agentPopulation)-1].ID(),
-			AgentType: "Team4Agent", // Example: Replace with specific type or team
-		}
+		
 	}
 
 	for _, agent := range agentPopulation {

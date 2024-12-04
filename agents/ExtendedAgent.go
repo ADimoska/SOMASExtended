@@ -567,6 +567,7 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 	record := gameRecorder.NewAgentRecord(
 		instance.GetID(),
 		instance.GetTrueSomasTeamID(),
+		instance.GetAgentType(),
 		instance.GetTrueScore(),
 		instance.GetStatedContribution(instance),
 		instance.GetActualContribution(instance),

@@ -15,9 +15,9 @@ type IExtendedAgent interface {
 	// Getters
 	GetTeamID() uuid.UUID
 	GetLastTeamID() uuid.UUID
+	GetAgentType() string
 	GetTrueScore() int
 	GetTeamRanking() []uuid.UUID
-
 	// Functions that involve strategic decisions
 	StartTeamForming(instance IExtendedAgent, agentInfoList []ExposedAgentInfo)
 	StartRollingDice(instance IExtendedAgent)
