@@ -37,8 +37,6 @@ type IExtendedAgent interface {
 	// NOTE: Any function calling these should have a parameter of type IExtendedAgent (instance IExtendedAgent)
 	DecideTeamForming(agentInfoList []ExposedAgentInfo) []uuid.UUID
 	StickOrAgain(accumulatedScore int, prevRoll int) bool
-	DecideContribution() int
-	DecideWithdrawal() int
 	VoteOnAgentEntry(candidateID uuid.UUID) bool
 	StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int
 	GetStatedContribution(instance IExtendedAgent) int
