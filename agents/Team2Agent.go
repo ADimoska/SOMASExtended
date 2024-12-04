@@ -28,8 +28,17 @@ type Team2Agent struct {
 
 // constructor for team2agent - initialised as all followers
 func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
+	extendedAgent := GetBaseAgents(funcs, agentConfig)
+	extendedAgent.TrueSomasTeamID = 2 // Our true team ID
+
 	return &Team2Agent{
-		ExtendedAgent: GetBaseAgents(funcs, agentConfig), AgentType: "Team2Agent",rank: false, trustScore: make(map[uuid.UUID]int), strikeCount: make(map[uuid.UUID]int), statedContribution: make(map[uuid.UUID]int), statedWithdrawal: make(map[uuid.UUID]int), thresholdBounds: make([]int, 2), commonPoolEstimate: 0,
+		ExtendedAgent: extendedAgent,
+		rank: false, trustScore: make(map[uuid.UUID]int),
+		strikeCount: make(map[uuid.UUID]int),
+		statedContribution: make(map[uuid.UUID]int),
+		statedWithdrawal: make(map[uuid.UUID]int),
+		thresholdBounds: make([]int, 2),
+		commonPoolEstimate: 0,
 	}
 }
 // Part 1: Specialised Agent Strategy Functions
