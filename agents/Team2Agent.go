@@ -58,10 +58,19 @@ func (t2a *Team2Agent) getAverageTeamTrustScore(teamID uuid.UUID) int {
 	agentsInTeam := t2a.Server.GetAgentsInTeam(teamID)
 
 	for _, agentID := range agentsInTeam {
+
+		if _, exists := t2a.trustScore[agentID]; !exists {
+			t2a.SetTrustScore(agentID)
+		}
+
 		totalTrustScore += t2a.trustScore[agentID]
 	}
 
 	numAgentsinTeam := len(agentsInTeam)
+	if numAgentsinTeam == 0 {
+		log.Printf("Error: No agents in team %v\n", teamID)
+		return 0
+	}
 	averageTrustScore := totalTrustScore / numAgentsinTeam
 
 	return averageTrustScore
@@ -782,11 +791,40 @@ func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
 }
 
 func (t2a *Team2Agent) GetTeamRanking() []uuid.UUID {
-	// TODO: Complete this implementation
-
 	log.Println("Team 2 Team ranking called!")
 
-	return t2a.ExtendedAgent.GetTeamRanking()
+	teamIDs := t2a.Server.GetTeamIDs()
+	ranking := make(map[uuid.UUID]int)
+
+	// Calculate composite scores for each team
+	for _, teamID := range teamIDs {
+		commonPool := t2a.Server.GetTeamCommonPool(teamID)
+		trustScore := t2a.getAverageTeamTrustScore(teamID)
+		ranking[teamID] = int((float64(commonPool)*2.0 + float64(trustScore)) / 3.0)
+	}
+
+	// Convert the map to a slice of key-value pairs
+	type teamScore struct {
+		ID    uuid.UUID
+		Score int
+	}
+	var teamScores []teamScore
+	for id, score := range ranking {
+		teamScores = append(teamScores, teamScore{ID: id, Score: score})
+	}
+
+	// Sort the slice by composite score in descending order
+	sort.Slice(teamScores, func(i, j int) bool {
+		return teamScores[i].Score > teamScores[j].Score
+	})
+
+	// Extract sorted team IDs
+	sortedTeamIDs := make([]uuid.UUID, len(teamScores))
+	for i, ts := range teamScores {
+		sortedTeamIDs[i] = ts.ID
+	}
+
+	return sortedTeamIDs
 }
 
 // ---------- MISC TO INCORPORATE ----------
