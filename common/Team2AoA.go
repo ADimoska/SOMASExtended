@@ -18,7 +18,6 @@ import (
  * - Write some tests for the audit functionality here
  * - Implement the functionality on the server to work with this (so with offences)
  * - Implement the kick functionality on the server
- * - Write about the above in the report (so how we adapted our AoA to adapt to this).
  * - Make sure that if the leader dies, or is audited, they have to be re-elected
  */
 
@@ -94,10 +93,9 @@ func (t *Team2AoA) mapExpectedWithdrawal() map[uuid.UUID]int {
 
 	// Calculate the multipliers
 	leaderMultiplier := 2.0
-	citizenMultiplier := 1.0
-	totalMultiplier := leaderMultiplier + (citizenMultiplier * float64(count-1))
+	totalMultiplier := leaderMultiplier + (float64(count-1))
 	multForLeader := (availablePool * leaderMultiplier) / totalMultiplier
-	multForCitizen := (availablePool * citizenMultiplier) / totalMultiplier
+	multForCitizen := (availablePool) / totalMultiplier
 
 	expectedWithdrawals := make(map[uuid.UUID]int)
 	for _, agentId := range team.Agents {
@@ -131,7 +129,6 @@ func (t *Team2AoA) GetAuditCost(commonPool int) int {
 	return t.auditRecord.GetAuditCost()
 }
 
-// /////////////////////////////////////////////imp,e ent helped map fn here ////////////////////
 // TODO: Implement a borda vote here instead?
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	if len(votes) == 0 {

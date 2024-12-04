@@ -40,13 +40,15 @@ func (t2a *Team2Agent) SetTrustScore(agentID uuid.UUID) {
 	t2a.trustScore[agentID] = 70
 }
 
-func (t2a *Team2Agent) getAverageTeamTrustScore() int {
+func (t2a *Team2Agent) getAverageTeamTrustScore(teamID uuid.UUID) int {
 	totalTrustScore := 0
-	for _, agentID := range t2a.Server.GetAgentsInTeam(t2a.TeamID) {
+	agentsInTeam := t2a.Server.GetAgentsInTeam(teamID)
+
+	for _, agentID := range agentsInTeam {
 		totalTrustScore += t2a.trustScore[agentID]
 	}
 
-	numAgentsinTeam := totalTrustScore / len(t2a.Server.GetAgentsInTeam(t2a.TeamID))
+	numAgentsinTeam := len(agentsInTeam)
 	averageTrustScore := totalTrustScore / numAgentsinTeam
 
 	return averageTrustScore
@@ -499,7 +501,7 @@ func (t2a *Team2Agent) DecideContribution() int {
 		}
 
 		// otherwise, look at the average team trust score and base contribution decision on this.
-		if t2a.getAverageTeamTrustScore() > 60 {
+		if t2a.getAverageTeamTrustScore(t2a.TeamID) > 60 {
 			return aoaExpectedContribution
 		} else {
 			return int(0.8 * float64(aoaExpectedContribution)) // contribute less if we don't trust our team very much.
@@ -632,7 +634,7 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 		}
 
 		// otherwise, look at the average team trust score and base withdrawal decision on this.
-		if t2a.getAverageTeamTrustScore() > 60 {
+		if t2a.getAverageTeamTrustScore(t2a.TeamID) > 60 {
 			return aoaExpectedWithdrawal
 		} else {
 			return int(1.2 * float64(aoaExpectedWithdrawal)) // withdraw more if our team is untrustworthy (cover ourselves)
@@ -764,6 +766,12 @@ func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
 		}
 		t2a.SendMessage(agentOpinionMessage, entries[i].Key)
 	}
+}
+
+func (t2a *Team2Agent) GetTeamRanking() []uuid.UUID {
+	// TODO: Complete this implementation
+
+	return t2a.ExtendedAgent.GetTeamRanking()
 }
 
 // ---------- MISC TO INCORPORATE ----------
