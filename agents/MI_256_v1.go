@@ -24,6 +24,7 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	mi_256.TrueSomasTeamID = 4 // IMPORTANT: add your team number here!
 	return mi_256
 }
+
 // ----------------------- Strategies -----------------------
 // Team-forming Strategy
 func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {

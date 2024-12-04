@@ -93,7 +93,7 @@ func (t *Team2AoA) mapExpectedWithdrawal() map[uuid.UUID]int {
 
 	// Calculate the multipliers
 	leaderMultiplier := 2.0
-	totalMultiplier := leaderMultiplier + (float64(count-1))
+	totalMultiplier := leaderMultiplier + (float64(count - 1))
 	multForLeader := (availablePool * leaderMultiplier) / totalMultiplier
 	multForCitizen := (availablePool) / totalMultiplier
 

@@ -41,7 +41,6 @@ type IExtendedAgent interface {
 	GetActualWithdrawal(instance IExtendedAgent) int
 	GetStatedWithdrawal(instance IExtendedAgent) int
 
-
 	// Messaging functions
 	HandleTeamFormationMessage(msg *TeamFormationMessage)
 	HandleScoreReportMessage(msg *ScoreReportMessage)

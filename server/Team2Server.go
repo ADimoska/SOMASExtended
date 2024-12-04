@@ -3,7 +3,6 @@ package environmentServer
 import (
 	"log"
 	"math/rand"
-	"slices"
 
 	"github.com/ADimoska/SOMASExtended/agents"
 	"github.com/ADimoska/SOMASExtended/common"
@@ -45,7 +44,7 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 		}
 
 		// Pending fix on the main branch, this needs to call the function for any general agent
-		leaderVote := agent.(*agents.Team2Agent).GetLeaderVote()
+		leaderVote := agent.(*agents.Team2Agent).Team2_GetLeaderVote()
 		votedFor := leaderVote.VotedForID
 
 		votes[votedFor]++
