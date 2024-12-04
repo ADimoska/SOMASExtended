@@ -209,6 +209,60 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 	return selectedChairs
 }
 
+/**
+* Set-up logic that can be called at the start of an iteration in order for
+* the system to 'self-organise' itself and decide on institutionalised facts
+ */
+func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+	// Extract keys from map
+	agentIDs := make([]uuid.UUID, len(agentMap))
+	i := 0
+	for k := range agentMap {
+		agentIDs[i] = k
+		i++
+	}
+
+	var chair1res [5]int // result of first randomly-elected chair
+	var chair2res [5]int // result of second randomly-elected chair
+	socialDecision := false
+
+	// Attempt 10 times to get an agreed-upon vote
+	for range 10 {
+		// Select two chairs
+		chairs := t.SelectNChairs(agentIDs, 2)
+		chair1 := chairs[0]
+		chair2 := chairs[1]
+
+		// Ask both chairs to conduct a vote on what the rankings should be.
+		// This will be a collective decision conducted in two steps, see
+		// Team1AoA_ExtendedAgent.go for more details.
+		chair1res = agentMap[chair1].Team1_AgreeRankBoundaries()
+		chair2res = agentMap[chair2].Team1_AgreeRankBoundaries()
+
+		// Punish BOTH chairs if the results do not match
+		if chair1res != chair2res {
+			// Decrement ranking down to a minimum of 1
+			if t.ranking[chair1] > 1 {
+				t.ranking[chair1]--
+			}
+			if t.ranking[chair2] > 1 {
+				t.ranking[chair2]--
+			}
+		} else {
+			socialDecision = true
+			break
+		}
+	}
+
+	// We only update the rank boundary if there was a successful social
+	// decision made, in that the results of the chairs matched.
+	if socialDecision {
+		t.rankBoundary = chair1res
+	} else {
+		log.Printf("Rank boundaries unchanged - 10 instances of foul play occurred.")
+	}
+}
+
 func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
 	// Choose 2 chairs based on rank
 	// call function for agents to vote on ranks
@@ -220,14 +274,6 @@ func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUI
 
 	for i := 0; i < 10; i++ {
 		chairsAgree := false
-		// listOfAgentRankVotes := make([]map[uuid.UUID]int, 0)
-
-		// call function for agents to vote on ranks
-		// for _, agentId := range team.Agents {
-		// 	agent := agentMap[agentId]
-		// 	ranks := agent.Team1_GetTeamRanks()
-		// 	listOfAgentRankVotes = append(listOfAgentRankVotes, ranks)
-		// }
 
 		chairs := t.SelectNChairs(team.Agents, 2)
 		for _, chairId := range chairs {
@@ -273,7 +319,8 @@ func mapsEqual(a, b map[uuid.UUID]int) bool {
 }
 
 func (t *Team1AoA) GetAgentNewRank(agentId uuid.UUID) int {
-	agentTotalContributions := t.agentLQueue[agentId].Sum() // total stated contributions of this agent (over the last n turns)
+	// total stated contributions of this agent (over the last n turns)
+	agentTotalContributions := t.agentLQueue[agentId].Sum()
 
 	agentCurrentRank := t.ranking[agentId]
 	// iterate from the highest rank to the lowest rank

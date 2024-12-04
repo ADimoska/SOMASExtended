@@ -41,6 +41,9 @@ type ExtendedAgent struct {
 
 	// for recording purpose
 	TrueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
+
+	// Team1 AoA Agent Memory
+	team1RankBoundaryProposals [][5]int
 }
 
 type AgentConfig struct {
@@ -537,28 +540,6 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 		instance.GetTeamID(),
 	)
 	return record
-}
-
-
-// ----------------------- Team 1 AoA Functions -----------------------
-
-func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
-	// Chair iterates through existing rank map in team
-	// and gets the new ranks of the agents in the team
-	// according to AoA function
-	newRanking := make(map[uuid.UUID]int)
-	for agentUUID, _ := range currentRanking {
-		newRank := mi.Server.GetTeam(agentUUID).TeamAoA.(*common.Team1AoA).GetAgentNewRank(agentUUID)
-		newRanking[agentUUID] = newRank
-	}
-
-	// Returns a map of agent UUIDs to new Rank (int)
-	return newRanking
-}
-
-func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
-	// Default behaviour should just vote for the guideline rank boundaries
-	return initialBoundaries
 }
 
 // ----------------------- Team 2 AoA Functions -----------------------
