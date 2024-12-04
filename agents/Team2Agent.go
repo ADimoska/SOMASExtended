@@ -474,7 +474,7 @@ func (t2a *Team2Agent) ThresholdGuessStrategy() int {
 
 // ---------- CONTRIBUTION, WITHDRAWAL AND ASSOCIATED AUDITING ----------
 
-func (t2a *Team2Agent) DecideContribution() int {
+func (t2a *Team2Agent) GetActualContribution(instance common.IExtendedAgent) int {
 	// dependent on:
 	// 1. team AoA
 	// 2. average team trust score
@@ -519,9 +519,13 @@ func (t2a *Team2Agent) DecideContribution() int {
 }
 
 func (t2a *Team2Agent) GetStatedContribution(instance common.IExtendedAgent) int {
-	// Currently, stated contribution matches actual contribution
-	// can edit this in the future to lie
-	statedContribution := instance.DecideContribution()
+	// first check if the agent has a team
+	if !t2a.HasTeam() {
+		return 0
+	}
+
+	// Currently stated = actual
+	statedContribution := instance.GetActualContribution(instance)
 	return statedContribution
 }
 
@@ -612,7 +616,7 @@ func (t2a *Team2Agent) GetContributionAuditVote() common.Vote {
 
 // ----------
 
-func (t2a *Team2Agent) DecideWithdrawal() int {
+func (t2a *Team2Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 	// dependent on:
 	// 1. team AoA
 	// 2. average team trust score
@@ -652,10 +656,12 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 }
 
 func (t2a *Team2Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
-	// Currently, stated withdrawal matches actual withdrawal
-	// can edit this in the future to lie
-	statedWithdrawal := instance.DecideWithdrawal()
-	return statedWithdrawal
+	// first check if the agent has a team
+	if !t2a.HasTeam() {
+		return 0
+	}
+	// Currently, assume stated withdrawal matches actual withdrawal
+	return instance.GetActualContribution(instance)
 }
 
 func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {

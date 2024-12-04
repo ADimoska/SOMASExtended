@@ -21,9 +21,6 @@ type IExtendedAgent interface {
 	// Functions that involve strategic decisions
 	StartTeamForming(instance IExtendedAgent, agentInfoList []ExposedAgentInfo)
 	StartRollingDice(instance IExtendedAgent)
-	GetActualContribution(instance IExtendedAgent) int
-	GetActualWithdrawal(instance IExtendedAgent) int
-
 	// Setters
 	SetTeamID(teamID uuid.UUID)
 	SetTrueScore(score int)
@@ -41,6 +38,9 @@ type IExtendedAgent interface {
 	StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int
 	GetStatedContribution(instance IExtendedAgent) int
 	GetStatedWithdrawal(instance IExtendedAgent) int
+	GetActualContribution(instance IExtendedAgent) int
+	GetActualWithdrawal(instance IExtendedAgent) int
+
 
 	// Messaging functions
 	HandleTeamFormationMessage(msg *TeamFormationMessage)
