@@ -29,15 +29,15 @@ type Team2Agent struct {
 // constructor for team2agent - initialised as all followers
 func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
 	extendedAgent := GetBaseAgents(funcs, agentConfig)
-	extendedAgent.TrueSomasTeamID = 2 // Our true team ID
-	extendedAgent.AoARanking = []int{2}  // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
+	extendedAgent.TrueSomasTeamID = 2   // Our true team ID
+	extendedAgent.AoARanking = []int{2} // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
 
 	return &Team2Agent{
-		ExtendedAgent: extendedAgent,
-		rank:          false, 
-		trustScore: make(map[uuid.UUID]int),
+		ExtendedAgent:      extendedAgent,
+		rank:               false,
+		trustScore:         make(map[uuid.UUID]int),
 		strikeCount:        make(map[uuid.UUID]int),
-		AgentType:     "Team2Agent",
+		AgentType:          "Team2Agent",
 		statedContribution: make(map[uuid.UUID]int),
 		statedWithdrawal:   make(map[uuid.UUID]int),
 		thresholdBounds:    make([]int, 2),
