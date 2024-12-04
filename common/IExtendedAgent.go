@@ -36,10 +36,10 @@ type IExtendedAgent interface {
 	StickOrAgain(accumulatedScore int, prevRoll int) bool
 	VoteOnAgentEntry(candidateID uuid.UUID) bool
 	StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int
-	GetStatedContribution(instance IExtendedAgent) int
-	GetStatedWithdrawal(instance IExtendedAgent) int
 	GetActualContribution(instance IExtendedAgent) int
+	GetStatedContribution(instance IExtendedAgent) int
 	GetActualWithdrawal(instance IExtendedAgent) int
+	GetStatedWithdrawal(instance IExtendedAgent) int
 
 
 	// Messaging functions
