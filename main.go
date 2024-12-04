@@ -12,7 +12,7 @@ import (
 
 	agents "github.com/ADimoska/SOMASExtended/agents"
 	common "github.com/ADimoska/SOMASExtended/common"
-	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
+	// gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	envServer "github.com/ADimoska/SOMASExtended/server"
 )
 
@@ -85,5 +85,5 @@ func main() {
 
 	// record data
 	serv.DataRecorder.GamePlaybackSummary()
-	gameRecorder.ExportToCSV(serv.DataRecorder, "visualization_output/csv_data")
+	// gameRecorder.ExportToCSV(serv.DataRecorder, "visualization_output/csv_data")
 }
