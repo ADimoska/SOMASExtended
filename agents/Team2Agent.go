@@ -784,6 +784,8 @@ func (t2a *Team2Agent) sendOpinionMessages(agentID uuid.UUID, numAgents int) {
 func (t2a *Team2Agent) GetTeamRanking() []uuid.UUID {
 	// TODO: Complete this implementation
 
+	log.Println("Team 2 Team ranking called!")
+
 	return t2a.ExtendedAgent.GetTeamRanking()
 }
 
