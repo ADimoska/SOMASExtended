@@ -33,11 +33,10 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 
 	return &Team2Agent{
 		ExtendedAgent: extendedAgent,
-		rank:          false, trustScore: make(map[uuid.UUID]int),
+		rank:          false,
+		trustScore: make(map[uuid.UUID]int),
 		strikeCount:        make(map[uuid.UUID]int),
 		AgentType:     "Team2Agent",
-		rank: false, trustScore: make(map[uuid.UUID]int),
-		strikeCount: make(map[uuid.UUID]int),
 		statedContribution: make(map[uuid.UUID]int),
 		statedWithdrawal:   make(map[uuid.UUID]int),
 		thresholdBounds:    make([]int, 2),
