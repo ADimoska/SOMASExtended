@@ -304,8 +304,15 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 	}
 
 	// Add unique agent IDs to the legend
+	// agentIDsInLegend := make(map[string]bool)
+	// Add unique AgentTypes to the legend
 	agentIDsInLegend := make(map[string]bool)
-
+	for _, agent := range initialAgentRecords {
+		agentType := agent.AgentType // Use AgentType instead of UUID
+		if _, exists := agentIDsInLegend[agentType]; !exists {
+			agentIDsInLegend[agentType] = true
+		}
+	}
 	// For each agent, create contribution lines
 	for _, initialAgent := range initialAgentRecords {
 		agentID := initialAgent.AgentID.String()
