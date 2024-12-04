@@ -19,7 +19,7 @@ func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	mi_256 := &MI_256_v1{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
 	}
-	mi_256.trueSomasTeamID = 4 // IMPORTANT: add your team number here!
+	mi_256.TrueSomasTeamID = 4 // IMPORTANT: add your team number here!
 	return mi_256
 }
 

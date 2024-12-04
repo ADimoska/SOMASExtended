@@ -468,6 +468,11 @@ func (t2a *Team2Agent) DecideContribution() int {
 	// 1. team AoA
 	// 2. average team trust score
 
+	if t2a.TeamID == (uuid.UUID{}) {
+		log.Printf("Agent %s does not have a team, skipping contribution...\n", t2a.GetID())
+		return 0
+	}
+
 	switch aoa := t2a.Server.GetTeam(t2a.GetID()).TeamAoA.(type) {
 	case *common.Team2AoA:
 		// under our own AoA, for now we just return what is expected of us.
@@ -600,6 +605,11 @@ func (t2a *Team2Agent) DecideWithdrawal() int {
 	// dependent on:
 	// 1. team AoA
 	// 2. average team trust score
+
+	if t2a.TeamID == (uuid.UUID{}) {
+		log.Printf("Agent %s does not have a team, skipping withdrawal...\n", t2a.GetID())
+		return 0
+	}
 
 	commonPool := t2a.Server.GetTeam(t2a.GetID()).GetCommonPool()
 

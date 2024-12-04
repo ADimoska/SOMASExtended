@@ -41,8 +41,6 @@ type IExtendedAgent interface {
 	DecideWithdrawal() int
 	VoteOnAgentEntry(candidateID uuid.UUID) bool
 	StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, prevRoll int) int
-	GetContributionAuditVote() Vote
-	GetWithdrawalAuditVote() Vote
 	GetStatedContribution(instance IExtendedAgent) int
 	GetStatedWithdrawal(instance IExtendedAgent) int
 
@@ -67,7 +65,14 @@ type IExtendedAgent interface {
 	LogSelfInfo()
 	GetAoARanking() []int
 	SetAoARanking(Preferences []int)
+	GetContributionAuditVote() Vote
+	GetWithdrawalAuditVote() Vote
+	GetTrueSomasTeamID() int
 
 	// Data Recording
-	RecordAgentStatus() gameRecorder.AgentRecord
+	RecordAgentStatus(instance IExtendedAgent) gameRecorder.AgentRecord
+
+	// Team 1 specific functions
+	Team1_ChairUpdateRanks(rankMap map[uuid.UUID]int) map[uuid.UUID]int
+	Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int
 }

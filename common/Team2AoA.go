@@ -187,8 +187,7 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return withdrawalOrder
 }
 
-// To be ran every round, so that the server has enough information to enforce the AoA
-func (t *Team2AoA) RunAoAStuff() {}
+func (t *Team2AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
 func (t *Team2AoA) SetLeader(leader uuid.UUID) {
 	t.Leader = leader

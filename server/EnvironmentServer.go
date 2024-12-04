@@ -528,13 +528,13 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
-		newAgentRecord := agent.RecordAgentStatus()
+		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = true
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
 	for _, agent := range cs.deadAgents {
-		newAgentRecord := agent.RecordAgentStatus()
+		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = false
 		agentRecords = append(agentRecords, newAgentRecord)
 	}

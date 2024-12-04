@@ -40,7 +40,7 @@ type ExtendedAgent struct {
 	LastTeamID uuid.UUID // Tracks the last team the agent was part of
 
 	// for recording purpose
-	trueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
+	TrueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
 }
 
 type AgentConfig struct {
@@ -75,6 +75,11 @@ func (mi *ExtendedAgent) GetLastTeamID() uuid.UUID {
 // Can only be called by the server (otherwise other agents will see their true score)
 func (mi *ExtendedAgent) GetTrueScore() int {
 	return mi.Score
+}
+
+// Get the agent's true team ID
+func (mi *ExtendedAgent) GetTrueSomasTeamID() int {
+	return mi.TrueSomasTeamID
 }
 
 // Setter for the server to call, in order to set the true score for this agent
@@ -202,6 +207,7 @@ func (mi *ExtendedAgent) GetStatedContribution(instance common.IExtendedAgent) i
 	if !mi.HasTeam() {
 		return 0
 	}
+
 	// Hardcoded stated
 	statedContribution := instance.GetActualContribution(instance)
 	return statedContribution
@@ -557,16 +563,37 @@ func (mi *ExtendedAgent) SetTeamRanking(teamRanking []uuid.UUID) {
 }
 
 // ----------------------- Data Recording Functions -----------------------
-func (mi *ExtendedAgent) RecordAgentStatus() gameRecorder.AgentRecord {
+func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
 	record := gameRecorder.NewAgentRecord(
-		mi.GetID(),
-		mi.trueSomasTeamID, // mi.GetTrueSomasTeamID()
-		mi.GetTrueScore(),
-		mi.GetActualContribution(mi),
-		mi.GetStatedContribution(mi),
-		mi.GetActualWithdrawal(mi),
-		mi.GetStatedWithdrawal(mi),
-		mi.GetTeamID(),
+		instance.GetID(),
+		instance.GetTrueSomasTeamID(),
+		instance.GetTrueScore(),
+		instance.GetStatedContribution(instance),
+		instance.GetActualContribution(instance),
+		instance.GetActualWithdrawal(instance),
+		instance.GetStatedWithdrawal(instance),
+		instance.GetTeamID(),
 	)
 	return record
+}
+
+// ----------------------- Team 1 AoA Functions -----------------------
+
+func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
+	// Chair iterates through existing rank map in team
+	// and gets the new ranks of the agents in the team
+	// according to AoA function
+	newRanking := make(map[uuid.UUID]int)
+	for agentUUID, _ := range currentRanking {
+		newRank := mi.Server.GetTeam(agentUUID).TeamAoA.(*common.Team1AoA).GetAgentNewRank(agentUUID)
+		newRanking[agentUUID] = newRank
+	}
+
+	// Returns a map of agent UUIDs to new Rank (int)
+	return newRanking
+}
+
+func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
+	// Default behaviour should just vote for the guideline rank boundaries
+	return initialBoundaries
 }
