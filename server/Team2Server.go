@@ -4,7 +4,6 @@ import (
 	"log"
 	"math/rand"
 
-	"github.com/ADimoska/SOMASExtended/agents"
 	"github.com/ADimoska/SOMASExtended/common"
 	"github.com/google/uuid"
 )
@@ -44,8 +43,13 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 		}
 
 		// Pending fix on the main branch, this needs to call the function for any general agent
-		leaderVote := agent.(*agents.Team2Agent).Team2_GetLeaderVote()
+		leaderVote := agent.Team2_GetLeaderVote()
 		votedFor := leaderVote.VotedForID
+
+		if votedFor == leaderVote.VoterID {
+			log.Printf("Agent %s voted for themselves, this is not allowed", agentId)
+			continue
+		}
 
 		votes[votedFor]++
 		voteCount := votes[votedFor]
