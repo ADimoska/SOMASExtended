@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
-	"regexp"
+	// "strings"
+
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
@@ -123,28 +123,26 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			Show: opts.Bool(true),
 		}),
 		charts.WithLegendOpts(opts.Legend{
-			Show:   opts.Bool(true), // Enable legend
-			Top:    "15%",           // Adjust position
-			Left:   "right",         // Align to the right
-			Orient: "vertical",      // Vertical orientation
+			Show: opts.Bool(showLegends),
+			Top:  "15%",
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
 			Name:    "Turn Number",
 			NameGap: 30,
 			AxisLabel: &opts.AxisLabel{
-				Show: opts.Bool(true),
+				Show: opts.Bool(showAxisLabels),
 			},
 		}),
 		charts.WithYAxisOpts(opts.YAxis{
 			Name:    "Score",
 			NameGap: 30,
 			AxisLabel: &opts.AxisLabel{
-				Show: opts.Bool(true),
+				Show: opts.Bool(showAxisLabels),
 			},
 		}),
 		charts.WithGridOpts(opts.Grid{
 			Top:          "25%",
-			Right:        "15%", // Adjusted for legend
+			Right:        "5%",
 			Left:         "10%",
 			Bottom:       "15%",
 			ContainLabel: opts.Bool(true),
@@ -183,17 +181,8 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 		teamColors[agentID] = getTeamColor(agent.TrueSomasTeamID)
 	}
 
-	// Manage legends by agent type
-	agentIDsInLegend := make(map[string]bool)
-	for _, agent := range initialAgentRecords {
-		agentType := agent.AgentType
-		if _, exists := agentIDsInLegend[agentType]; !exists {
-			agentIDsInLegend[agentType] = true
-		}
-	}
 	// Add series and death markers
 	for agentID, scores := range agentScores {
-		agentType := extractUUID(agentID) // Use agent type for legend grouping
 		var deathMarker opts.ScatterData
 		var deathTurn int = -1
 
@@ -230,7 +219,7 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 		// Add death marker
 		if deathTurn != -1 {
 			scatter := charts.NewScatter()
-			scatter.AddSeries(agentType+" Death", []opts.ScatterData{deathMarker})
+			scatter.AddSeries(agentID+" Death", []opts.ScatterData{deathMarker})
 			line.Overlap(scatter)
 		}
 	}
@@ -314,30 +303,16 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 		agentID := agent.AgentID.String()
 		// Extract the UUID part (assuming it is always the first part)
 		// Use regular expression to find a valid UUID pattern
-		if uuid := extractUUID(agentID); uuid != "" {
+		if uuid := extractAgentType(agentID); uuid != "" {
 			teamColors[uuid] = getTeamColor(agent.TrueSomasTeamID)
 		}
 	}
 
 	agentIDsInLegend := make(map[string]bool)
-	// Extract agent types from the map
-	var agentTypes []string
-	for agentType := range agentIDsInLegend {
-		agentTypes = append(agentTypes, agentType)
-	}
-
-	// Create a map to store agent types already added to the legend
-	agentTypesInLegend := make(map[string]bool)
-
-	// For each agent, create contribution lines
-	for _, initialAgent := range initialAgentRecords {
-		agentType := initialAgent.AgentType // Use AgentType for legend
-		if _, exists := agentTypesInLegend[agentType]; !exists {
-			// Add to the legend only if not already added
-			agentTypesInLegend[agentType] = true
-
-			// Add a dummy series to the legend
-			line.AddSeries(agentType, []opts.LineData{})
+	for _, agent := range initialAgentRecords {
+		agentType := agent.AgentType
+		if _, exists := agentIDsInLegend[agentType]; !exists {
+			agentIDsInLegend[agentType] = true
 		}
 	}
 
@@ -345,7 +320,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 	for _, initialAgent := range initialAgentRecords {
 		agentID := initialAgent.AgentID.String()
 		// Extract only the UUID from the agentID
-		if uuid := extractUUID(agentID); uuid != "" {
+		if uuid := extractAgentType(agentID); uuid != "" {
 			actualNet := make([]float64, len(turns))
 			statedNet := make([]float64, len(turns))
 			var deathMarker opts.ScatterData
@@ -390,7 +365,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 
 			// Add stated contribution line if not already added
 			if _, exists := agentIDsInLegend[uuid]; !exists {
-				line.AddSeries(uuid, generateLineItems(xAxis[:len(statedNet)], statedNet),
+				line.AddSeries(uuid+" (Stated)", generateLineItems(xAxis[:len(statedNet)], statedNet),
 					charts.WithLineStyleOpts(opts.LineStyle{
 						Color: teamColors[uuid],
 						Type:  "dashed",
@@ -416,18 +391,23 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 }
 
 // Helper function to extract the agent type string from a given input
-func extractAgentType(input string, initialAgentRecords []AgentRecord) map[string]string {
-	// Define a map to hold the agent types found in the input
-	agentTypeMap := make(map[string]string)
-
-	// Iterate through the initial agent records to find matches
-	for _, agent := range initialAgentRecords {
-		if strings.Contains(input, agent.AgentType) {
-			// Store the agent type in the map with the agent ID as the key
-			agentTypeMap[agent.AgentID.String()] = agent.AgentType
-		}
+func extractAgentType(input string) string {
+	// Define a list of known agent types
+	agentTypes := []string{
+		"MI_256_v1",
+		"Base Agent",
+		"Team2Agent",
+		// Add more agent types here if necessary
 	}
-	return agentTypeMap
+
+	// Iterate through the known agent types to find a match in the input
+	for _, agentType := range agentTypes {
+		// if strings.Contains(input, agentType) {
+		// 	return agentType
+		// }
+		return agentType
+	}
+	return agentTypes[2]
 }
 
 // Helper function to get team-based colors
@@ -798,11 +778,4 @@ func generateLineItems(xAxis []int, yAxis []float64) []opts.LineData {
 		items[i] = opts.LineData{Value: yAxis[i]}
 	}
 	return items
-}
-// Helper function to extract the UUID part from a given string
-func extractUUID(input string) string {
-	// Regular expression to match UUIDs in the format of xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-	re := regexp.MustCompile(`\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b`)
-	match := re.FindString(input)
-	return match
 }
