@@ -641,6 +641,23 @@ func (cs *EnvironmentServer) GetTeamFromTeamID(teamID uuid.UUID) *common.Team {
 	return cs.Teams[teamID]
 }
 
+// To be used by agents to find out what teams they want to join in the next round (if they are orphaned).
+func (cs *EnvironmentServer) GetTeamIDs() []uuid.UUID {
+	teamIDs := make([]uuid.UUID, 0, len(cs.Teams))
+	for teamID := range cs.Teams {
+		teamIDs = append(teamIDs, teamID)
+	}
+	return teamIDs
+}
+
+// Can be used to find the amount in the common pool for a team. If this is used,
+// it should be logged on the server (to prevent cheating)
+func (cs *EnvironmentServer) GetTeamCommonPool(teamID uuid.UUID) int {
+	log.Printf("Get Team Common Pool called! Team ID: %v\n", teamID)
+	team := cs.Teams[teamID]
+	return team.GetCommonPool()
+}
+
 // reset all agents (preserve memory but clears scores)
 func (cs *EnvironmentServer) ResetAgents() {
 	for _, agent := range cs.GetAgentMap() {
