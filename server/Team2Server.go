@@ -44,7 +44,7 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 		}
 
 		// Pending fix on the main branch, this needs to call the function for any general agent
-		leaderVote := agent.(*agents.Team2Agent).GetLeaderVote()
+		leaderVote := agent.(*agents.Team2Agent).Team2_GetLeaderVote()
 		votedFor := leaderVote.VotedForID
 
 		votes[votedFor]++

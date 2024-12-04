@@ -319,7 +319,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 			agentIDsInLegend[agentType] = true
 		}
 	}
-	
+
 	// For each agent, create contribution lines
 	for _, initialAgent := range initialAgentRecords {
 		agentID := initialAgent.AgentID.String()
@@ -403,6 +403,7 @@ func extractUUID(input string) string {
 	match := re.FindString(input)
 	return match
 }
+
 // Helper function to get team-based colors
 func getTeamColor(teamID int) string {
 	// Define a color palette for teams

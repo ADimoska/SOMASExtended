@@ -543,6 +543,7 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 func (a *ExtendedAgent) GetAgentType() string {
 	return a.AgentType
 }
+
 // ----------------------- Team 1 AoA Functions -----------------------
 
 func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {

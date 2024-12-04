@@ -17,7 +17,7 @@ import (
 type Team2Agent struct {
 	*ExtendedAgent
 	rank               bool
-	AgentType 		   string
+	AgentType          string
 	trustScore         map[uuid.UUID]int
 	strikeCount        map[uuid.UUID]int
 	statedContribution map[uuid.UUID]int
@@ -33,14 +33,15 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 
 	return &Team2Agent{
 		ExtendedAgent: extendedAgent,
-		rank: false, trustScore: make(map[uuid.UUID]int),
-		strikeCount: make(map[uuid.UUID]int),
+		rank:          false, trustScore: make(map[uuid.UUID]int),
+		strikeCount:        make(map[uuid.UUID]int),
 		statedContribution: make(map[uuid.UUID]int),
-		statedWithdrawal: make(map[uuid.UUID]int),
-		thresholdBounds: make([]int, 2),
+		statedWithdrawal:   make(map[uuid.UUID]int),
+		thresholdBounds:    make([]int, 2),
 		commonPoolEstimate: 0,
 	}
 }
+
 // Part 1: Specialised Agent Strategy Functions
 
 // ---------- TRUST SCORE SYSTEM ----------
@@ -144,7 +145,7 @@ func (t2a *Team2Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result b
 
 // ----------- RANKING SYSTEM ----------
 
-func (t2a *Team2Agent) GetLeaderVote() common.Vote {
+func (t2a *Team2Agent) Team2_GetLeaderVote() common.Vote {
 	// Experiment with this - it is our threshold to decide leader worthiness
 	var leaderThreshold int = 60
 
@@ -396,11 +397,11 @@ func (t2a *Team2Agent) DetermineRiskTolerance(accumulatedScore int) float64 {
 func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 
 	log.Printf("*****Total Score before deciding to re-roll or stick: %d\n", accumulatedScore)
-	
+
 	log.Printf("*****Prev Roll: %d\n", prevRoll)
 
 	// Determine cumulative probability of improvement
-	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)	
+	cumulativeProbability := t2a.probabilityOfImprovement(prevRoll)
 	log.Printf("*****Cumulative Probability of Improvement: %.2f\n", cumulativeProbability)
 
 	log.Printf("*****Rank is: %t\n", t2a.rank) // true is leader, false is citizen

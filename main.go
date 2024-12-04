@@ -68,7 +68,7 @@ func main() {
 		agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		agentPopulation = append(agentPopulation, agents.Team2_CreateAgent(serv, agentConfig))
 		// Add other teams' agents here
-		
+
 	}
 
 	for _, agent := range agentPopulation {
