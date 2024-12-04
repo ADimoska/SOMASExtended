@@ -3,7 +3,6 @@ package environmentServer
 import (
 	"log"
 	"math/rand"
-	"slices"
 
 	"github.com/ADimoska/SOMASExtended/agents"
 	"github.com/ADimoska/SOMASExtended/common"
