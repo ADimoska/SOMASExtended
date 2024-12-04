@@ -326,6 +326,21 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 		agentTypes = append(agentTypes, agentType)
 	}
 
+	// Create a map to store agent types already added to the legend
+	agentTypesInLegend := make(map[string]bool)
+
+	// For each agent, create contribution lines
+	for _, initialAgent := range initialAgentRecords {
+		agentType := initialAgent.AgentType // Use AgentType for legend
+		if _, exists := agentTypesInLegend[agentType]; !exists {
+			// Add to the legend only if not already added
+			agentTypesInLegend[agentType] = true
+
+			// Add a dummy series to the legend
+			line.AddSeries(agentType, []opts.LineData{})
+		}
+	}
+
 	// For each agent, create contribution lines
 	for _, initialAgent := range initialAgentRecords {
 		agentID := initialAgent.AgentID.String()
@@ -375,7 +390,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 
 			// Add stated contribution line if not already added
 			if _, exists := agentIDsInLegend[uuid]; !exists {
-				line.AddSeries(uuid+" (Stated)", generateLineItems(xAxis[:len(statedNet)], statedNet),
+				line.AddSeries(uuid, generateLineItems(xAxis[:len(statedNet)], statedNet),
 					charts.WithLineStyleOpts(opts.LineStyle{
 						Color: teamColors[uuid],
 						Type:  "dashed",
