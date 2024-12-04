@@ -72,4 +72,7 @@ type IExtendedAgent interface {
 	// Team 1 specific functions
 	Team1_ChairUpdateRanks(rankMap map[uuid.UUID]int) map[uuid.UUID]int
 	Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int
+
+	// Team 2 specific functions
+	Team2_GetLeaderVote() Vote
 }

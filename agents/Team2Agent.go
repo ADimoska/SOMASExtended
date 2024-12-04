@@ -37,6 +37,7 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 		rank:          false, 
 		trustScore: make(map[uuid.UUID]int),
 		strikeCount:        make(map[uuid.UUID]int),
+		AgentType:     "Team2Agent",
 		statedContribution: make(map[uuid.UUID]int),
 		statedWithdrawal:   make(map[uuid.UUID]int),
 		thresholdBounds:    make([]int, 2),
@@ -521,16 +522,12 @@ func (t2a *Team2Agent) GetActualContribution(instance common.IExtendedAgent) int
 	}
 }
 
-func (t2a *Team2Agent) GetStatedContribution(instance common.IExtendedAgent) int {
-	// first check if the agent has a team
-	if !t2a.HasTeam() {
-		return 0
-	}
-
-	// Currently stated = actual
-	statedContribution := instance.GetActualContribution(instance)
-	return statedContribution
-}
+// func (t2a *Team2Agent) GetStatedContribution(instance common.IExtendedAgent) int {
+// 	// Currently, stated contribution matches actual contribution
+// 	// can edit this in the future to lie
+// 	statedContribution := instance.DecideContribution()
+// 	return statedContribution
+// }
 
 func (t2a *Team2Agent) HandleContributionMessage(msg *common.ContributionMessage) {
 	t2a.ExtendedAgent.HandleContributionMessage(msg) // Call extendedagent version to enable logging
@@ -658,14 +655,12 @@ func (t2a *Team2Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 	}
 }
 
-func (t2a *Team2Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
-	// first check if the agent has a team
-	if !t2a.HasTeam() {
-		return 0
-	}
-	// Currently, assume stated withdrawal matches actual withdrawal
-	return instance.GetActualContribution(instance)
-}
+// func (t2a *Team2Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
+// 	// Currently, stated withdrawal matches actual withdrawal
+// 	// can edit this in the future to lie
+// 	statedWithdrawal := instance.DecideWithdrawal()
+// 	return statedWithdrawal
+// }
 
 func (t2a *Team2Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	t2a.ExtendedAgent.HandleWithdrawalMessage(msg) // Call extendedagent version to enable logging
