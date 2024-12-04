@@ -800,6 +800,9 @@ func (t2a *Team2Agent) GetTeamRanking() []uuid.UUID {
 	for _, teamID := range teamIDs {
 		commonPool := t2a.Server.GetTeamCommonPool(teamID)
 		trustScore := t2a.getAverageTeamTrustScore(teamID)
+		if trustScore == 0 {
+			continue // Skip teams with no trust score -> Likely means they are empty or very bad in general
+		}
 		ranking[teamID] = int((float64(commonPool)*2.0 + float64(trustScore)) / 3.0)
 	}
 
@@ -823,6 +826,8 @@ func (t2a *Team2Agent) GetTeamRanking() []uuid.UUID {
 	for i, ts := range teamScores {
 		sortedTeamIDs[i] = ts.ID
 	}
+
+	log.Println("Agent ", t2a.GetID(), " has ranked teams: ", sortedTeamIDs, " for the orphan pool")
 
 	return sortedTeamIDs
 }
