@@ -17,7 +17,6 @@ import (
 type Team2Agent struct {
 	*ExtendedAgent
 	rank               bool
-	AgentType          string
 	trustScore         map[uuid.UUID]int
 	strikeCount        map[uuid.UUID]int
 	statedContribution map[uuid.UUID]int
@@ -37,7 +36,6 @@ func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 		rank:               false,
 		trustScore:         make(map[uuid.UUID]int),
 		strikeCount:        make(map[uuid.UUID]int),
-		AgentType:          "Team2Agent",
 		statedContribution: make(map[uuid.UUID]int),
 		statedWithdrawal:   make(map[uuid.UUID]int),
 		thresholdBounds:    make([]int, 2),

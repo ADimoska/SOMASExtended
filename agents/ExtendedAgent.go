@@ -21,7 +21,6 @@ type ExtendedAgent struct {
 	Server    common.IServer
 	Score     int
 	TeamID    uuid.UUID
-	AgentType string
 
 	// private
 	LastScore int
@@ -530,7 +529,6 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 	record := gameRecorder.NewAgentRecord(
 		instance.GetID(),
 		instance.GetTrueSomasTeamID(),
-		instance.GetAgentType(),
 		instance.GetTrueScore(),
 		instance.GetStatedContribution(instance),
 		instance.GetActualContribution(instance),
@@ -540,9 +538,7 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 	)
 	return record
 }
-func (a *ExtendedAgent) GetAgentType() string {
-	return a.AgentType
-}
+
 
 // ----------------------- Team 1 AoA Functions -----------------------
 

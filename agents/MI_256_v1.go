@@ -12,14 +12,12 @@ import (
 
 type MI_256_v1 struct {
 	*ExtendedAgent
-	AgentType string
 }
 
 // Constructor for MI_256_v1
 func Team4_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *MI_256_v1 {
 	mi_256 := &MI_256_v1{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
-		AgentType:     "MI_256_v1", // Define the agent type here
 	}
 	mi_256.TrueSomasTeamID = 4 // IMPORTANT: add your team number here!
 	return mi_256
