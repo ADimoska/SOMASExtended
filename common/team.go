@@ -9,10 +9,10 @@ import (
 )
 
 type Team struct {
-	TeamID  uuid.UUID
-	Agents  []uuid.UUID
-	TeamAoA IArticlesOfAssociation
-
+	TeamID     uuid.UUID
+	Agents     []uuid.UUID
+	TeamAoA    IArticlesOfAssociation
+	TeamAoAID  int
 	commonPool int
 }
 
