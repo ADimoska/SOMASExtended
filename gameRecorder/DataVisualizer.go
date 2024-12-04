@@ -70,6 +70,12 @@ func CreatePlaybackHTML(recorder *ServerDataRecorder) {
 		page.AddCharts(scoreChart, contributionChart)
 	}
 
+	// Create score plots
+	createScorePlots(recorder, outputDir)
+
+	// Create contribution plots
+	createContributionPlots(recorder, outputDir)
+
 	// Create the output file
 	filepath := filepath.Join(outputDir, "game_visualization.html")
 	f, err := os.Create(filepath)
@@ -313,6 +319,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 			agentIDsInLegend[agentType] = true
 		}
 	}
+	
 	// For each agent, create contribution lines
 	for _, initialAgent := range initialAgentRecords {
 		agentID := initialAgent.AgentID.String()
