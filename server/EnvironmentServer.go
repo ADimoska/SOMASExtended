@@ -499,21 +499,31 @@ func (cs *EnvironmentServer) killAgent(agentID uuid.UUID) {
 	if teamID := agent.GetTeamID(); teamID != uuid.Nil {
 		// cs.teamsMutex.Lock()
 		// defer cs.teamsMutex.Unlock()
+		log.Printf("[server] Finding agent %v to be killed\n", agentID)
 
 		team := cs.Teams[teamID]
 		// check if team exists (patch fix - TODO check the root of the error)
 		if team == nil {
 			log.Printf("[server] Team %v does not exist\n", teamID)
 		} else {
+			indexOfAgent := -1
 			for i, id := range team.Agents {
 				if id == agentID {
 					// Remove agent from the team
-					team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
-					cs.Teams[teamID] = team
-					// Set the team of the agent to Nil
-					agent.SetTeamID(uuid.Nil)
+					indexOfAgent = i
 					break
 				}
+			}
+
+			if indexOfAgent == -1 {
+				log.Printf("[server] Agent %v not found in team %v\n", agentID, teamID)
+			} else {
+				log.Printf("[server] Found agent %v and removing from team %v\n", agentID, teamID)
+				// Remove agent from the
+				team.Agents = append(team.Agents[:indexOfAgent], team.Agents[indexOfAgent+1:]...)
+				cs.Teams[teamID] = team
+				// Set the team of the agent to Nil
+				agent.SetTeamID(uuid.Nil)
 			}
 		}
 	}
@@ -690,12 +700,20 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
+		if agent.GetTeamID() == uuid.Nil {
+			// Skip agents that are not in a team
+			continue
+		}
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = true
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
 	for _, agent := range cs.deadAgents {
+		if agent.GetTeamID() == uuid.Nil {
+			// Skip agents that are not in a team
+			continue
+		}
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = false
 		agentRecords = append(agentRecords, newAgentRecord)
