@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	// "strings"
-
+	"strings"
+	"regexp"
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
 	"github.com/go-echarts/go-echarts/v2/opts"
@@ -132,14 +132,14 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			Name:    "Turn Number",
 			NameGap: 30,
 			AxisLabel: &opts.AxisLabel{
-				Show: opts.Bool(showAxisLabels),
+				Show: opts.Bool(true),
 			},
 		}),
 		charts.WithYAxisOpts(opts.YAxis{
 			Name:    "Score",
 			NameGap: 30,
 			AxisLabel: &opts.AxisLabel{
-				Show: opts.Bool(showAxisLabels),
+				Show: opts.Bool(true),
 			},
 		}),
 		charts.WithGridOpts(opts.Grid{
@@ -185,10 +185,15 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 
 	// Manage legends by agent type
 	agentIDsInLegend := make(map[string]bool)
-
+	for _, agent := range initialAgentRecords {
+		agentType := agent.AgentType
+		if _, exists := agentIDsInLegend[agentType]; !exists {
+			agentIDsInLegend[agentType] = true
+		}
+	}
 	// Add series and death markers
 	for agentID, scores := range agentScores {
-		agentType := extractAgentType(agentID) // Use agent type for legend grouping
+		agentType := extractUUID(agentID) // Use agent type for legend grouping
 		var deathMarker opts.ScatterData
 		var deathTurn int = -1
 
@@ -215,15 +220,12 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			scores = scores[:deathTurn+1]
 		}
 
-		// Add series only if not already added to legend
-		if _, exists := agentIDsInLegend[agentType]; !exists {
-			line.AddSeries(agentType, generateLineItems(xAxis[:len(scores)], scores),
-				charts.WithLineStyleOpts(opts.LineStyle{
-					Color: teamColors[agentID],
-				}),
-			)
-			agentIDsInLegend[agentType] = true
-		}
+		// Add the series
+		line.AddSeries(agentID, generateLineItems(xAxis[:len(scores)], scores),
+			charts.WithLineStyleOpts(opts.LineStyle{
+				Color: teamColors[agentID],
+			}),
+		)
 
 		// Add death marker
 		if deathTurn != -1 {
@@ -312,24 +314,23 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 		agentID := agent.AgentID.String()
 		// Extract the UUID part (assuming it is always the first part)
 		// Use regular expression to find a valid UUID pattern
-		if uuid := extractAgentType(agentID); uuid != "" {
+		if uuid := extractUUID(agentID); uuid != "" {
 			teamColors[uuid] = getTeamColor(agent.TrueSomasTeamID)
 		}
 	}
 
 	agentIDsInLegend := make(map[string]bool)
-	for _, agent := range initialAgentRecords {
-		agentType := agent.AgentType
-		if _, exists := agentIDsInLegend[agentType]; !exists {
-			agentIDsInLegend[agentType] = true
-		}
+	// Extract agent types from the map
+	var agentTypes []string
+	for agentType := range agentIDsInLegend {
+		agentTypes = append(agentTypes, agentType)
 	}
 
 	// For each agent, create contribution lines
 	for _, initialAgent := range initialAgentRecords {
 		agentID := initialAgent.AgentID.String()
 		// Extract only the UUID from the agentID
-		if uuid := extractAgentType(agentID); uuid != "" {
+		if uuid := extractUUID(agentID); uuid != "" {
 			actualNet := make([]float64, len(turns))
 			statedNet := make([]float64, len(turns))
 			var deathMarker opts.ScatterData
@@ -400,23 +401,18 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 }
 
 // Helper function to extract the agent type string from a given input
-func extractAgentType(input string) string {
-	// Define a list of known agent types
-	agentTypes := []string{
-		"MI_256_v1",
-		"Base Agent",
-		"Team2Agent",
-		// Add more agent types here if necessary
-	}
+func extractAgentType(input string, initialAgentRecords []AgentRecord) map[string]string {
+	// Define a map to hold the agent types found in the input
+	agentTypeMap := make(map[string]string)
 
-	// Iterate through the known agent types to find a match in the input
-	for _, agentType := range agentTypes {
-		// if strings.Contains(input, agentType) {
-		// 	return agentType
-		// }
-		return agentType
+	// Iterate through the initial agent records to find matches
+	for _, agent := range initialAgentRecords {
+		if strings.Contains(input, agent.AgentType) {
+			// Store the agent type in the map with the agent ID as the key
+			agentTypeMap[agent.AgentID.String()] = agent.AgentType
+		}
 	}
-	return agentTypes[2]
+	return agentTypeMap
 }
 
 // Helper function to get team-based colors
@@ -787,4 +783,11 @@ func generateLineItems(xAxis []int, yAxis []float64) []opts.LineData {
 		items[i] = opts.LineData{Value: yAxis[i]}
 	}
 	return items
+}
+// Helper function to extract the UUID part from a given string
+func extractUUID(input string) string {
+	// Regular expression to match UUIDs in the format of xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+	re := regexp.MustCompile(`\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b`)
+	match := re.FindString(input)
+	return match
 }
