@@ -54,7 +54,7 @@ func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], c
 		Server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
 		Score:        configParam.InitScore,
 		VerboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{3, 2, 1, 0},
+		AoARanking:   []int{0},
 		TeamRanking:  []uuid.UUID{},
 	}
 }

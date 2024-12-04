@@ -4,6 +4,7 @@ import (
 	"log"
 	"math/rand"
 	"sync"
+	"time"
 
 	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	"github.com/google/uuid"
@@ -31,6 +32,10 @@ type EnvironmentServer struct {
 	turn           int
 	iteration      int
 	thresholdTurns int
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
 func (cs *EnvironmentServer) RunTurn(i, j int) {
@@ -195,37 +200,65 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.allocateAoAs()
 }
 
-// Allocate AoA based on team votes;
-// for each member in team, count vote for AoA and then take majority (?) vote
-// assign majority vote back to team struct (team.Strategy)
+// Allocate AoAs (Articles of Association) to teams using the Borda Count voting method.
+// Each team member ranks up to 6 AoAs, assigning weighted votes (1st choice = 6 points, 2nd = 5 points, ..., 6th = 1 point).
+// The AoA with the highest total weight is selected for the team. If there's a tie, a random AoA among the tied ones is chosen.
 func (cs *EnvironmentServer) allocateAoAs() {
-	// Iterate over each team
+	// Process AoA allocation for each team
 	for _, team := range cs.Teams {
-		// ranking cache for each team.
-		var voteSum = []int{0, 0, 0, 0}
+		// Array to store Borda Count totals for each AoA (1-6). Index 0 is unused for simplicity.
+		aoaVoteWeights := make([]int, 7) // aoaVoteWeights[1] to aoaVoteWeights[6]
+
+		// Process votes from all team members
 		for _, agent := range team.Agents {
-			if cs.IsAgentDead(agent) {
-				continue
-			}
-			for aoa, vote := range cs.GetAgentMap()[agent].GetAoARanking() {
-				voteSum[aoa] += vote
+
+			// Get the agent's ranked preferences for AoAs (maximum of 6 ranked choices)
+			agentAoARanking := cs.GetAgentMap()[agent].GetAoARanking()
+
+			// Assign Borda Count weights to the agent's AoA rankings
+			for position, aoa := range agentAoARanking {
+				// Calculate weight: 1st choice = 6 points, 2nd = 5, ..., 6th = 1
+				weight := 6 - position
+				if weight < 1 {
+					weight = 1 // Minimum weight is 1
+				}
+
+				// Add weight to the corresponding AoA if it's within the valid range (1-6)
+				if aoa >= 1 && aoa <= 6 {
+					aoaVoteWeights[aoa] += weight
+				}
 			}
 		}
 
-		// Determine the preferred AoA based on the majority vote
-		currentMax := 0
-		preference := 0
-		for aoa, voteCount := range voteSum {
-			if voteCount > currentMax {
-				currentMax = voteCount
-				preference = aoa
+		// Determine the maximum weight across all AoAs
+		maxWeight := -1
+		for aoa := 1; aoa <= 6; aoa++ {
+			if aoaVoteWeights[aoa] > maxWeight {
+				maxWeight = aoaVoteWeights[aoa]
 			}
 		}
 
-		// Update the team's strategy
-		switch preference {
-		case 0:
-			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
+		// Identify all AoAs that are tied with the maximum weight
+		var tiedAoAs []int
+		for aoa := 1; aoa <= 6; aoa++ {
+			if aoaVoteWeights[aoa] == maxWeight {
+				tiedAoAs = append(tiedAoAs, aoa)
+			}
+		}
+
+		// Resolve ties by selecting a random AoA from the tied candidates
+		var selectedAoA int
+		if len(tiedAoAs) == 1 {
+			selectedAoA = tiedAoAs[0] // Single AoA with the highest weight
+		} else if len(tiedAoAs) > 1 {
+			randomIndex := rand.Intn(len(tiedAoAs)) // Random choice among tied AoAs
+			selectedAoA = tiedAoAs[randomIndex]
+		} else {
+			selectedAoA = 1 + rand.Intn(6) // No valid votes, choose random AoA [1-6]
+		}
+
+		// Assign the selected AoA to the team's strategy based on its value
+		switch selectedAoA {
 		case 1:
 			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
 		case 2:
@@ -235,10 +268,13 @@ func (cs *EnvironmentServer) allocateAoAs() {
 		case 4:
 			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
 		default:
-			team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
+			// Default AoA assignment if no valid preference is found
+			team.TeamAoA = common.CreateFixedAoA(1)
 		}
 
+		// Update the team's AoA allocation in the EnvironmentServer
 		cs.Teams[team.TeamID] = team
+		log.Println("Team", team.TeamID, "has been assigned AoA", selectedAoA)
 	}
 }
 
