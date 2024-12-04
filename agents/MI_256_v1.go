@@ -51,7 +51,7 @@ func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) 
 func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	log.Printf("Called overriden StickOrAgain\n")
 	// TODO: implement dice strategy
-	return true
+	return false
 }
 
 // !!! NOTE: name and signature of functions below are subject to change by the infra team !!!

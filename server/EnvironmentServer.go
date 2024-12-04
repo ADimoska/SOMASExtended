@@ -30,9 +30,14 @@ type EnvironmentServer struct {
 	DataRecorder *gameRecorder.ServerDataRecorder
 
 	// server internal state
-	turn           int
-	iteration      int
-	thresholdTurns int
+	turn                   int
+	iteration              int
+	thresholdTurns         int
+	thresholdAppliedInTurn bool
+}
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
 }
 
 func init() {
@@ -172,13 +177,14 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 
 	if cs.turn%cs.thresholdTurns == 0 && cs.turn > 1 {
 		cs.ApplyThreshold()
+	} else {
+		cs.thresholdAppliedInTurn = false // record data
 	}
 
-	cs.teamsMutex.Lock()
-
-	// record data
-	cs.RecordTurnInfo()
-	cs.teamsMutex.Unlock()
+	// do not record if the turn number is 0
+	if cs.turn > 0 {
+		cs.RecordTurnInfo()
+	}
 }
 
 func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
@@ -486,6 +492,7 @@ func (cs *EnvironmentServer) killAgentBelowThreshold(agentID uuid.UUID) int {
 	agent := cs.GetAgentMap()[agentID]
 	score := agent.GetTrueScore()
 	if score < cs.roundScoreThreshold {
+		agent.SetTrueScore(0)
 		cs.killAgent(agentID)
 	}
 	return score
@@ -682,21 +689,17 @@ func (cs *EnvironmentServer) ResetAgents() {
 }
 
 func (cs *EnvironmentServer) ApplyThreshold() {
+	cs.thresholdAppliedInTurn = true
 	for _, team := range cs.Teams {
 		team.SetCommonPool(0)
-		for _, agentID := range team.Agents {
-			if !cs.IsAgentDead(agentID) {
-				cs.killAgentBelowThreshold(agentID)
-			}
-			if agent := cs.GetAgentMap()[agentID]; agent != nil {
-				agent.SetTrueScore(0)
-			}
-		}
+	}
+
+	for _, agent := range cs.GetAgentMap() {
+		cs.killAgentBelowThreshold(agent.GetID())
 	}
 }
 
 func (cs *EnvironmentServer) RecordTurnInfo() {
-
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
@@ -706,6 +709,8 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 		}
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = true
+		newAgentRecord.TurnNumber = cs.turn
+		newAgentRecord.IterationNumber = cs.iteration
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
@@ -716,16 +721,25 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 		}
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = false
+		newAgentRecord.TurnNumber = cs.turn
+		newAgentRecord.IterationNumber = cs.iteration
 		agentRecords = append(agentRecords, newAgentRecord)
 	}
 
+	// team information
 	teamRecords := []gameRecorder.TeamRecord{}
 	for _, team := range cs.Teams {
 		newTeamRecord := gameRecorder.NewTeamRecord(team.TeamID)
+		newTeamRecord.TurnNumber = cs.turn
+		newTeamRecord.IterationNumber = cs.iteration
+		newTeamRecord.TeamCommonPool = team.GetCommonPool()
 		teamRecords = append(teamRecords, newTeamRecord)
 	}
 
-	cs.DataRecorder.RecordNewTurn(agentRecords, teamRecords)
+	// common information
+	newCommonRecord := gameRecorder.NewCommonRecord(cs.turn, cs.iteration, cs.roundScoreThreshold, cs.thresholdAppliedInTurn)
+
+	cs.DataRecorder.RecordNewTurn(agentRecords, teamRecords, newCommonRecord)
 }
 
 func (cs *EnvironmentServer) Team5_RunTurn(team *common.Team) {
