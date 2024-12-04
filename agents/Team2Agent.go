@@ -398,8 +398,8 @@ func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	riskTolerance := t2a.DetermineRiskTolerance(accumulatedScore)
 	log.Printf("*****Risk Tolerance: %.2f\n", riskTolerance)
 
-	if t2a.rank { // Leader is very risky and has a fixed riskTolerance of 0.2
-		riskTolerance = 0.2
+	if t2a.rank { // Leader is very risky and has a fixed riskTolerance of 0.8
+		riskTolerance = 0.8
 		threshold := float64(prevRoll) * (1.0 - riskTolerance)
 		if (cumulativeProbability * 18) > threshold {
 			log.Printf("*****Decision: Re-roll\n")
