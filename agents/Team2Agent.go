@@ -17,6 +17,7 @@ import (
 type Team2Agent struct {
 	*ExtendedAgent
 	rank               bool
+	AgentType 		   string
 	trustScore         map[uuid.UUID]int
 	strikeCount        map[uuid.UUID]int
 	statedContribution map[uuid.UUID]int
@@ -28,10 +29,9 @@ type Team2Agent struct {
 // constructor for team2agent - initialised as all followers
 func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
 	return &Team2Agent{
-		ExtendedAgent: GetBaseAgents(funcs, agentConfig), rank: false, trustScore: make(map[uuid.UUID]int), strikeCount: make(map[uuid.UUID]int), statedContribution: make(map[uuid.UUID]int), statedWithdrawal: make(map[uuid.UUID]int), thresholdBounds: make([]int, 2), commonPoolEstimate: 0,
+		ExtendedAgent: GetBaseAgents(funcs, agentConfig), AgentType: "Team2Agent",rank: false, trustScore: make(map[uuid.UUID]int), strikeCount: make(map[uuid.UUID]int), statedContribution: make(map[uuid.UUID]int), statedWithdrawal: make(map[uuid.UUID]int), thresholdBounds: make([]int, 2), commonPoolEstimate: 0,
 	}
 }
-
 // Part 1: Specialised Agent Strategy Functions
 
 // ---------- TRUST SCORE SYSTEM ----------

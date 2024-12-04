@@ -18,9 +18,10 @@ import (
 
 type ExtendedAgent struct {
 	*agent.BaseAgent[common.IExtendedAgent]
-	Server common.IServer
-	Score  int
-	TeamID uuid.UUID
+	Server    common.IServer
+	Score     int
+	TeamID    uuid.UUID
+	AgentType string
 
 	// private
 	LastScore int
@@ -577,7 +578,9 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 	)
 	return record
 }
-
+func (a *ExtendedAgent) GetAgentType() string {
+	return a.AgentType
+}
 // ----------------------- Team 1 AoA Functions -----------------------
 
 func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
