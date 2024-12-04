@@ -117,7 +117,7 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			Show: opts.Bool(true),
 		}),
 		charts.WithLegendOpts(opts.Legend{
-			Show: opts.Bool(showLegends),
+			Show: opts.Bool(true),
 			Top:  "15%",
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
@@ -174,23 +174,43 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 		agentID := agent.AgentID.String()
 		teamColors[agentID] = getTeamColor(agent.TrueSomasTeamID)
 	}
+	// Add series and customize legend based on Soma IDs
+	somasScores := make(map[int][]float64)      // Map for aggregated scores by Soma ID
+	somasColors := make(map[int]string)        // Map for Soma ID colors
+
+	// Initialize data structures for each Soma ID
 	for _, agent := range initialAgentRecords {
-		agentID := agent.AgentID.String()
 		teamID := agent.TrueSomasTeamID // Soma ID
-		teamColors[agentID] = getTeamColor(teamID)
-	
-		// Include Soma ID in legend for clarity
+		if _, exists := somasScores[teamID]; !exists {
+			somasScores[teamID] = make([]float64, len(turns))
+			somasColors[teamID] = getTeamColor(teamID) // Assign color to Soma ID
+		}
+	}
+
+	// Aggregate scores by Soma ID
+	for turnIdx, turn := range turns {
+		for _, agent := range turn.AgentRecords {
+			teamID := agent.TrueSomasTeamID // Soma ID
+			agentID := agent.AgentID.String()
+			somasScores[teamID][turnIdx] += agentScores[agentID][turnIdx]
+		}
+	}
+	// Add series and customize legend based on Soma IDs
+	for teamID, scores := range somasScores {
+		// Set series name based on Soma ID
+		seriesName := fmt.Sprintf("Agent team id is team %d", teamID) // Soma IDs appear in the legend
+
+		// Add the series for the Soma ID
 		line.AddSeries(
-			fmt.Sprintf("Agent %s (Team %d)", agentID, teamID), 
-			generateLineItems(xAxis[:len(agentScores[agentID])], agentScores[agentID]),
+			seriesName, // This name appears in the legend
+			generateLineItems(xAxis[:len(scores)], scores),
 			charts.WithLineStyleOpts(opts.LineStyle{
-				Color: teamColors[agentID],
+				Color: somasColors[teamID],
 			}),
 		)
 	}
-	
 
-	// Add series and death markers
+	// Add series for individual agents without adding to the legend
 	for agentID, scores := range agentScores {
 		var deathMarker opts.ScatterData
 		var deathTurn int = -1
@@ -218,8 +238,10 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			scores = scores[:deathTurn+1]
 		}
 
-		// Add the series
-		line.AddSeries(agentID, generateLineItems(xAxis[:len(scores)], scores),
+		// Add the series without affecting the legend
+		line.AddSeries(
+			"", // Empty series name ensures it does not appear in the legend
+			generateLineItems(xAxis[:len(scores)], scores),
 			charts.WithLineStyleOpts(opts.LineStyle{
 				Color: teamColors[agentID],
 			}),
@@ -228,10 +250,11 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 		// Add death marker
 		if deathTurn != -1 {
 			scatter := charts.NewScatter()
-			scatter.AddSeries(agentID+" Death", []opts.ScatterData{deathMarker})
+			scatter.AddSeries("", []opts.ScatterData{deathMarker}) // No legend entry
 			line.Overlap(scatter)
 		}
 	}
+
 
 	line.SetXAxis(xAxis)
 	return line
@@ -268,7 +291,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 			Show: opts.Bool(true),
 		}),
 		charts.WithLegendOpts(opts.Legend{
-			Show: opts.Bool(showLegends),
+			Show: opts.Bool(false),
 			Top:  "15%",
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
