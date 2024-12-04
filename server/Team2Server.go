@@ -3,6 +3,7 @@ package environmentServer
 import (
 	"log"
 	"math/rand"
+	"slices"
 
 	"github.com/ADimoska/SOMASExtended/agents"
 	"github.com/ADimoska/SOMASExtended/common"
@@ -28,7 +29,8 @@ func (cs *EnvironmentServer) GetAgentKilledScore(agentID uuid.UUID) int {
 func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 	agentsInTeam := cs.GetAgentsInTeam(teamId)
 	if len(agentsInTeam) <= 0 {
-		log.Fatal("Team can't have non-positive agent count")
+		log.Printf("Team %d has non-positive agent count", teamId)
+		return
 	}
 
 	votes := make(map[uuid.UUID]int)
@@ -37,6 +39,12 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 
 	for _, agentId := range agentsInTeam {
 		agent := cs.GetAgentMap()[agentId]
+
+		if cs.IsAgentDead(agentId) {
+			continue
+		}
+
+		// Pending fix on the main branch, this needs to call the function for any general agent
 		leaderVote := agent.(*agents.Team2Agent).GetLeaderVote()
 		votedFor := leaderVote.VotedForID
 
@@ -63,6 +71,7 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 
 	if len(candidates) == 0 {
 		log.Fatal("No candidate selected!")
+		return
 	}
 
 	team := cs.Teams[teamId]
