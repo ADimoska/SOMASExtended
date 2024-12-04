@@ -1,14 +1,11 @@
 package gameRecorder
 
 import (
-	"encoding/csv"
 	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"reflect"
 	"sort"
-	"strconv"
 
 	"github.com/go-echarts/go-echarts/v2/charts"
 	"github.com/go-echarts/go-echarts/v2/components"
@@ -18,7 +15,7 @@ import (
 // Add these constants at the top of the file
 const (
 	deathSymbol    = "💀"
-	showLegends    = false   // Toggle for showing/hiding legends
+	showLegends    = true   // Toggle for showing/hiding legends
 	showAxisLabels = true    // Keep axis labels visible
 	chartWidth     = "800px" // Increased from 500px
 	chartHeight    = "500px" // Increased from 400px
@@ -120,7 +117,7 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			Show: opts.Bool(true),
 		}),
 		charts.WithLegendOpts(opts.Legend{
-			Show: opts.Bool(showLegends),
+			Show: opts.Bool(true),
 			Top:  "15%",
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
@@ -177,8 +174,43 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 		agentID := agent.AgentID.String()
 		teamColors[agentID] = getTeamColor(agent.TrueSomasTeamID)
 	}
+	// Add series and customize legend based on Soma IDs
+	somasScores := make(map[int][]float64)      // Map for aggregated scores by Soma ID
+	somasColors := make(map[int]string)        // Map for Soma ID colors
 
-	// Add series and death markers
+	// Initialize data structures for each Soma ID
+	for _, agent := range initialAgentRecords {
+		teamID := agent.TrueSomasTeamID // Soma ID
+		if _, exists := somasScores[teamID]; !exists {
+			somasScores[teamID] = make([]float64, len(turns))
+			somasColors[teamID] = getTeamColor(teamID) // Assign color to Soma ID
+		}
+	}
+
+	// Aggregate scores by Soma ID
+	for turnIdx, turn := range turns {
+		for _, agent := range turn.AgentRecords {
+			teamID := agent.TrueSomasTeamID // Soma ID
+			agentID := agent.AgentID.String()
+			somasScores[teamID][turnIdx] += agentScores[agentID][turnIdx]
+		}
+	}
+	// Add series and customize legend based on Soma IDs
+	for teamID, scores := range somasScores {
+		// Set series name based on Soma ID
+		seriesName := fmt.Sprintf("Agent team id is team %d", teamID) // Soma IDs appear in the legend
+
+		// Add the series for the Soma ID
+		line.AddSeries(
+			seriesName, // This name appears in the legend
+			generateLineItems(xAxis[:len(scores)], scores),
+			charts.WithLineStyleOpts(opts.LineStyle{
+				Color: somasColors[teamID],
+			}),
+		)
+	}
+
+	// Add series for individual agents without adding to the legend
 	for agentID, scores := range agentScores {
 		var deathMarker opts.ScatterData
 		var deathTurn int = -1
@@ -206,8 +238,10 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			scores = scores[:deathTurn+1]
 		}
 
-		// Add the series
-		line.AddSeries(agentID, generateLineItems(xAxis[:len(scores)], scores),
+		// Add the series without affecting the legend
+		line.AddSeries(
+			"", // Empty series name ensures it does not appear in the legend
+			generateLineItems(xAxis[:len(scores)], scores),
 			charts.WithLineStyleOpts(opts.LineStyle{
 				Color: teamColors[agentID],
 			}),
@@ -216,10 +250,11 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 		// Add death marker
 		if deathTurn != -1 {
 			scatter := charts.NewScatter()
-			scatter.AddSeries(agentID+" Death", []opts.ScatterData{deathMarker})
+			scatter.AddSeries("", []opts.ScatterData{deathMarker}) // No legend entry
 			line.Overlap(scatter)
 		}
 	}
+
 
 	line.SetXAxis(xAxis)
 	return line
@@ -256,7 +291,7 @@ func createContributionChart(iteration int, turns []TurnRecord) *charts.Line {
 			Show: opts.Bool(true),
 		}),
 		charts.WithLegendOpts(opts.Legend{
-			Show: opts.Bool(showLegends),
+			Show: opts.Bool(false),
 			Top:  "15%",
 		}),
 		charts.WithXAxisOpts(opts.XAxis{
@@ -734,123 +769,4 @@ func generateLineItems(xAxis []int, yAxis []float64) []opts.LineData {
 		items[i] = opts.LineData{Value: yAxis[i]}
 	}
 	return items
-}
-
-// ExportToCSV exports the turn records to CSV files, creating separate files for different data types
-func ExportToCSV(recorder *ServerDataRecorder, outputDir string) error {
-	// Create output directory if it doesn't exist
-	err := os.MkdirAll(outputDir, 0755)
-	if err != nil {
-		return fmt.Errorf("failed to create output directory: %v", err)
-	}
-
-	// Export agent records (flattened from turn records)
-	var allAgentRecords []AgentRecord
-	for _, turn := range recorder.TurnRecords {
-		allAgentRecords = append(allAgentRecords, turn.AgentRecords...)
-	}
-	if err := exportStructSliceToCSV(allAgentRecords, filepath.Join(outputDir, "agent_records.csv")); err != nil {
-		return fmt.Errorf("failed to export agent records: %v", err)
-	}
-
-	// Export team records (flattened from turn records)
-	var allTeamRecords []TeamRecord
-	for _, turn := range recorder.TurnRecords {
-		allTeamRecords = append(allTeamRecords, turn.TeamRecords...)
-	}
-	if err := exportStructSliceToCSV(allTeamRecords, filepath.Join(outputDir, "team_records.csv")); err != nil {
-		return fmt.Errorf("failed to export team records: %v", err)
-	}
-
-	// Export common records (flattened from turn records) - with filtering
-	var allCommonRecords []CommonRecord
-	for _, turn := range recorder.TurnRecords {
-		// Only include records where either turn or iteration is non-zero
-		if turn.CommonRecord.TurnNumber != 0 || turn.CommonRecord.IterationNumber != 0 {
-			allCommonRecords = append(allCommonRecords, turn.CommonRecord)
-		}
-	}
-	if err := exportStructSliceToCSV(allCommonRecords, filepath.Join(outputDir, "common_records.csv")); err != nil {
-		return fmt.Errorf("failed to export common records: %v", err)
-	}
-
-	return nil
-}
-
-// exportStructSliceToCSV is a generic function that exports any slice of structs to a CSV file
-func exportStructSliceToCSV(data interface{}, filepath string) error {
-	// Get the slice value and type
-	v := reflect.ValueOf(data)
-	if v.Kind() != reflect.Slice {
-		return fmt.Errorf("data must be a slice")
-	}
-
-	// Create the file
-	file, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	// If the slice is empty, return early
-	if v.Len() == 0 {
-		return nil
-	}
-
-	// Get the type of the struct
-	structType := v.Index(0).Type()
-
-	// Write header
-	var headers []string
-	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i)
-		// Skip unexported fields
-		if field.PkgPath != "" {
-			continue
-		}
-		headers = append(headers, field.Name)
-	}
-	if err := writer.Write(headers); err != nil {
-		return err
-	}
-
-	// Write data
-	for i := 0; i < v.Len(); i++ {
-		item := v.Index(i)
-		var row []string
-		for j := 0; j < item.Type().NumField(); j++ {
-			field := item.Type().Field(j)
-			// Skip unexported fields
-			if field.PkgPath != "" {
-				continue
-			}
-			fieldValue := item.Field(j)
-			// Convert the field value to string based on its type
-			var strValue string
-			switch fieldValue.Kind() {
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				strValue = strconv.FormatInt(fieldValue.Int(), 10)
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				strValue = strconv.FormatUint(fieldValue.Uint(), 10)
-			case reflect.Float32, reflect.Float64:
-				strValue = strconv.FormatFloat(fieldValue.Float(), 'f', -1, 64)
-			case reflect.Bool:
-				strValue = strconv.FormatBool(fieldValue.Bool())
-			case reflect.String:
-				strValue = fieldValue.String()
-			default:
-				// For complex types, use fmt.Sprint
-				strValue = fmt.Sprint(fieldValue.Interface())
-			}
-			row = append(row, strValue)
-		}
-		if err := writer.Write(row); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
