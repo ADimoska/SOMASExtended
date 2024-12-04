@@ -89,6 +89,10 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 
 func (t *FixedAoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
+func (f *FixedAoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
+	return make(map[uuid.UUID]int)
+}
+
 func CreateFixedAoA(duration int) IArticlesOfAssociation {
 	auditRecord := NewAuditRecord(duration)
 	return &FixedAoA{

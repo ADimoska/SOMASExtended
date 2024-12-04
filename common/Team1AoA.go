@@ -296,6 +296,10 @@ func (t *Team1AoA) GetAgentNewRank(agentId uuid.UUID) int {
 	return newRank // or an appropriate default value or error code
 }
 
+func (f *Team1AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
+	return make(map[uuid.UUID]int)
+}
+
 func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 	auditResult := make(map[uuid.UUID]*list.List)
 	ranking := make(map[uuid.UUID]int)
