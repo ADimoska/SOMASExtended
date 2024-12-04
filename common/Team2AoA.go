@@ -126,7 +126,7 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
-func (t *Team2AoA) RunAoAStuff() {}
+func (t *Team2AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
 func CreateTeam2AoA(auditDuration int) IArticlesOfAssociation {
 	return &Team2AoA{
