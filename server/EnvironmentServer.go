@@ -35,6 +35,7 @@ type EnvironmentServer struct {
 	iteration              int
 	thresholdTurns         int
 	thresholdAppliedInTurn bool
+	allAgentsDead          bool
 }
 
 func init() {
@@ -373,6 +374,7 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			cs.RunTurnDefault(team)
 
 		}
+
 	}
 
 	// TODO: Reallocate agents who left their teams during the turn
@@ -391,8 +393,12 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	cs.ProcessAgentsLeaving()
 
 	// do not record if the turn number is 0
-	if cs.turn > 0 {
+	if cs.turn > 0 && !cs.allAgentsDead {
 		cs.RecordTurnInfo()
+	}
+
+	if cs.IsAllAgentsDead() {
+		cs.allAgentsDead = true
 	}
 }
 
@@ -400,9 +406,10 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	log.Printf("--------Start of iteration %v---------\n", iteration)
 
 	cs.iteration = iteration
+	cs.allAgentsDead = false
 
 	// record data
-	cs.DataRecorder.RecordNewIteration()
+	// cs.DataRecorder.RecordNewIteration()
 
 	// Initialise random threshold
 	cs.createNewRoundScoreThreshold()
@@ -699,8 +706,8 @@ func (cs *EnvironmentServer) UpdateAndGetAgentExposedInfo() []common.ExposedAgen
 
 // create a new round score threshold
 func (cs *EnvironmentServer) createNewRoundScoreThreshold() {
-	// random one between 10 to 20 (TODO)
-	cs.roundScoreThreshold = rand.Intn(10) + 10
+	// NEW: increase threshold dynamically through the game
+	cs.roundScoreThreshold = rand.Intn(10) + cs.turn
 	log.Printf("[server] New round score threshold: %v\n", cs.roundScoreThreshold)
 }
 
@@ -766,6 +773,11 @@ func (cs *EnvironmentServer) IsAgentDead(agentID uuid.UUID) bool {
 		}
 	}
 	return false
+}
+
+// check if all agents are dead
+func (cs *EnvironmentServer) IsAllAgentsDead() bool {
+	return len(cs.GetAgentMap()) == 0
 }
 
 // team forming
@@ -911,16 +923,24 @@ func (cs *EnvironmentServer) ApplyThreshold() {
 	for _, agent := range cs.GetAgentMap() {
 		cs.killAgentBelowThreshold(agent.GetID())
 	}
+
+	// after checking threshold, minus threshold score from each agent
+	for _, agent := range cs.GetAgentMap() {
+		// minus threshold score from each agent
+		agent.SetTrueScore(agent.GetTrueScore() - cs.roundScoreThreshold)
+	}
+
+	cs.createNewRoundScoreThreshold() // create new threshold for the next round
 }
 
 func (cs *EnvironmentServer) RecordTurnInfo() {
 	// agent information
 	agentRecords := []gameRecorder.AgentRecord{}
 	for _, agent := range cs.GetAgentMap() {
-		if agent.GetTeamID() == uuid.Nil {
-			// Skip agents that are not in a team
-			continue
-		}
+		// if agent.GetTeamID() == uuid.Nil {
+		// 	// Skip agents that are not in a team
+		// 	continue
+		// }
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = true
 		newAgentRecord.TurnNumber = cs.turn
@@ -929,10 +949,10 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 	}
 
 	for _, agent := range cs.deadAgents {
-		if agent.GetTeamID() == uuid.Nil {
-			// Skip agents that are not in a team
-			continue
-		}
+		// if agent.GetTeamID() == uuid.Nil {
+		// 	// Skip agents that are not in a team
+		// 	continue
+		// }
 		newAgentRecord := agent.RecordAgentStatus(agent)
 		newAgentRecord.IsAlive = false
 		newAgentRecord.TurnNumber = cs.turn

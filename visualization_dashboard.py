@@ -69,6 +69,7 @@ def update_score_evolution(iteration):
     
     fig = go.Figure()
     
+    
     # Group agents by their true team ID
     for team_id in filtered_data['TrueSomasTeamID'].unique():
         team_data = filtered_data[filtered_data['TrueSomasTeamID'] == team_id]
@@ -113,7 +114,7 @@ def update_score_evolution(iteration):
     
     # Add threshold line
     fig.add_trace(go.Scatter(
-        x=threshold_data['TurnNumber'],
+        x=threshold_data['TurnNumber'] + 1,  # Add 1 to shift right
         y=threshold_data['Threshold'],
         name='Threshold',
         mode='lines',
@@ -260,16 +261,22 @@ def update_agent_status(iteration):
     
     fig = go.Figure()
     
+    # Safely get alive counts (True), defaulting to 0 if not present
+    alive_counts = status_counts[True] if True in status_counts.columns else pd.Series(0, index=status_counts.index)
+    
+    # Safely get dead counts (False), defaulting to 0 if not present
+    dead_counts = status_counts[False] if False in status_counts.columns else pd.Series(0, index=status_counts.index)
+    
     fig.add_trace(go.Bar(
         x=status_counts.index,
-        y=status_counts[True],
+        y=alive_counts,
         name='Alive',
         marker_color='green'
     ))
     
     fig.add_trace(go.Bar(
         x=status_counts.index,
-        y=status_counts[False],
+        y=dead_counts,
         name='Dead',
         marker_color='red'
     ))
