@@ -251,6 +251,35 @@ func (t *Team6AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	return (agentScore * 25) / 100
 }
 
+// not needed, dw abt it, here to fix error complaints
+func (f *Team6AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
+	return make(map[uuid.UUID]int)
+}
+
+// not needed, dw abt it, here to fix error complaints
+func (t *Team6AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
+
+// not needed, dw abt it, here to fix error complaints
+func (t *Team6AoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
+}
+
+// not needed, dw abt it, here to fix error complaints
+func (t *Team6AoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+
+// not needed, dw abt it, here to fix error complaints
+func (t *Team6AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+
 func createTeam6AoA() IArticlesOfAssociation {
-	return &Team6AoA{}
+	return &Team6AoA{
+		weight: float64, // Weight for current turn contributions
+		decay:  float64, // Decay rate for cumulative contributions
+
+		cumulativeContributions: make(map[uuid.UUID]float64),
+		currentContributions:    make(map[uuid.UUID]float64),           // Current turn contributions
+		auditHistory:            make(map[uuid.UUID][]*CheatingRecord), // Audit history per agent
+		agentsToMonitor:         make(map[uuid.UUID]int64),
+	}
 }
