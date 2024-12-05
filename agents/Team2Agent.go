@@ -432,8 +432,8 @@ func (t2a *Team2Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 		// If high risk tolerance then lower threshold hence likely to re-roll
 		// If low risk tolerance then higher threshold hence less likely to re-roll
 		threshold := float64(prevRoll) * (1.0 - riskTolerance)
-		log.Printf("*****Citizen threshold: %d\n", threshold)
-		log.Printf("*****Cumulative Probability * 18: %d\n", (cumulativeProbability * 18))
+		log.Printf("*****Citizen threshold: %f\n", threshold)
+		log.Printf("*****Cumulative Probability * 18: %f\n", (cumulativeProbability * 18))
 		if (cumulativeProbability * 18) > threshold {
 			log.Printf("*****Decision: Re-roll\n")
 			return false // Re-roll
