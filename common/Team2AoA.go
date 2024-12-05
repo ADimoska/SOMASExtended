@@ -232,6 +232,7 @@ func (t *Team2AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOfAssociation {
 	log.Println("Creating Team2AoA")
 	offenceMap := make(map[uuid.UUID]int)
+	rollsLeftMap := make(map[uuid.UUID]int)
 
 	if leader == uuid.Nil {
 		shuffledAgents := make([]uuid.UUID, len(team.Agents))
@@ -245,6 +246,7 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOf
 	return &Team2AoA{
 		auditRecord: NewAuditRecord(auditDuration),
 		OffenceMap:  offenceMap,
+		RollsLeftMap: rollsLeftMap,
 		Leader:      leader,
 		Team:        team,
 	}
