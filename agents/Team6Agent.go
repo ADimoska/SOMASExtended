@@ -12,10 +12,12 @@ import (
 
 type Team6_Agent struct {
 	*ExtendedAgent
-	OpinionVector 	map[uuid.UUID]*float64  //this used in deciding auditing votes, and team choosing
-	Selfishness 	float64					//a value from 0 (least selfish) to 1 (most selfish) which affects agent strategies
-	Reputation 		float64					//a value which guesses how selfish other agents believe this agent to be
-	AgentTurnScore  int						//this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
+	OpinionVector           map[uuid.UUID]*float64 //this used in deciding auditing votes, and team choosing
+	Selfishness             float64                //a value from 0 (least selfish) to 1 (most selfish) which affects agent strategies
+	AgentTurnScore          int                    //this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
+	Trust                   float64
+	Greed                   float64
+	AveragePersonalDiceRoll float64				//this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
 }
 
 // constructor for Team6_Agent
@@ -24,8 +26,11 @@ func Team6_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 		ExtendedAgent: 			GetBaseAgents(funcs, agentConfig),
 		OpinionVector:			make(map[uuid.UUID]*float64)
 		Selfishness: 			rand.Float64(),						//initialised randomly
-		Reputation:				0.5,								//initialised to neutral reputation
-		AgentTurnScore:			0,									//initialised to zero
+		//Reputation:				0.5,								//initialised to neutral reputation
+		Trust:                   rand.Float64(),
+		Greed:                   rand.Float64(),
+		AgentTurnScore:          0, //initialised to zero
+		AveragePersonalDiceRoll: 0.0,
 
 	}
 }
@@ -101,31 +106,42 @@ func (mi *Team6_Agent) DecideContribution() int {
 }
 
 // Withdrawal Strategy - THIS NEEDS TO BE DEFINED, IN A SIMILAR WAY TO HOW CONTRIBUTION STRAT MIGHT USE SELFISHNESS AND REPUTATION
-func (mi *Team6_Agent) DecideWithdrawal() int {
-	// TODO: implement contribution strategy
+func (mi *Team6_Agent) GetActualWithdrawal() int {
+	team := mi.Server.GetTeam(mi.GetID())
+	if team != nil && team.TeamAoA != nil {
+		// Calculate expected withdrawal according to AoAs
+		aoaExpectedWithdrawal := team.TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.Server.GetTeamCommonPool())
 
-// USE THIS FOR REFERENCE
-// // Decide the withdrawal amount based on AoA and current pool size
-// func (mi *ExtendedAgent) DecideWithdrawal() int {
-// 	if mi.server.GetTeam(mi.GetID()).TeamAoA != nil {
-// 		// double check if score in agent is sufficient (this should be handled by AoA though)
-// 		commonPool := mi.server.GetTeam(mi.GetID()).GetCommonPool()
-// 		aoaExpectedWithdrawal := mi.server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
-// 		if commonPool < aoaExpectedWithdrawal {
-// 			return commonPool
-// 		}
-// 		return aoaExpectedWithdrawal
-// 	} else {
-// 		if mi.verboseLevel > 6 {
-// 			fmt.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", mi.GetID())
-// 		}
-// 		return 0
-// 	}
-// }
-	return 1
+		// Reversed logic for determining withdrawal based on selfishness
+		withdrawalChoice := -1
+
+		if mi.Selfishness < 0.5 {
+			// If the agent is relatively selfless (low selfishness)
+			// Withdraw less than the maximum allowed
+			withdrawalChoice = int(math.Floor(float64(aoaExpectedWithdrawal) * (1 - mi.Selfishness)))
+		} else {
+			// If the agent is relatively selfish (high selfishness)
+			// Withdraw more, mapped between AoA and maximum allowed
+			withdrawalChoice = int(math.Ceil(float64(aoaExpectedWithdrawal) + mi.Selfishness*float64(mi.Server.GetTeamCommonPool()-aoaExpectedWithdrawal)))
+		}
+
+		if withdrawalChoice != -1 {
+			// If this is not -1, then no errors have occurred and all is well
+			return withdrawalChoice
+		}
+	} else {
+		// If this agent is not in a team
+		if mi.verboseLevel > 6 {
+			// Should not happen!
+			fmt.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", mi.GetID())
+		}
+		return 0
+	}
+	return 0
 }
 
-
+//NEED TO INCLUDE A WORKING TRUST FUNCTION
+//
 
 // Audit Strategy
 func (mi *Team6_Agent) DecideAudit() bool {
@@ -133,17 +149,26 @@ func (mi *Team6_Agent) DecideAudit() bool {
 	return true
 }
 
-// Punishment Strategy
-func (mi *Team6_Agent) DecidePunishment() int {
-	// TODO: implement punishment strategy
-	return 1
-}
 
 // Dice Strategy - HERE WE CAN MESS WITH HOW RISKY OR NOT WE WANT OUR AGENTS TO BE
 func (mi *Team6_Agent) StickOrAgain() bool {
-	// fmt.Printf("Called overriden StickOrAgain\n")
-	// // TODO: implement dice strategy
-	// return true
+	// Calculate stick threshold based on agent's greed
+	// Greed value influences how risk-taking an agent is:
+	// - High greed means they will only stick at a higher score
+	// - Low greed means they will stick at a lower score
+
+	baseValue := 10.0                            // This is the base value that the agent considers to stick
+	stickThreshold := baseValue * (1 + mi.Greed) // Threshold determined by baseValue and greed level
+
+	// If the agent's turn score reaches or exceeds the stick threshold, they will stick
+	if float64(mi.AgentTurnScore) >= stickThreshold {
+		fmt.Printf("Agent %s decides to STICK with score %.2f (Greed: %.2f, Threshold: %.2f)\n", mi.GetID(), float64(mi.AgentTurnScore), mi.Greed, stickThreshold)
+		return true
+	}
+
+	// Otherwise, they decide to roll again
+	fmt.Printf("Agent %s decides to ROLL AGAIN (Current score: %d, Threshold: %.2f)\n", mi.GetID(), mi.AgentTurnScore, stickThreshold)
+	return false
 }
 
 /*
@@ -193,56 +218,4 @@ func (mi *ExtendedAgent) GetContributionAuditVote() common.Vote {
 // SAME DEAL HERE
 func (mi *ExtendedAgent) GetWithdrawalAuditVote() common.Vote {
 	return common.CreateVote(0, mi.GetID(), uuid.Nil)
-}
-
-// WE NEED A SPECIAL IMPLEMENTATION OF THIS FOR TEAM6AGENTS TO UPDATE AGENTTURNSCORE VALUE
-// other than that, nothing is changed from its implementation in ExtendedAgent.go
-func (mi *Team6_Agent) StartRollingDice(instance common.IExtendedAgent) {
-	if mi.verboseLevel > 10 {
-		fmt.Printf("%s is rolling the Dice\n", mi.GetID())
-	}
-	if mi.verboseLevel > 9 {
-		fmt.Println("---------------------")
-	}
-	// TODO: implement the logic in environment, do a random of 3d6 now with 50% chance to stick
-	mi.lastScore = -1
-	rounds := 1
-	turnScore := 0
-
-	willStick := false
-
-	// loop until not stick
-	for !willStick {
-		// debug add score directly
-		currentScore := Debug_RollDice()
-
-		// check if currentScore is higher than lastScore
-		if currentScore > mi.lastScore {
-			turnScore += currentScore
-			mi.lastScore = currentScore
-			willStick = instance.StickOrAgain()
-			if willStick {
-				mi.DecideStick()
-				break
-			}
-			mi.DecideRollAgain()
-		} else {
-			// burst, lose all turn score
-			if mi.verboseLevel > 4 {
-				fmt.Printf("%s **BURSTED!** round: %v, current score: %v\n", mi.GetID(), rounds, currentScore)
-			}
-			turnScore = 0
-			break
-		}
-
-		rounds++
-	}
-
-	// add turn score to total score
-	mi.AgentTurnScore = turnScore 
-	mi.score += turnScore
-
-	if mi.verboseLevel > 4 {
-		fmt.Printf("%s's turn score: %v, total score: %v\n", mi.GetID(), turnScore, mi.score)
-	}
 }
