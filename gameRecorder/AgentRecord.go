@@ -12,7 +12,7 @@ type AgentRecord struct {
 	TurnNumber      int
 	IterationNumber int
 	AgentID         uuid.UUID
-	TrueSomasTeamID int    // SOMAS team number, e.g., Team 4
+	TrueSomasTeamID int // SOMAS team number, e.g., Team 4
 
 	// turn-specific fields
 	IsAlive            bool

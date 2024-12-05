@@ -15,7 +15,7 @@ import (
 // Add these constants at the top of the file
 const (
 	deathSymbol    = "💀"
-	showLegends    = true   // Toggle for showing/hiding legends
+	showLegends    = true    // Toggle for showing/hiding legends
 	showAxisLabels = true    // Keep axis labels visible
 	chartWidth     = "800px" // Increased from 500px
 	chartHeight    = "500px" // Increased from 400px
@@ -175,8 +175,8 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 		teamColors[agentID] = getTeamColor(agent.TrueSomasTeamID)
 	}
 	// Add series and customize legend based on Soma IDs
-	somasScores := make(map[int][]float64)      // Map for aggregated scores by Soma ID
-	somasColors := make(map[int]string)        // Map for Soma ID colors
+	somasScores := make(map[int][]float64) // Map for aggregated scores by Soma ID
+	somasColors := make(map[int]string)    // Map for Soma ID colors
 
 	// Initialize data structures for each Soma ID
 	for _, agent := range initialAgentRecords {
@@ -254,7 +254,6 @@ func createScoreChart(iteration int, turns []TurnRecord) *charts.Line {
 			line.Overlap(scatter)
 		}
 	}
-
 
 	line.SetXAxis(xAxis)
 	return line

@@ -51,7 +51,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 			continue
 		}
 
-		if team.TeamAoAID == 2 && team.TeamAoA.(*common.Team2AoA).GetRollsLeft(agentID) > 0{
+		if team.TeamAoAID == 2 && team.TeamAoA.(*common.Team2AoA).GetRollsLeft(agentID) > 0 {
 			team.TeamAoA.(*common.Team2AoA).RollOnce(agentID)
 			cs.OverrideAgentRolls(agentID, team.TeamAoA.(*common.Team2AoA).GetLeader())
 		} else {

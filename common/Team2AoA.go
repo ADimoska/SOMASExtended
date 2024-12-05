@@ -24,10 +24,10 @@ import (
 type Team2AoA struct {
 	auditRecord *AuditRecord
 	// Used by the server in order to track which agents need to be kicked/fined/rolling privileges revoked
-	OffenceMap map[uuid.UUID]int
+	OffenceMap   map[uuid.UUID]int
 	RollsLeftMap map[uuid.UUID]int
-	Leader     uuid.UUID
-	Team       *Team
+	Leader       uuid.UUID
+	Team         *Team
 }
 
 func (t *Team2AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
@@ -217,8 +217,8 @@ func (t *Team2AoA) GetRollsLeft(agentId uuid.UUID) int {
 	return t.RollsLeftMap[agentId]
 }
 
-func (t *Team2AoA) RollOnce (agentId uuid.UUID) {
-	t.RollsLeftMap[agentId] = max(0, t.RollsLeftMap[agentId] - 1)
+func (t *Team2AoA) RollOnce(agentId uuid.UUID) {
+	t.RollsLeftMap[agentId] = max(0, t.RollsLeftMap[agentId]-1)
 }
 
 func (t *Team2AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
@@ -244,11 +244,11 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOf
 	}
 
 	return &Team2AoA{
-		auditRecord: NewAuditRecord(auditDuration),
-		OffenceMap:  offenceMap,
+		auditRecord:  NewAuditRecord(auditDuration),
+		OffenceMap:   offenceMap,
 		RollsLeftMap: rollsLeftMap,
-		Leader:      leader,
-		Team:        team,
+		Leader:       leader,
+		Team:         team,
 	}
 }
 
