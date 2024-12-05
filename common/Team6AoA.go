@@ -433,6 +433,7 @@ func (t *Team6AoA) GetPunishment(agentScore int, agentID uuid.UUID) int { // Pun
 	if t.agentsToMonitor[agentID] > 3 {
 		// if the agent has surpassed stage 3 monitoring
 		// kill that bad boi
+		// remove the entirety of its score and let it die by threshold
 		deduction = float64(agentScore)
 	}
 
@@ -462,8 +463,8 @@ func (t *Team6AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int
 
 func createTeam6AoA() IArticlesOfAssociation {
 	return &Team6AoA{
-		weight: float64, // Weight for current turn contributions
-		decay:  float64, // Decay rate for cumulative contributions
+		weight: float64(0.4), // Weight for current turn contributions
+		decay:  float64(0.9), // Decay rate for cumulative contributions
 
 		cumulativeContributions: make(map[uuid.UUID]float64),
 		currentContributions:    make(map[uuid.UUID]float64),           // Current turn contributions
