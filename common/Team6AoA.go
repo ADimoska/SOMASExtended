@@ -1,7 +1,11 @@
 package common
 
 import (
+	"time"
+
 	"github.com/google/uuid"
+	"golang.org/x/exp/rand"
+	"gonum.org/v1/gonum/stat/distuv"
 )
 
 type CheatingRecord struct {
@@ -17,6 +21,7 @@ type Team6AoA struct {
 	cumulativeContributions map[uuid.UUID]float64           // Cumulative contributions with decay
 	currentContributions    map[uuid.UUID]float64           // Current turn contributions
 	auditHistory            map[uuid.UUID][]*CheatingRecord // Audit history per agent
+	agentsToMonitor         map[uuid.UUID]int64             // Monitoring tracking
 
 }
 
@@ -79,17 +84,128 @@ func (t *Team6AoA) GetVoteResult(votes []Vote) uuid.UUID {
 
 }
 
+// Mointoring: 3 stages
+// 0 -> not being monitored
+// 1 -> monitoring stage 1
+// 2 -> stage 2
+// 3 -> stage 3
+func (t *Team6AoA) RunContributionMonitoring() {
+	// for all agent in monitoring system
+
+	// for now, we're saying monitoring is free
+	// auditCost = t.GetAuditCost()
+	// monitCosts =
+
+	for monitAgent, monitStage := range t.agentsToMonitor {
+
+		source := rand.NewSource(uint64(time.Now().UnixNano()))
+
+		// Check if agent has any audit history
+		if monitHistory, monitExists := t.auditHistory[monitAgent]; monitExists && len(monitHistory) > 0 {
+
+			lastMonitRecord := monitHistory[len(monitHistory)-1]
+
+			if lastMonitRecord == nil {
+				// if agent being monitored was good last turn, move them down a stage
+				t.agentsToMonitor[monitAgent] -= 1
+			} else {
+				if monitStage == 1 {
+					// stage 1, half of actual
+					lambda := float64(lastMonitRecord.Actual / 2)
+					poisson := distuv.Poisson{
+						Lambda: lambda,           // The rate parameter
+						Src:    rand.New(source), // Random source
+					}
+					monitCheck := poisson.Rand()
+
+					if monitCheck <= float64(lastMonitRecord.Expected) {
+						// agent gets away with it
+						t.agentsToMonitor[monitAgent] -= 1
+					} else {
+						// agent gets caught
+						t.agentsToMonitor[monitAgent] += 1
+					}
+
+				} else if monitStage == 2 {
+					// stage 2, 3/4 of actual
+					lambda := float64(3 * lastMonitRecord.Actual / 4)
+					poisson := distuv.Poisson{
+						Lambda: lambda,           // The rate parameter
+						Src:    rand.New(source), // Random source
+					}
+					monitCheck := poisson.Rand()
+
+					if monitCheck <= float64(lastMonitRecord.Expected) {
+						// agent gets away with it
+						t.agentsToMonitor[monitAgent] -= 1
+					} else {
+						// agent gets caught
+						t.agentsToMonitor[monitAgent] += 1
+					}
+
+				} else if monitStage == 3 {
+					// stage 3, full actual
+					lambda := float64(lastMonitRecord.Actual)
+					poisson := distuv.Poisson{
+						Lambda: lambda,           // The rate parameter
+						Src:    rand.New(source), // Random source
+					}
+					monitCheck := poisson.Rand()
+
+					if monitCheck <= float64(lastMonitRecord.Expected) {
+						// agent gets away with it
+						t.agentsToMonitor[monitAgent] -= 1
+					} else {
+						// agent gets caught
+						t.agentsToMonitor[monitAgent] += 1
+					}
+				}
+			}
+
+			if monitStage < 0 {
+				// monit stage can't be negative
+				t.agentsToMonitor[monitAgent] = 0
+			} else if monitStage > 3 {
+				// agent has passed stage 3 of monitoring, must get kicked out
+			}
+		}
+
+		if monitStage == 0 {
+			// if the monit stage of this agent in system drops from 1 -> 0, free it from monitoring
+			delete(t.agentsToMonitor, monitAgent)
+		}
+
+	}
+}
+
 // Will just check if the agent cheated in their last contribution
 // TODO: Implement probability based detection:
 // - Baseline detection: 50% + (1-50% based on how much the agent cheated)
 // - So that the probability of detection is based on how much the agent cheated
 func (t *Team6AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
+
+	// first, run monitoring for all agents being monitored!
+	t.RunContributionMonitoring()
+
 	// Check if agent has any audit history
 	if history, exists := t.auditHistory[agentId]; exists && len(history) > 0 {
 		// Get the most recent audit record
 		lastRecord := history[len(history)-1]
 		// If lastRecord is not nil, it means the agent cheated in their last contribution
-		return lastRecord != nil
+
+		cheatCheck := lastRecord != nil
+		_, inMonitMap := t.agentsToMonitor[agentId]
+
+		if inMonitMap {
+			// if this agent is already in monitoring map, do nothing
+			// if it cheated, that'll already have been sorted by the RunMonitoring Function
+		} else if cheatCheck == true {
+			// this agent cheated, but isn't in monitoring map
+			// we must add it in at stage 1!
+			t.agentsToMonitor[agentId] = 1
+		}
+
+		return cheatCheck
 	}
 	return false // No history or empty history means no detected cheating
 }
@@ -128,6 +244,11 @@ func (t *Team6AoA) CalculateVotingPower() map[uuid.UUID]float64 {
 	}
 
 	return votingPower
+}
+
+// Punishment fn! (finally)
+func (t *Team6AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
+	return (agentScore * 25) / 100
 }
 
 func createTeam6AoA() IArticlesOfAssociation {
