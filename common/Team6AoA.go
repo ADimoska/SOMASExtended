@@ -30,16 +30,55 @@ func (t *Team6AoA) GetAuditCost(commonPool int) int {
 	return int(float64(commonPool) * 0.1)
 }
 
+// 3 stages of punishment On a successful audit (i.e agent is found to be cheating)
+// Or a successful catch while monitoring, then move to next stage 1st stage For next 3 turns,
+// • Placed under stage 1 monitoring
+// • forced to contribute 1.5x the contribution amount
+// • And withdraw 0.75x of the withdrawal amount 2nd stage For next 3 turns,
+// • Placed under stage 2 monitoring
+// • forced to contribute 2x the contribution amount
+// • And withdraw 0.5x of the withdrawal amount Group 6 AoAs 3rd stage For next 3 turns,
+// • Placed under stage 3 monitoring • forced to contribute 3x the contribution amount
+// • And withdraw 0.33x of the withdrawal amount If stage 3 is failed - kick out/kill
+
 func (t *Team6AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
-	return int(float64(agentScore) * 0.3)
+	baseContribute := int(float64(agentScore) * 0.3)
+
+	monitStage, monitExists := t.agentsToMonitor[agentId]
+
+	contribute := baseContribute
+	if monitExists {
+		if monitStage == 1 {
+			contribute = int(float64(baseContribute) * 1.5)
+		} else if monitStage == 2 {
+			contribute = int(float64(baseContribute) * 2)
+		} else if monitStage >= 3 {
+			contribute = int(float64(baseContribute) * 3)
+		}
+	}
+
+	return contribute
 }
 
 func (t *Team6AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
 	auditCost := t.GetAuditCost((commonPool))
 	numAgentsInTeam := len(t.auditHistory)
 	// this should be ok, bc contribution happens before withdrawl, so audithist shld be filled the 1st time this fn is called
-	expectedWithdrawl := int((commonPool - auditCost) / numAgentsInTeam)
-	return expectedWithdrawl
+	baseWithdraw := int((commonPool - auditCost) / numAgentsInTeam)
+
+	monitStage, monitExists := t.agentsToMonitor[agentId]
+
+	withdraw := baseWithdraw
+	if monitExists {
+		if monitStage == 1 {
+			withdraw = int(float64(baseWithdraw) * 0.75)
+		} else if monitStage == 2 {
+			withdraw = int(float64(baseWithdraw) * 0.5)
+		} else if monitStage >= 3 {
+			withdraw = int(float64(baseWithdraw) * 0)
+		}
+	}
+	return withdraw
 }
 
 func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, actualContribution int, agentStatedContribution int) {
@@ -179,7 +218,7 @@ func (t *Team6AoA) RunContributionMonitoring() {
 						t.agentsToMonitor[monitAgent] += 1
 					}
 
-				} else if monitStage == 3 {
+				} else if monitStage >= 3 {
 					// stage 3, full actual
 					lambda := float64(lastMonitRecord.Actual)
 					poisson := distuv.Poisson{
@@ -188,7 +227,7 @@ func (t *Team6AoA) RunContributionMonitoring() {
 					}
 					monitCheck := poisson.Rand()
 
-					if monitCheck <= float64(lastMonitRecord.Expected) {
+					if monitCheck <= float64(lastMonitRecord.Expected) && monitStage == 3 {
 						// agent gets away with it
 						t.agentsToMonitor[monitAgent] -= 1
 					} else {
@@ -297,7 +336,7 @@ func (t *Team6AoA) RunWithdrawalMonitoring() {
 						t.agentsToMonitor[monitAgent] += 1
 					}
 
-				} else if monitStage == 3 {
+				} else if monitStage >= 3 {
 					// stage 3, full actual
 					lambda := float64(lastMonitRecord.Actual)
 					poisson := distuv.Poisson{
@@ -306,7 +345,7 @@ func (t *Team6AoA) RunWithdrawalMonitoring() {
 					}
 					monitCheck := poisson.Rand()
 
-					if monitCheck >= float64(lastMonitRecord.Expected) {
+					if monitCheck >= float64(lastMonitRecord.Expected) && monitStage == 3 {
 						// agent gets away with it
 						t.agentsToMonitor[monitAgent] -= 1
 					} else {
