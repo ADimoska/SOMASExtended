@@ -53,7 +53,26 @@ func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 		// Append nil to indicate no cheating in this contribution turn
 		t.auditHistory[agentId] = append(t.auditHistory[agentId], nil)
 	}
+}
 
+func (t *Team6AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
+
+	auditCost := t.GetAuditCost((commonPool))
+	numAgentsInTeam := len(t.auditHistory)
+	expectedWithdrawl := int((commonPool - auditCost) / numAgentsInTeam)
+	// Check for cheating
+	if agentActualWithdrawal > expectedWithdrawl {
+		cheatedAmount := agentActualWithdrawal - expectedWithdrawl
+		record := &CheatingRecord{
+			Expected:      expectedWithdrawl,
+			Actual:        agentActualWithdrawal,
+			CheatedAmount: cheatedAmount,
+		}
+		t.auditHistory[agentId] = append(t.auditHistory[agentId], record)
+	} else {
+		// Append nil to indicate no cheating in this contribution turn
+		t.auditHistory[agentId] = append(t.auditHistory[agentId], nil)
+	}
 }
 
 func (t *Team6AoA) GetVoteResult(votes []Vote) uuid.UUID {
@@ -111,7 +130,7 @@ func (t *Team6AoA) RunContributionMonitoring() {
 			} else {
 				if monitStage == 1 {
 					// stage 1, half of actual
-					lambda := float64(lastMonitRecord.Actual / 2)
+					lambda := float64((lastMonitRecord.Actual + lastMonitRecord.Expected) / 2)
 					poisson := distuv.Poisson{
 						Lambda: lambda,           // The rate parameter
 						Src:    rand.New(source), // Random source
@@ -128,7 +147,10 @@ func (t *Team6AoA) RunContributionMonitoring() {
 
 				} else if monitStage == 2 {
 					// stage 2, 3/4 of actual
-					lambda := float64(3 * lastMonitRecord.Actual / 4)
+
+					halfwayActualExp := (lastMonitRecord.Actual + lastMonitRecord.Expected) / 2
+
+					lambda := float64((halfwayActualExp + lastMonitRecord.Actual) / 2)
 					poisson := distuv.Poisson{
 						Lambda: lambda,           // The rate parameter
 						Src:    rand.New(source), // Random source
@@ -167,14 +189,13 @@ func (t *Team6AoA) RunContributionMonitoring() {
 				t.agentsToMonitor[monitAgent] = 0
 			} else if monitStage > 3 {
 				// agent has passed stage 3 of monitoring, must get kicked out
+				// KILL/KICKOUT AGENT
 			}
 		}
-
 		if monitStage == 0 {
 			// if the monit stage of this agent in system drops from 1 -> 0, free it from monitoring
 			delete(t.agentsToMonitor, monitAgent)
 		}
-
 	}
 }
 
@@ -210,12 +231,99 @@ func (t *Team6AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
 	return false // No history or empty history means no detected cheating
 }
 
+func (t *Team6AoA) RunWithdrawalMonitoring() {
+	// for all agent in monitoring system
+
+	// for now, we're saying monitoring is free
+
+	for monitAgent, monitStage := range t.agentsToMonitor {
+
+		source := rand.NewSource(uint64(time.Now().UnixNano()))
+
+		// Check if agent has any audit history
+		if monitHistory, monitExists := t.auditHistory[monitAgent]; monitExists && len(monitHistory) > 0 {
+
+			lastMonitRecord := monitHistory[len(monitHistory)-1]
+
+			if lastMonitRecord == nil {
+				// if agent being monitored was good last turn, move them down a stage
+				t.agentsToMonitor[monitAgent] -= 1
+			} else {
+				if monitStage == 1 {
+					// stage 1, half of actual
+					lambda := float64(lastMonitRecord.Actual / 2)
+					poisson := distuv.Poisson{
+						Lambda: lambda,           // The rate parameter
+						Src:    rand.New(source), // Random source
+					}
+					monitCheck := poisson.Rand()
+
+					if monitCheck >= float64(lastMonitRecord.Expected) {
+						// agent gets away with it
+						t.agentsToMonitor[monitAgent] -= 1
+					} else {
+						// agent gets caught
+						t.agentsToMonitor[monitAgent] += 1
+					}
+
+				} else if monitStage == 2 {
+					// stage 2, 3/4 of actual
+					lambda := float64(3 * lastMonitRecord.Actual / 4)
+					poisson := distuv.Poisson{
+						Lambda: lambda,           // The rate parameter
+						Src:    rand.New(source), // Random source
+					}
+					monitCheck := poisson.Rand()
+
+					if monitCheck >= float64(lastMonitRecord.Expected) {
+						// agent gets away with it
+						t.agentsToMonitor[monitAgent] -= 1
+					} else {
+						// agent gets caught
+						t.agentsToMonitor[monitAgent] += 1
+					}
+
+				} else if monitStage == 3 {
+					// stage 3, full actual
+					lambda := float64(lastMonitRecord.Actual)
+					poisson := distuv.Poisson{
+						Lambda: lambda,           // The rate parameter
+						Src:    rand.New(source), // Random source
+					}
+					monitCheck := poisson.Rand()
+
+					if monitCheck >= float64(lastMonitRecord.Expected) {
+						// agent gets away with it
+						t.agentsToMonitor[monitAgent] -= 1
+					} else {
+						// agent gets caught
+						t.agentsToMonitor[monitAgent] += 1
+					}
+				}
+			}
+			if monitStage < 0 {
+				// monit stage can't be negative
+				t.agentsToMonitor[monitAgent] = 0
+			} else if monitStage > 3 {
+				// agent has passed stage 3 of monitoring, must get kicked out
+				// KILL/KICKOUT AGENT
+			}
+		}
+		if monitStage == 0 {
+			// if the monit stage of this agent in system drops from 1 -> 0, free it from monitoring
+			delete(t.agentsToMonitor, monitAgent)
+		}
+
+	}
+}
+
+func (t *Team6AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool
+
+// we might be able to just leave this empty
 func (t *Team6AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
 
 func (t *Team6AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
 func (t *Team6AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int
-func (t *Team6AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int)
-func (t *Team6AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool
 
 func (t *Team6AoA) CalculateVotingPower() map[uuid.UUID]float64 {
 	weightedContributions := make(map[uuid.UUID]float64)
