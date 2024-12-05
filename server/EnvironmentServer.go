@@ -611,9 +611,9 @@ func (cs *EnvironmentServer) allocateAoAs() {
 }
 
 func (cs *EnvironmentServer) RunEndOfIteration(int) {
-	// for _, agent := range cs.GetAgentMap() {
-	// 	cs.killAgentBelowThreshold(agent.GetID())
-	// }
+	for _, team := range cs.Teams {
+		team.SetCommonPool(0)
+	}
 }
 
 // custom override (what why this is called later then start iteration...)
@@ -907,9 +907,6 @@ func (cs *EnvironmentServer) ResetAgents() {
 
 func (cs *EnvironmentServer) ApplyThreshold() {
 	cs.thresholdAppliedInTurn = true
-	for _, team := range cs.Teams {
-		team.SetCommonPool(0)
-	}
 
 	for _, agent := range cs.GetAgentMap() {
 		cs.killAgentBelowThreshold(agent.GetID())
