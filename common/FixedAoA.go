@@ -87,6 +87,10 @@ func (t *FixedAoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
+func (t *FixedAoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
+	return (agentScore * 25) / 100
+}
+
 func (t *FixedAoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)     {}
 func (t *FixedAoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
@@ -99,4 +103,13 @@ func CreateFixedAoA(duration int) IArticlesOfAssociation {
 	return &FixedAoA{
 		auditRecord: auditRecord,
 	}
+}
+
+// Do nothing
+func (t *FixedAoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *FixedAoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
 }

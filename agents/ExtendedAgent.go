@@ -3,6 +3,7 @@ package agents
 import (
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -18,9 +19,10 @@ import (
 
 type ExtendedAgent struct {
 	*agent.BaseAgent[common.IExtendedAgent]
-	Server    common.IServer
-	Score     int
-	TeamID    uuid.UUID
+	Server common.IServer
+	Score  int
+	TeamID uuid.UUID
+	Name   int
 
 	// private
 	LastScore int
@@ -52,12 +54,21 @@ type AgentConfig struct {
 }
 
 func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
+	aoaRanking := []int{1, 2, 3, 4, 5, 6}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// Shuffle the slice to create a random order.
+	rng.Shuffle(len(aoaRanking), func(i, j int) {
+		aoaRanking[i], aoaRanking[j] = aoaRanking[j], aoaRanking[i]
+	})
+
 	return &ExtendedAgent{
 		BaseAgent:    agent.CreateBaseAgent(funcs),
 		Server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
 		Score:        configParam.InitScore,
 		VerboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{0},
+		AoARanking:   aoaRanking,
 		TeamRanking:  []uuid.UUID{},
 	}
 }
@@ -88,6 +99,10 @@ func (mi *ExtendedAgent) GetTrueSomasTeamID() int {
 // Setter for the server to call, in order to set the true score for this agent
 func (mi *ExtendedAgent) SetTrueScore(score int) {
 	mi.Score = score
+}
+
+func (mi *ExtendedAgent) SetName(name int) {
+	mi.Name = name
 }
 
 // custom function: ask for rolling the dice
@@ -221,6 +236,24 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 	}
 	// Currently, assume stated withdrawal matches actual withdrawal
 	return instance.GetActualContribution(instance)
+}
+
+func (mi *ExtendedAgent) GetName() int {
+	return mi.Name
+}
+
+/*
+ * Ask an agent if it wants to leave or not. "Opinion" because there
+ * should be logic on the server to prevent agents from leaving if they
+ * are currently being punished as a result of an audit.
+ */
+func (mi *ExtendedAgent) GetLeaveOpinion(agentID uuid.UUID) bool {
+	// Recursion block
+	if mi.GetID() == agentID {
+		return false
+	}
+	// Get the underlying agent's opinion
+	return mi.Server.AccessAgentByID(agentID).GetLeaveOpinion(mi.GetID())
 }
 
 /*
@@ -373,6 +406,20 @@ func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.Withd
 	return &common.WithdrawalMessage{
 		BaseMessage:  mi.CreateBaseMessage(),
 		StatedAmount: statedAmount,
+	}
+}
+
+func (mi *ExtendedAgent) Team4_CreateProposedWithdrawalMessage(statedAmount int) *common.Team4_ProposedWithdrawalMessage {
+	return &common.Team4_ProposedWithdrawalMessage{
+		BaseMessage:  mi.CreateBaseMessage(),
+		StatedAmount: statedAmount,
+	}
+}
+
+func (mi *ExtendedAgent) Team4_CreateConfessionMessage(confession bool) *common.Team4_ConfessionMessage {
+	return &common.Team4_ConfessionMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		Confession:  confession,
 	}
 }
 

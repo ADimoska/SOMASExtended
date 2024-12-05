@@ -50,6 +50,17 @@ type Team1RankBoundaryResponseMessage struct {
 	Bounds [5]int
 }
 
+type Team4_ProposedWithdrawalMessage struct {
+	message.BaseMessage
+	StatedAmount   int
+	ExpectedAmount int
+}
+
+type Team4_ConfessionMessage struct {
+	message.BaseMessage
+	Confession bool
+}
+
 func (msg *TeamFormationMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.HandleTeamFormationMessage(msg)
 }
@@ -80,4 +91,12 @@ func (msg *Team1RankBoundaryRequestMessage) InvokeMessageHandler(agent IExtended
 
 func (msg *Team1RankBoundaryResponseMessage) InvokeMessageHandler(agent IExtendedAgent) {
 	agent.Team1_BoundaryProposalResponseHandler(msg)
+}
+
+func (msg *Team4_ProposedWithdrawalMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.Team4_HandleProposedWithdrawalMessage(msg)
+}
+
+func (msg *Team4_ConfessionMessage) InvokeMessageHandler(agent IExtendedAgent) {
+	agent.Team4_HandleConfessionMessage(msg)
 }

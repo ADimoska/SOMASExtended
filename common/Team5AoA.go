@@ -288,3 +288,17 @@ func CreateTeam5AoA() IArticlesOfAssociation {
 		Allocation:           make(map[uuid.UUID]int),
 	}
 }
+
+// Do nothing
+func (t *Team5AOA) Team4_SetRankUp(map[uuid.UUID]map[uuid.UUID]int) {
+}
+
+func (t *Team5AOA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team5AOA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
+}
+
+func (t *Team5AOA) GetPunishment(agentScore int, agentId uuid.UUID) int {
+	return (agentScore * 25) / 100
+}

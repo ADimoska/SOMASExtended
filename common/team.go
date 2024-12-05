@@ -24,6 +24,15 @@ func (team *Team) SetCommonPool(amount int) {
 	team.commonPool = amount
 }
 
+func (team *Team) RemoveAgent(agentID uuid.UUID) {
+	for i, a := range team.Agents {
+		if a == agentID {
+			team.Agents = append(team.Agents[:i], team.Agents[i+1:]...)
+			break
+		}
+	}
+}
+
 // constructor: NewTeam creates a new Team with a unique TeamID and initializes other fields as blank.
 func NewTeam(teamID uuid.UUID) *Team {
 	teamAoA := CreateFixedAoA(1)
