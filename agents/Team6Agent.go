@@ -12,12 +12,14 @@ import (
 
 type Team6_Agent struct {
 	*ExtendedAgent
-	OpinionVector           map[uuid.UUID]*float64 //this used in deciding auditing votes, and team choosing
+	OpinionVector           map[uuid.UUID]float64 //this used in deciding auditing votes, and team choosing
 	Selfishness             float64                //a value from 0 (least selfish) to 1 (most selfish) which affects agent strategies
 	AgentTurnScore          int                    //this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
 	Trust                   float64
 	Greed                   float64
 	AveragePersonalDiceRoll float64				//this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
+	ContributionSuccessCount int
+	WithdrawalSuccessCount	 int
 }
 
 // constructor for Team6_Agent
@@ -25,7 +27,7 @@ func Team6_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	return &Team6_Agent{
 		ExtendedAgent: 			GetBaseAgents(funcs, agentConfig),
 		OpinionVector:			make(map[uuid.UUID]*float64)
-		Selfishness: 			rand.Float64(),						//initialised randomly
+		Selfishness: 			 rand.Float64(),						//initialised randomly
 		//Reputation:				0.5,								//initialised to neutral reputation
 		Trust:                   rand.Float64(),
 		Greed:                   rand.Float64(),
@@ -219,3 +221,84 @@ func (mi *ExtendedAgent) GetContributionAuditVote() common.Vote {
 func (mi *ExtendedAgent) GetWithdrawalAuditVote() common.Vote {
 	return common.CreateVote(0, mi.GetID(), uuid.Nil)
 }
+
+func (mi *Team6_Agent) UpdateGreed() {
+	// Update greed value based on Current Agent Score and Average Personal Dice Roll
+	if mi.AgentTurnScore > 0 && mi.AveragePersonalDiceRoll > 0 {
+		// Example logic: Greed increases when the agent's average dice roll is higher
+		// and the current agent score is higher, indicating more risk-taking behavior
+		mi.Greed = (float64(mi.AgentTurnScore) / 100.0) + (mi.AveragePersonalDiceRoll / 6.0)
+
+		// Ensure greed is within bounds [0.0, 1.0]
+		if mi.Greed > 1.0 {
+			mi.Greed = 1.0
+		} else if mi.Greed < 0.0 {
+			mi.Greed = 0.0
+		}
+	}
+
+	fmt.Printf("Agent %s greed updated to %.2f based on current agent score and average personal dice roll\n", mi.GetID(), mi.Greed)
+}
+
+func (mi *Team6_Agent) UpdateSelfishness() {
+	team := mi.Server.GetTeam(mi.GetID())
+	if team == nil {
+		fmt.Printf("[WARNING] Agent %s has no team, setting selfishness to default 0.5\n", mi.GetID())
+		mi.Selfishness = 0.5
+		return
+	}
+
+	// Update selfishness based on Agent Dice Roll (AveragePersonalDiceRoll), Team Common Pool, and Trust Level
+	teamCommonPool := mi.Server.GetTeamCommonPool()
+
+	if teamCommonPool > 0 && mi.AveragePersonalDiceRoll > 0 {
+		// Example logic: Selfishness increases when trust is lower, the average dice roll is higher,
+		// and there is a higher amount of common resources in the team pool.
+		selfishnessFactor := (1.0 - mi.Trust) + (mi.AveragePersonalDiceRoll / 6.0) + (float64(teamCommonPool) / 200.0)
+
+		// Scale selfishness to be between [0.0, 1.0]
+		mi.Selfishness = selfishnessFactor / 3.0
+
+		// Ensure selfishness is within bounds [0.0, 1.0]
+		if mi.Selfishness > 1.0 {
+			mi.Selfishness = 1.0
+		} else if mi.Selfishness < 0.0 {
+			mi.Selfishness = 0.0
+		}
+	} else {
+		// If no data available, default to a neutral selfishness value
+		mi.Selfishness = 0.5
+	}
+
+	fmt.Printf("Agent %s selfishness updated to %.2f based on dice roll, team common pool, and trust level\n", mi.GetID(), mi.Selfishness)
+}
+
+//Gives a successful audit result 
+func (mi *Team6_Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) bool {
+    if result {
+        mi.ContributionSuccessCount++ // Increment the contribution success counter
+    }
+    return result
+}
+
+func (mi *Team6_Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) bool {
+    if result {
+        mi.WithdrawalSuccessCount++ // Increment the withdrawal success counter
+    }
+    return result
+}
+
+func (mi *Team6_Agent) GetTotalSuccessfulAudits() int {
+    return mi.ContributionSuccessCount + mi.WithdrawalSuccessCount
+}
+
+
+func (mi *Team6_Agent) HandleTeamFormationMessage(msg *TeamFormationMessage)
+func (mi *Team6_Agent) HandleWithdrawalMessage(msg *WithdrawalMessage)
+func (mi *Team6_Agent) BroadcastSyncMessageToTeam(msg message.IMessage[IExtendedAgent])
+func (mi *Team6_Agent) HandleContributionMessage(msg *ContributionMessage)
+
+func (mi *Team6_Agent) HandleAgentOpinionRequestMessage(msg *AgentOpinionRequestMessage)
+func (mi *Team6_Agent) HandleAgentOpinionResponseMessage(msg *AgentOpinionResponseMessage)
+
+
