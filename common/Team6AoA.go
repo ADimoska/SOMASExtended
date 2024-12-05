@@ -25,11 +25,23 @@ type Team6AoA struct {
 
 }
 
-func (t *Team6AoA) GetAuditCost(commonPool int) int
+func (t *Team6AoA) GetAuditCost(commonPool int) int {
+	// so audit cost is 10% of common pool
+	return int(float64(commonPool) * 0.1)
+}
 
 func (t *Team6AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
 	return int(float64(agentScore) * 0.3)
 }
+
+func (t *Team6AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
+	auditCost := t.GetAuditCost((commonPool))
+	numAgentsInTeam := len(t.auditHistory)
+	// this should be ok, bc contribution happens before withdrawl, so audithist shld be filled the 1st time this fn is called
+	expectedWithdrawl := int((commonPool - auditCost) / numAgentsInTeam)
+	return expectedWithdrawl
+}
+
 func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, actualContribution int, agentStatedContribution int) {
 	// Store current contribution
 	t.currentContributions[agentId] = float64(actualContribution)
@@ -39,7 +51,8 @@ func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 	newCumulative := (oldCumulative * t.decay) + float64(actualContribution)
 	t.cumulativeContributions[agentId] = newCumulative
 
-	expectedContribution := int(float64(agentScore) * 0.3)
+	// expectedContribution := int(float64(agentScore) * 0.3)
+	expectedContribution := t.GetExpectedContribution(agentId, agentScore)
 	// Check for cheating
 	if actualContribution < expectedContribution {
 		cheatedAmount := expectedContribution - actualContribution
@@ -57,9 +70,10 @@ func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 
 func (t *Team6AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
 
-	auditCost := t.GetAuditCost((commonPool))
-	numAgentsInTeam := len(t.auditHistory)
-	expectedWithdrawl := int((commonPool - auditCost) / numAgentsInTeam)
+	// auditCost := t.GetAuditCost((commonPool))
+	// numAgentsInTeam := len(t.auditHistory)
+	// expectedWithdrawl := int((commonPool - auditCost) / numAgentsInTeam)
+	expectedWithdrawl := t.GetExpectedWithdrawal(agentId, agentScore, commonPool)
 	// Check for cheating
 	if agentActualWithdrawal > expectedWithdrawl {
 		cheatedAmount := agentActualWithdrawal - expectedWithdrawl
@@ -344,12 +358,6 @@ func (t *Team6AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
 	return false // No history or empty history means no detected cheating
 }
 
-// we might be able to just leave this empty
-func (t *Team6AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
-
-func (t *Team6AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
-func (t *Team6AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int
-
 func (t *Team6AoA) CalculateVotingPower() map[uuid.UUID]float64 {
 	weightedContributions := make(map[uuid.UUID]float64)
 	totalWeighted := 0.0
@@ -459,6 +467,24 @@ func (t *Team6AoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.U
 
 // not needed, dw abt it, here to fix error complaints
 func (t *Team6AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+
+// not needed, dw abt it, here to fix error complaints
+func (t *Team6AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+}
+
+func (t *Team6AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
+	// math.rand.Seed(time.Now().UnixNano())
+	// Create a copy of the agentIDs to avoid modifying the original list
+	shuffledAgents := make([]uuid.UUID, len(agentIDs))
+	copy(shuffledAgents, agentIDs)
+
+	// Shuffle the agent list
+	rand.Shuffle(len(shuffledAgents), func(i, j int) {
+		shuffledAgents[i], shuffledAgents[j] = shuffledAgents[j], shuffledAgents[i]
+	})
+
+	return shuffledAgents
 }
 
 func createTeam6AoA() IArticlesOfAssociation {
