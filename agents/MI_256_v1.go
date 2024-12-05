@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 
@@ -78,6 +79,63 @@ func (mi *MI_256_v1) DecideAudit() bool {
 func (mi *MI_256_v1) DecidePunishment() int {
 	// TODO: implement punishment strategy
 	return 1
+}
+
+// Need to do something about agents own ID in here
+func (mi *MI_256_v1) Team4_GetRankUpVote() map[uuid.UUID]int {
+	log.Printf("Called overriden GetRankUpVote()")
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+	rankUpVote := make(map[uuid.UUID]int)
+
+	for _, agentId := range agentsInTeam {
+		rankUpVote[agentId] = rand.Intn(2)
+	}
+
+	fmt.Println(rankUpVote)
+	return rankUpVote
+}
+
+func (mi *MI_256_v1) Team4_GetConfession() bool {
+	return true
+}
+
+func (mi *MI_256_v1) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
+	log.Printf("Called overriden GetProposedWithdrawalVote()")
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+	proposedWithdrawals := make(map[uuid.UUID]int)
+
+	for _, agentId := range agentsInTeam {
+		proposedWithdrawals[agentId] = rand.Intn(2)
+	}
+
+	fmt.Println(proposedWithdrawals)
+	return proposedWithdrawals
+}
+
+func (mi *MI_256_v1) GetWithdrawalAuditVote() common.Vote {
+	log.Printf("Called overriden GetWithdrawalAuditVote()")
+
+	// Get the agents in the team
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+
+	// Check if the team has any agents
+	if len(agentsInTeam) == 0 {
+		return common.CreateVote(0, mi.GetID(), uuid.Nil)
+	}
+
+	firstAgentID := agentsInTeam[0]
+
+	return common.CreateVote(1, mi.GetID(), firstAgentID)
+}
+
+func (mi *MI_256_v1) Team4_GetPunishmentVoteMap() map[int]int {
+	punishmentVoteMap := make(map[int]int)
+
+	for punishment := 0; punishment <= 4; punishment++ {
+		punishmentVoteMap[punishment] = rand.Intn(5)
+	}
+
+	return punishmentVoteMap
 }
 
 // ----------------------- State Helpers -----------------------

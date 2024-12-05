@@ -3,6 +3,7 @@ package agents
 import (
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -21,6 +22,7 @@ type ExtendedAgent struct {
 	Server common.IServer
 	Score  int
 	TeamID uuid.UUID
+	Name   int
 
 	// private
 	LastScore int
@@ -41,6 +43,9 @@ type ExtendedAgent struct {
 
 	// for recording purpose
 	TrueSomasTeamID int // your true team id! e.g. team 4 -> 4. Override this in your agent constructor
+
+	// Team1 AoA Agent Memory
+	team1RankBoundaryProposals [][5]int
 }
 
 type AgentConfig struct {
@@ -49,12 +54,21 @@ type AgentConfig struct {
 }
 
 func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
+	aoaRanking := []int{1, 2, 3, 4, 5, 6}
+
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// Shuffle the slice to create a random order.
+	rng.Shuffle(len(aoaRanking), func(i, j int) {
+		aoaRanking[i], aoaRanking[j] = aoaRanking[j], aoaRanking[i]
+	})
+
 	return &ExtendedAgent{
 		BaseAgent:    agent.CreateBaseAgent(funcs),
 		Server:       funcs.(common.IServer), // Type assert the server functions to IServer interface
 		Score:        configParam.InitScore,
 		VerboseLevel: configParam.VerboseLevel,
-		AoARanking:   []int{0},
+		AoARanking:   aoaRanking,
 		TeamRanking:  []uuid.UUID{},
 	}
 }
@@ -85,6 +99,10 @@ func (mi *ExtendedAgent) GetTrueSomasTeamID() int {
 // Setter for the server to call, in order to set the true score for this agent
 func (mi *ExtendedAgent) SetTrueScore(score int) {
 	mi.Score = score
+}
+
+func (mi *ExtendedAgent) SetName(name int) {
+	mi.Name = name
 }
 
 // custom function: ask for rolling the dice
@@ -218,6 +236,10 @@ func (mi *ExtendedAgent) GetStatedWithdrawal(instance common.IExtendedAgent) int
 	}
 	// Currently, assume stated withdrawal matches actual withdrawal
 	return instance.GetActualContribution(instance)
+}
+
+func (mi *ExtendedAgent) GetName() int {
+	return mi.Name
 }
 
 /*
@@ -370,6 +392,20 @@ func (mi *ExtendedAgent) CreateWithdrawalMessage(statedAmount int) *common.Withd
 	return &common.WithdrawalMessage{
 		BaseMessage:  mi.CreateBaseMessage(),
 		StatedAmount: statedAmount,
+	}
+}
+
+func (mi *ExtendedAgent) Team4_CreateProposedWithdrawalMessage(statedAmount int) *common.Team4_ProposedWithdrawalMessage {
+	return &common.Team4_ProposedWithdrawalMessage{
+		BaseMessage:  mi.CreateBaseMessage(),
+		StatedAmount: statedAmount,
+	}
+}
+
+func (mi *ExtendedAgent) Team4_CreateConfessionMessage(confession bool) *common.Team4_ConfessionMessage {
+	return &common.Team4_ConfessionMessage{
+		BaseMessage: mi.CreateBaseMessage(),
+		Confession:  confession,
 	}
 }
 
@@ -537,27 +573,6 @@ func (mi *ExtendedAgent) RecordAgentStatus(instance common.IExtendedAgent) gameR
 		instance.GetTeamID(),
 	)
 	return record
-}
-
-// ----------------------- Team 1 AoA Functions -----------------------
-
-func (mi *ExtendedAgent) Team1_ChairUpdateRanks(currentRanking map[uuid.UUID]int) map[uuid.UUID]int {
-	// Chair iterates through existing rank map in team
-	// and gets the new ranks of the agents in the team
-	// according to AoA function
-	newRanking := make(map[uuid.UUID]int)
-	for agentUUID, _ := range currentRanking {
-		newRank := mi.Server.GetTeam(agentUUID).TeamAoA.(*common.Team1AoA).GetAgentNewRank(agentUUID)
-		newRanking[agentUUID] = newRank
-	}
-
-	// Returns a map of agent UUIDs to new Rank (int)
-	return newRanking
-}
-
-func (mi *ExtendedAgent) Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int {
-	// Default behaviour should just vote for the guideline rank boundaries
-	return initialBoundaries
 }
 
 // ----------------------- Team 2 AoA Functions -----------------------

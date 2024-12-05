@@ -1,6 +1,5 @@
 package common
 
-// import "github.com/google/uuid"
 import (
 	"log"
 	"math"
@@ -184,6 +183,7 @@ func (t *Team2AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return withdrawalOrder
 }
 
+func (t *Team2AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)     {}
 func (t *Team2AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
 func (f *Team2AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
@@ -209,6 +209,10 @@ func (t *Team2AoA) GetOffenders(numOffences int) []uuid.UUID {
 	return offenders
 }
 
+func (t *Team2AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
+	return (agentScore * 25) / 100
+}
+
 func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOfAssociation {
 	log.Println("Creating Team2AoA")
 	offenceMap := make(map[uuid.UUID]int)
@@ -228,4 +232,13 @@ func CreateTeam2AoA(team *Team, leader uuid.UUID, auditDuration int) IArticlesOf
 		Leader:      leader,
 		Team:        team,
 	}
+}
+
+// Do nothing
+func (t *Team2AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team2AoA) Team4_RunProposedWithdrawalVote(map[uuid.UUID]int, map[uuid.UUID]map[uuid.UUID]int) {
+}
+func (t *Team2AoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
+	return 0
 }

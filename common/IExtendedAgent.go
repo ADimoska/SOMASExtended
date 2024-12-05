@@ -17,6 +17,7 @@ type IExtendedAgent interface {
 	GetLastTeamID() uuid.UUID
 	GetTrueScore() int
 	GetTeamRanking() []uuid.UUID
+	GetName() int
 
 	// Functions that involve strategic decisions
 	StartTeamForming(instance IExtendedAgent, agentInfoList []ExposedAgentInfo)
@@ -27,6 +28,7 @@ type IExtendedAgent interface {
 	GetStatedWithdrawal(instance IExtendedAgent) int
 
 	// Setters
+	SetName(name int)
 	SetTeamID(teamID uuid.UUID)
 	SetTrueScore(score int)
 	SetAgentContributionAuditResult(agentID uuid.UUID, result bool)
@@ -67,12 +69,30 @@ type IExtendedAgent interface {
 	GetWithdrawalAuditVote() Vote
 	GetTrueSomasTeamID() int
 
+	// Team4 AoA Functions
+	Team4_GetRankUpVote() map[uuid.UUID]int
+	Team4_GetConfession() bool
+	Team4_GetProposedWithdrawalVote() map[uuid.UUID]int
+
+	Team4_GetProposedWithdrawal(instance IExtendedAgent) int
+	Team4_ProposeWithdrawal() int
+
+	Team4_StateProposalToTeam()
+	Team4_CreateProposedWithdrawalMessage(statedAmount int) *Team4_ProposedWithdrawalMessage
+	Team4_HandleProposedWithdrawalMessage(msg *Team4_ProposedWithdrawalMessage)
+
+	Team4_StateConfessionToTeam()
+	Team4_CreateConfessionMessage(confession bool) *Team4_ConfessionMessage
+	Team4_HandleConfessionMessage(msg *Team4_ConfessionMessage)
+	Team4_GetPunishmentVoteMap() map[int]int
 	// Data Recording
 	RecordAgentStatus(instance IExtendedAgent) gameRecorder.AgentRecord
 
-	// Team 1 specific functions
+	// Team 1AoA specific functions
 	Team1_ChairUpdateRanks(rankMap map[uuid.UUID]int) map[uuid.UUID]int
-	Team1_VoteOnRankBoundaries(initialBoundaries [5]int) [5]int
+	Team1_AgreeRankBoundaries() [5]int
+	Team1_BoundaryProposalRequestHandler(msg *Team1RankBoundaryRequestMessage)
+	Team1_BoundaryProposalResponseHandler(msg *Team1RankBoundaryResponseMessage)
 
 	// Team 2 specific functions
 	Team2_GetLeaderVote() Vote

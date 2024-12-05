@@ -12,6 +12,7 @@ import (
 
 	agents "github.com/ADimoska/SOMASExtended/agents"
 	common "github.com/ADimoska/SOMASExtended/common"
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	envServer "github.com/ADimoska/SOMASExtended/server"
 )
 
@@ -49,10 +50,10 @@ func main() {
 	serv := &envServer.EnvironmentServer{
 		// note: the zero turn is used for team forming
 		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
-			2,                    //  iterations
-			12,                   //  turns per iteration
-			100*time.Millisecond, //  max duration
-			10),                  //  message bandwidth
+			1,                     //  iterations
+			5,                     //  turns per iteration
+			1000*time.Millisecond, //  max duration
+			10),                   //  message bandwidth
 		Teams: make(map[uuid.UUID]*common.Team),
 	}
 	serv.Init(
@@ -60,16 +61,17 @@ func main() {
 	)
 	serv.SetGameRunner(serv)
 
-	const numAgents int = 2
+	const numAgents int = 10
 
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
 		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
-		agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
+		// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		// Add other teams' agents here
 	}
 
-	for _, agent := range agentPopulation {
+	for i, agent := range agentPopulation {
+		agent.SetName(i)
 		serv.AddAgent(agent)
 	}
 
@@ -80,6 +82,7 @@ func main() {
 	serv.LogAgentStatus()
 	serv.LogTeamStatus()
 
-	// // record data
+	// record data
 	serv.DataRecorder.GamePlaybackSummary()
+	gameRecorder.ExportToCSV(serv.DataRecorder, "visualization_output/csv_data")
 }
