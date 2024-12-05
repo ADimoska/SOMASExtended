@@ -50,10 +50,14 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		if agent.GetTeamID() == uuid.Nil || cs.IsAgentDead(agentID) {
 			continue
 		}
-		// Override agent rolls for testing purposes
-		// agentList := []uuid.UUID{agentID}
-		// cs.OverrideAgentRolls(agentID, agentList, 1)
-		agent.StartRollingDice(agent)
+
+		if team.TeamAoAID == 2 && team.TeamAoA.(*common.Team2AoA).GetRollsLeft(agentID) > 0{
+			team.TeamAoA.(*common.Team2AoA).RollOnce(agentID)
+			cs.OverrideAgentRolls(agentID, team.TeamAoA.(*common.Team2AoA).GetLeader())
+		} else {
+			agent.StartRollingDice(agent)
+		}
+
 		agentActualContribution := agent.GetActualContribution(agent)
 		agentContributionsTotal += agentActualContribution
 		agentStatedContribution := agent.GetStatedContribution(agent)
@@ -81,7 +85,19 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Contribution Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
-		cs.ApplyPunishment(team, agentToAudit)
+
+		if auditResult {
+			if team.TeamAoAID == 2 {
+				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
+					cs.ElectNewLeader(team.TeamID)
+				}
+				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+				}
+			}
+			cs.ApplyPunishment(team, agentToAudit)
+		}
+
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
@@ -140,7 +156,19 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Withdrawal Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
-		cs.ApplyPunishment(team, agentToAudit)
+
+		if auditResult {
+			if team.TeamAoAID == 2 {
+				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
+					cs.ElectNewLeader(team.TeamID)
+				}
+				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+				}
+			}
+			cs.ApplyPunishment(team, agentToAudit)
+		}
+
 		for _, agentID := range team.Agents {
 			agent := cs.GetAgentMap()[agentID]
 			agent.SetAgentWithdrawalAuditResult(agentToAudit, auditResult)
@@ -560,6 +588,8 @@ func (cs *EnvironmentServer) allocateAoAs() {
 				team.TeamAoA = common.CreateTeam1AoA(team)
 			case 2:
 				team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
+				team.TeamAoAID = 2
+				cs.ElectNewLeader(team.TeamID)
 			case 3:
 				team.TeamAoA = common.CreateFixedAoA(1)
 			case 4:
