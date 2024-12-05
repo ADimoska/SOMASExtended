@@ -46,11 +46,6 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 		leaderVote := agent.Team2_GetLeaderVote()
 		votedFor := leaderVote.VotedForID
 
-		if votedFor == leaderVote.VoterID {
-			log.Printf("Agent %s voted for themselves, this is not allowed", agentId)
-			continue
-		}
-
 		votes[votedFor]++
 		voteCount := votes[votedFor]
 
@@ -73,8 +68,8 @@ func (cs *EnvironmentServer) ElectNewLeader(teamId uuid.UUID) {
 	}
 
 	if len(candidates) == 0 {
-		log.Fatal("No candidate selected!")
-		return
+		log.Println("No candidate selected!")
+		selectedLeader = agentsInTeam[rand.Intn(len(agentsInTeam))]
 	}
 
 	team := cs.Teams[teamId]
