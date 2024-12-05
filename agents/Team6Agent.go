@@ -12,28 +12,105 @@ import (
 
 type Team6_Agent struct {
 	*ExtendedAgent
-	OpinionVector           map[uuid.UUID]float64 //this used in deciding auditing votes, and team choosing
-	Selfishness             float64                //a value from 0 (least selfish) to 1 (most selfish) which affects agent strategies
-	AgentTurnScore          int                    //this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
+	TeamTrust           	map[uuid.UUID]float64 	//this used in deciding auditing votes, and team choosing
+	
+	Selfishness             float64               	//a value from 0 (least selfish) to 1 (most selfish) which affects agent strategies
+	AgentTurnScore          int                    	//this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
 	Trust                   float64
 	Greed                   float64
-	AveragePersonalDiceRoll float64				//this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
+	AveragePersonalDiceRoll float64					//this is used in common.Team6AoA in getting expected contribution, it is the score earned this turn
 	ContributionSuccessCount int
 	WithdrawalSuccessCount	 int
 }
 
 // constructor for Team6_Agent
 func Team6_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team6_Agent {
+	teamTrust := make(map[uuid.UUID]float64)
+
+	// Initialize trust levels for team members (default: 0.5)
+	for _, teamMember := range funcs.GetTeamMembers(agentConfig.AgentID) {
+		if teamMember != agentConfig.AgentID { // Exclude self
+			teamTrust[teamMember] = 0.5
+		}
+	}
+
 	return &Team6_Agent{
 		ExtendedAgent: 			GetBaseAgents(funcs, agentConfig),
-		OpinionVector:			make(map[uuid.UUID]*float64)
+		TeamTrust:				make(map[uuid.UUID]*float64)
 		Selfishness: 			 rand.Float64(),						//initialised randomly
 		//Reputation:				0.5,								//initialised to neutral reputation
-		Trust:                   rand.Float64(),
+		Trust:                   0.5,
 		Greed:                   rand.Float64(),
 		AgentTurnScore:          0, //initialised to zero
 		AveragePersonalDiceRoll: 0.0,
 
+	}
+}
+func (mi *Team6_Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) bool {
+	if result {
+		mi.ContributionSuccessCount++
+		mi.TeamTrust[agentID] -= 0.1
+	}
+	return result
+}
+
+func (mi *Team6_Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) bool {
+	if result {
+		mi.WithdrawalSuccessCount++
+		mi.TeamTrust[agentID] -= 0.3
+	}
+	return result
+}
+
+func (mi *Team6_Agent) GetTotalSuccessfulAudits() int {
+	return mi.ContributionSuccessCount + mi.WithdrawalSuccessCount
+}
+
+func (mi *Team6_Agent) UpdateTrust() {
+	// Calculate trust based on total successful audits
+	successfulAudits := mi.GetTotalSuccessfulAudits()
+
+	// Incremental trust update
+	if successfulAudits > 0 {
+		trustIncrement := 0.1 // Define how much each successful audit increases trust
+		mi.Trust += float64(successfulAudits) * -trustIncrement
+
+		// Ensure trust does not exceed 1.0
+		if mi.Trust > 1.0 {
+			mi.Trust = 1.0
+		}
+	} 
+	if mi.Trust < 0.0 {
+		mi.Trust = 0.0
+	}
+}
+
+
+// Set trust for a specific team member
+func (mi *Team6_Agent) SetTeamMemberTrust(agentID uuid.UUID, trust float64) {
+	if _, exists := mi.TeamTrust[agentID]; exists {
+		mi.TeamTrust[agentID] = trust
+	}
+}
+
+// Get trust for a specific team member
+func (mi *Team6_Agent) GetTeamMemberTrust(agentID uuid.UUID) (float64, bool) {
+	trust, exists := mi.TeamTrust[agentID]
+	return trust, exists
+}
+
+// Update trust for a specific team member
+func (mi *Team6_Agent) UpdateAllTeamMembersTrust() {
+	// Iterate over each agent in the TeamTrust map
+	for agentID := range mi.TeamTrust {
+		// Temporarily set the current agent's ID to mimic updating their trust
+		mi.Trust = mi.TeamTrust[agentID]
+
+		// Apply the existing UpdateTrust logic
+		mi.UpdateTrust()
+
+		// Save the updated trust back to the TeamTrust map
+		mi.TeamTrust[agentID] = mi.Trust
 	}
 }
 
@@ -69,7 +146,7 @@ func (mi *Team6_Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo
 }
 
 // Contribution Strategy - HERE WE CAN DEFINE HOW SELFISHNESS / REPUTATION WILL HAVE AN EFFECT ON AN AGENTS STRATEGY
-func (mi *Team6_Agent) DecideContribution() int {
+func (mi *Team6_Agent) GetActualContribution() int {
 	
 	// if this agent is in a team
 	if mi.server.GetTeam(mi.GetID()).TeamAoA != nil {
@@ -142,9 +219,6 @@ func (mi *Team6_Agent) GetActualWithdrawal() int {
 	return 0
 }
 
-//NEED TO INCLUDE A WORKING TRUST FUNCTION
-//
-
 // Audit Strategy
 func (mi *Team6_Agent) DecideAudit() bool {
 	// TODO: implement audit strategy
@@ -184,24 +258,6 @@ func (mi *Team6_Agent) StickOrAgainFor(agentId uuid.UUID, accumulatedScore int, 
 	return rand.Intn(2)
 }
 
-// get the agent's stated contribution to the common pool
-// TODO: the value returned by this should be broadcasted to the team via a message
-// This function MUST return the same value when called multiple times in the same turn
-func (mi *Team6_Agent) GetStatedContribution(instance common.IExtendedAgent) int {
-	// Hardcoded stated
-	// TODO: Implement actual strategy based off selfishness, reputation, etc
-	statedContribution := instance.GetActualContribution(instance)
-	return statedContribution
-}
-
-// The value returned by this should be broadcasted to the team via a message
-// This function MUST return the same value when called multiple times in the same turn
-func (mi *Team6_Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
-	// Currently, assume stated withdrawal matches actual withdrawal
-	// TODO: Implement Agent Strategy behaviour
-	return instance.DecideWithdrawal()
-}
-
 // Agent returns their preference for an audit on contribution
 // 0: No preference
 // 1: Prefer audit
@@ -210,7 +266,21 @@ func (mi *Team6_Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 // - MAYBE WHOEVER IS LOWEST IN OPINION MATRIX?
 // - CAN AN AGENT BEING MONITORED BE AUDITED AS WELL?
 func (mi *ExtendedAgent) GetContributionAuditVote() common.Vote {
-	return common.CreateVote(0, mi.GetID(), uuid.Nil)
+	var voteOutAgent uuid.UUID
+	lowestTrust := math.MaxFloat64
+
+	for agentID, trustValue := range mi.OpinionVector {
+		agentID != mi.GetID() && trustValue < lowestTrust {
+			lowestTrust = *trustValue
+			voteOutAgent = agentID
+		}
+	}
+
+	if voteOutAgent == uuid.Nil {
+		return common.CreateVote(0, mi.GetID(), uuid.Nil)
+	}
+	
+	return common.CreateVote(1, mi.GetID(), voteOutAgent)
 }
 
 // Agent returns their preference for an audit on withdrawal
@@ -219,7 +289,21 @@ func (mi *ExtendedAgent) GetContributionAuditVote() common.Vote {
 // -1: Prefer no audit
 // SAME DEAL HERE
 func (mi *ExtendedAgent) GetWithdrawalAuditVote() common.Vote {
-	return common.CreateVote(0, mi.GetID(), uuid.Nil)
+	var voteOutAgent uuid.UUID
+	lowestTrust := math.MaxFloat64
+
+	for agentID, trustValue := range mi.OpinionVector {
+		agentID != mi.GetID() && trustValue < lowestTrust {
+			lowestTrust = *trustValue
+			voteOutAgent = agentID
+		}
+	}
+
+	if voteOutAgent == uuid.Nil {
+		return common.CreateVote(0, mi.GetID(), uuid.Nil)
+	}
+	
+	return common.CreateVote(1, mi.GetID(), voteOutAgent)
 }
 
 func (mi *Team6_Agent) UpdateGreed() {
@@ -276,7 +360,8 @@ func (mi *Team6_Agent) UpdateSelfishness() {
 //Gives a successful audit result 
 func (mi *Team6_Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) bool {
     if result {
-        mi.ContributionSuccessCount++ // Increment the contribution success counter
+        mi.ContributionSuccessCount++
+		mi.TeamTrust[agentID] -= 0.1
     }
     return result
 }
@@ -284,6 +369,7 @@ func (mi *Team6_Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result
 func (mi *Team6_Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) bool {
     if result {
         mi.WithdrawalSuccessCount++ // Increment the withdrawal success counter
+		mi.TeamTrust[agentID] -= 0.3
     }
     return result
 }
@@ -293,12 +379,12 @@ func (mi *Team6_Agent) GetTotalSuccessfulAudits() int {
 }
 
 
-func (mi *Team6_Agent) HandleTeamFormationMessage(msg *TeamFormationMessage)
 func (mi *Team6_Agent) HandleWithdrawalMessage(msg *WithdrawalMessage)
-func (mi *Team6_Agent) BroadcastSyncMessageToTeam(msg message.IMessage[IExtendedAgent])
 func (mi *Team6_Agent) HandleContributionMessage(msg *ContributionMessage)
 
 func (mi *Team6_Agent) HandleAgentOpinionRequestMessage(msg *AgentOpinionRequestMessage)
 func (mi *Team6_Agent) HandleAgentOpinionResponseMessage(msg *AgentOpinionResponseMessage)
 
 
+// mi.CreateAgentOpinionResponseMessage(agentID uuid.UUID, opinion int)
+// 
