@@ -317,7 +317,32 @@ func (t *Team6AoA) RunWithdrawalMonitoring() {
 	}
 }
 
-func (t *Team6AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool
+func (t *Team6AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
+	// first, run monitoring for all agents being monitored!
+	t.RunWithdrawalMonitoring()
+
+	// Check if agent has any audit history
+	if history, exists := t.auditHistory[agentId]; exists && len(history) > 0 {
+		// Get the most recent audit record
+		lastRecord := history[len(history)-1]
+		// If lastRecord is not nil, it means the agent cheated in their last contribution
+
+		cheatCheck := lastRecord != nil
+		_, inMonitMap := t.agentsToMonitor[agentId]
+
+		if inMonitMap {
+			// if this agent is already in monitoring map, do nothing
+			// if it cheated, that'll already have been sorted by the RunMonitoring Function
+		} else if cheatCheck == true {
+			// this agent cheated, but isn't in monitoring map
+			// we must add it in at stage 1!
+			t.agentsToMonitor[agentId] = 1
+		}
+
+		return cheatCheck
+	}
+	return false // No history or empty history means no detected cheating
+}
 
 // we might be able to just leave this empty
 func (t *Team6AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
@@ -355,8 +380,63 @@ func (t *Team6AoA) CalculateVotingPower() map[uuid.UUID]float64 {
 }
 
 // Punishment fn! (finally)
-func (t *Team6AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
-	return (agentScore * 25) / 100
+// func (t *Team6AoA) GetPunishment(agentScore int, agentID uuid.UUID) int { // Punishments decided for agent
+// cheatingHistory := t.auditHistory[agentID]
+// startIndex := 0
+// numberOfTurns := 4 // Can be changed later depending on game length
+// if len(cheatingHistory) > 2 * numberOfTurns { // Multiply by two as there are two audits per turn
+// 	startIndex = len(cheatingHistory) - 2 * numberOfTurns
+// }
+
+// for _, record := range cheatingHistory {
+// 	if record != nil {
+// 		cheatingCount += 1
+// 	}
+// }
+
+// minDeduction := 0.25 * float64(agentScore) // Min deduction is 25% of the agent's score
+// maxDeduction := 0.75 * float64(agentScore) // Max deduction is 75% of the agent's score
+
+// deduction := minDeduction + (float64(cheatingCount)/float64(numberOfTurns))*(maxDeduction-minDeduction)
+
+// if deduction > minDeduction {
+// 	deduction = maxDeduction
+// }
+
+// return int(deduction)
+// }
+
+func (t *Team6AoA) GetPunishment(agentScore int, agentID uuid.UUID) int { // Punishments decided for agent
+	cheatingHistory := t.auditHistory[agentID]
+	startIndex := 0
+	numberOfTurns := 4                          // Can be changed later depending on game length
+	if len(cheatingHistory) > 2*numberOfTurns { // Multiply by two as there are two audits per turn
+		startIndex = len(cheatingHistory) - 2*numberOfTurns
+	}
+
+	cheatingCount := 0
+	for _, record := range cheatingHistory[startIndex:] {
+		if record != nil {
+			cheatingCount += 1
+		}
+	}
+
+	minDeduction := 0.25 * float64(agentScore) // Min deduction is 25% of the agent's score
+	maxDeduction := 0.75 * float64(agentScore) // Max deduction is 75% of the agent's score
+
+	deduction := minDeduction + (float64(cheatingCount)/float64(numberOfTurns))*(maxDeduction-minDeduction)
+
+	if deduction > minDeduction {
+		deduction = maxDeduction
+	}
+
+	if t.agentsToMonitor[agentID] > 3 {
+		// if the agent has surpassed stage 3 monitoring
+		// kill that bad boi
+		deduction = float64(agentScore)
+	}
+
+	return int(deduction)
 }
 
 // not needed, dw abt it, here to fix error complaints
