@@ -610,8 +610,8 @@ func (cs *EnvironmentServer) allocateAoAs() {
 				team.TeamAoA = common.CreateTeam5AoA()
 				team.TeamAoAID = 5
 			case 6:
-				team.TeamAoA = common.CreateFixedAoA(1)
-				team.TeamAoAID = 0
+				team.TeamAoA = common.CreateTeam6AoA()
+				team.TeamAoAID = 1
 			default:
 				team.TeamAoA = common.CreateFixedAoA(1)
 				team.TeamAoAID = 0
