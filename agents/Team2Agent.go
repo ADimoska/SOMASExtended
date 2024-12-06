@@ -545,7 +545,7 @@ func (t2a *Team2Agent) GetActualContribution(instance common.IExtendedAgent) int
 
 		// if we have less than the expected, just contribute whats left
 		if t2a.GetTrueScore() < aoaExpectedContribution {
-			return t2a.GetTrueScore() // give all score if less than expected
+			return int(0.7 * float64(t2a.GetTrueScore())) // give all score if less than expected
 		}
 
 		// otherwise, look at the average team trust score and base contribution decision on this.
