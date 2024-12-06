@@ -88,6 +88,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
 
 		if auditResult {
+			cs.ApplyPunishment(team, agentToAudit)
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
 					cs.ElectNewLeader(team.TeamID)
@@ -96,7 +97,6 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
 			}
-			cs.ApplyPunishment(team, agentToAudit)
 		}
 
 		for _, agentID := range team.Agents {
@@ -159,6 +159,8 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
 
 		if auditResult {
+			cs.ApplyPunishment(team, agentToAudit)
+
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
 					cs.ElectNewLeader(team.TeamID)
@@ -167,7 +169,6 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
 			}
-			cs.ApplyPunishment(team, agentToAudit)
 		}
 
 		for _, agentID := range team.Agents {
