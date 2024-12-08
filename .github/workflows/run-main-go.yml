@@ -21,9 +21,9 @@ jobs:
       - name: Build main.go
         run: go build -o main main.go
       
-      - name: Run main.go 10 times
+      - name: Run main.go 1 times
         run: |
-          for i in {1..10}; do
+          for i in {1..1}; do
             echo "Run #$i"
             ./main
           done

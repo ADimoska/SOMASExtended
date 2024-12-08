@@ -1,7 +1,8 @@
 package common
 
 import (
-	"fmt"
+	"log"
+	"math/rand"
 	"sort"
 
 	"github.com/google/uuid"
@@ -122,29 +123,64 @@ func getMedian(grades []int) int {
 	return grades[mid]
 }
 
+func (t *Team4AoA) GetDefaultRankUpChance() map[uuid.UUID]int {
+	rankUpVotes := make(map[uuid.UUID]int)
+	agentsInTeam := t.Adventurers
+	for agentID, adventurer := range agentsInTeam {
+
+		rankUpChances := map[string]int{
+			"F":   80, // 80% chance
+			"E":   60, // 60% chance
+			"D":   50, // 50% chance
+			"C":   40, // 40% chance
+			"B":   30, // 30% chance
+			"A":   20, // 20% chance
+			"S":   10, // 10% chance
+			"SS":  5,  // 5% chance
+			"SSS": 0,  // No chance
+		}
+		chance := rankUpChances[adventurer.Rank]
+		if chance > 0 && rand.Intn(100) < chance {
+			rankUpVotes[agentID] = 1 // Rank-up vote
+		} else {
+			rankUpVotes[agentID] = 0 // No rank-up vote
+		}
+	}
+
+	return rankUpVotes
+}
+
 func (t *Team4AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int) {
 	approvalCounts := make(map[uuid.UUID]int)
-
 	for _, voteMap := range rankUpVoteMap {
-		for votedForID, vote := range voteMap {
-			if vote == 1 {
-				approvalCounts[votedForID]++
+		if len(voteMap) == 0 {
+			voteMap := t.GetDefaultRankUpChance()
+			for votedForID, vote := range voteMap {
+				if vote == 1 {
+					approvalCounts[votedForID]++
+				}
+			}
+		} else {
+			for votedForID, vote := range voteMap {
+				if vote == 1 {
+					approvalCounts[votedForID]++
+				}
 			}
 		}
 	}
 	threshold := t.GetRankUpThreshold()
 
-	fmt.Printf("Rank Up Vote Threshold = %d approvals\n", threshold)
+	log.Printf("Rank Up Vote Threshold = %d approvals\n", threshold)
 
 	for agentID, approvalCount := range approvalCounts {
 
 		if approvalCount >= threshold {
-			fmt.Printf("Agent %v: Meets threshold, ranking up!\n", agentID)
+			log.Printf("Agent %v: Meets threshold, ranking up!\n", agentID)
 
 			// If the agent has enough approvals, rank them up
 			t.RankUp(agentID)
 			adventurer := t.Adventurers[agentID]
-			fmt.Printf("Agent %v: New Rank = %s\n", agentID, adventurer.Rank)
+			log.Printf("Agent %v: New Rank = %s\n", agentID, adventurer.Rank)
 
 		}
 	}
@@ -262,13 +298,13 @@ func (t *Team4AoA) Team4_RunProposedWithdrawalVote(proposedWithdrawalMap map[uui
 				// Update the agent's expected withdrawal if their vote weight meets the threshold
 				adventurer := t.Adventurers[agentID]
 
-				fmt.Printf("Agent %v: Current ExpectedWithdrawal = %d, Proposed = %d\n", agentID, adventurer.ExpectedWithdrawal, proposedWithdrawal)
+				log.Printf("Agent %v: Current ExpectedWithdrawal = %d, Proposed = %d\n", agentID, adventurer.ExpectedWithdrawal, proposedWithdrawal)
 
 				oldWithdrawal := adventurer.ExpectedWithdrawal
 
 				adventurer.ExpectedWithdrawal = proposedWithdrawal
 
-				fmt.Printf("Agent %v: Proposed Withdrawal Accepted, changed from %d to %d\n", agentID, oldWithdrawal, adventurer.ExpectedWithdrawal)
+				log.Printf("Agent %v: Proposed Withdrawal Accepted, changed from %d to %d\n", agentID, oldWithdrawal, adventurer.ExpectedWithdrawal)
 
 				// Update the agent in the Adventurers map
 				t.Adventurers[agentID] = adventurer

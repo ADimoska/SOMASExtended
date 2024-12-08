@@ -28,8 +28,8 @@ type Team2Agent struct {
 // constructor for team2agent - initialised as all followers
 func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
 	extendedAgent := GetBaseAgents(funcs, agentConfig)
-	extendedAgent.TrueSomasTeamID = 2   // Our true team ID
-	extendedAgent.AoARanking = []int{2} // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
+	extendedAgent.TrueSomasTeamID = 2                  // Our true team ID
+	extendedAgent.AoARanking = []int{2, 1, 3, 4, 5, 6} // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
 
 	return &Team2Agent{
 		ExtendedAgent:      extendedAgent,
@@ -545,7 +545,7 @@ func (t2a *Team2Agent) GetActualContribution(instance common.IExtendedAgent) int
 
 		// if we have less than the expected, just contribute whats left
 		if t2a.GetTrueScore() < aoaExpectedContribution {
-			return int(0.7 * float64(t2a.GetTrueScore())) // give all score if less than expected
+			return int(0.7 * float64(aoaExpectedContribution)) // give all score if less than expected
 		}
 
 		// otherwise, look at the average team trust score and base contribution decision on this.

@@ -85,9 +85,14 @@ func (cs *EnvironmentServer) OverrideAgentRolls(agentId uuid.UUID, leaderId uuid
 	controlled := cs.GetAgentMap()[agentId]
 	leader := cs.GetAgentMap()[leaderId]
 
+	if controlled == nil {
+		log.Printf("Controlled agent with ID %v not found", agentId)
+		return
+	}
+
 	if leader == nil {
 		log.Printf("Leader with ID %v not found", leaderId)
-		cs.ElectNewLeader(agentId)
+		cs.ElectNewLeader(controlled.GetTeamID())
 		return
 	}
 

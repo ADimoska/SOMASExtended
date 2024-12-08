@@ -4,48 +4,61 @@ from dash import dcc, html
 from dash.dependencies import Input, Output
 import plotly.express as px
 import plotly.graph_objects as go
+from datetime import datetime
+import hashlib
+import json
 
 # Add these constants at the top of the file for consistent plot styling
 PLOT_HEIGHT = 600  # Increased height
 PLOT_WIDTH = 1000   # Increased from 700 to 1000
 PLOT_MARGIN = dict(r=150)  # More space on the right for legends
 
-# Read the CSV files
-base_path = 'visualization_output/csv_data'
-agent_records = pd.read_csv(f'{base_path}/agent_records.csv')
-common_records = pd.read_csv(f'{base_path}/common_records.csv')
-team_records = pd.read_csv(f'{base_path}/team_records.csv')
+# Add these global variables after the PLOT constants
+last_data_hash = None
+cached_data = None
+
+# Move the data loading into a function
+def load_data():
+    global last_data_hash, cached_data
+    
+    base_path = 'visualization_output/csv_data'
+    current_data = {
+        'agent_records': pd.read_csv(f'{base_path}/agent_records.csv'),
+        'common_records': pd.read_csv(f'{base_path}/common_records.csv'),
+        'team_records': pd.read_csv(f'{base_path}/team_records.csv')
+    }
+    
+    # Create a hash of the current data
+    hash_string = ''
+    for df in current_data.values():
+        hash_string += df.to_json()
+    current_hash = hashlib.md5(hash_string.encode()).hexdigest()
+    
+    # If the hash matches, return cached data
+    if last_data_hash == current_hash and cached_data is not None:
+        return cached_data
+    
+    # Otherwise, update cache and return new data
+    last_data_hash = current_hash
+    cached_data = current_data
+    return current_data
+
+# Load initial data
+data = load_data()
+agent_records = data['agent_records']
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
 
 # Create the layout
 app.layout = html.Div([
+    dcc.Interval(
+        id='interval-component',
+        interval=5000*1000,  # in milliseconds (5 seconds)
+        n_intervals=0
+    ),
     html.H1("Agent Performance Dashboard"),
     
-    html.Div([
-        html.Div([
-            html.H3("Score Evolution Over Time"),
-            dcc.Graph(id='score-evolution'),
-        ], className='graph-container'),
-        
-        html.Div([
-            html.H3("Contribution vs Withdrawal"),
-            dcc.Graph(id='contribution-withdrawal'),
-        ], className='graph-container'),
-        
-        html.Div([
-            html.H3("Common Pool Evolution"),
-            dcc.Graph(id='common-pool'),
-        ], className='graph-container'),
-        
-        html.Div([
-            html.H3("Agent Status"),
-            dcc.Graph(id='agent-status'),
-        ], className='graph-container'),
-    ]),
-    
-    # Add filters
     html.Div([
         html.H3("Filters"),
         dcc.Dropdown(
@@ -55,20 +68,47 @@ app.layout = html.Div([
             value=0,
             clearable=False
         ),
-    ], style={'width': '200px', 'margin': '20px'})
+    ], style={'width': '200px', 'margin': '20px'}),
+    
+    html.Div([
+        html.Div([
+            dcc.Graph(id='score-evolution'),
+        ], className='graph-container'),
+        
+        html.Div([
+            dcc.Graph(id='score-evolution-by-team'),
+        ], className='graph-container'),
+        
+        html.Div([
+            dcc.Graph(id='common-pool'),
+        ], className='graph-container'),
+        
+        html.Div([
+            dcc.Graph(id='agent-status'),
+        ], className='graph-container'),
+        
+        html.Div([
+            dcc.Graph(id='individual-net-contributions'),
+        ], className='graph-container'),
+    ]),
 ])
 
 # Callback for score evolution with threshold overlay
 @app.callback(
     Output('score-evolution', 'figure'),
-    [Input('iteration-filter', 'value')]
+    [Input('iteration-filter', 'value'),
+     Input('interval-component', 'n_intervals')]
 )
-def update_score_evolution(iteration):
-    filtered_data = agent_records[agent_records['IterationNumber'] == iteration]
-    threshold_data = common_records[common_records['IterationNumber'] == iteration]
+def update_score_evolution(iteration, n_intervals):
+    # Reload data each time
+    data = load_data()
+    filtered_data = data['agent_records'][data['agent_records']['IterationNumber'] == iteration]
+    threshold_data = data['common_records'][data['common_records']['IterationNumber'] == iteration]
     
     fig = go.Figure()
     
+    # Get all unique TrueSomasTeamIDs for creating buttons
+    unique_teams = sorted(filtered_data['TrueSomasTeamID'].unique())
     
     # Group agents by their true team ID
     for team_id in filtered_data['TrueSomasTeamID'].unique():
@@ -92,10 +132,12 @@ def update_score_evolution(iteration):
                 plot_data = agent_data
                 
             if not plot_data.empty:
+                # Get the first row of agent_data to extract consistent metadata
+                agent_info = agent_data.iloc[0]
                 fig.add_trace(go.Scatter(
                     x=plot_data['TurnNumber'],
                     y=plot_data['Score'],
-                    name=f'Team {team_id} - Agent {agent_id[:8]}',
+                    name=f'T{team_id}_{agent_info["TeamID"][:4]}_{agent_id[:8]}',
                     mode='lines',
                     line=dict(color=team_color)
                 ))
@@ -131,10 +173,58 @@ def update_score_evolution(iteration):
             opacity=0.5
         )
     
+    # Add buttons for team visibility
+    updatemenus = [
+        dict(
+            type="dropdown",
+            direction="down",
+            x=-0.1,
+            y=1.2,
+            xanchor="left",
+            yanchor="top",
+            showactive=True,
+            bgcolor='rgb(238, 238, 238)',
+            bordercolor='rgb(200, 200, 200)',
+            borderwidth=1,
+            pad={"r": 10, "t": 10},
+            buttons=[
+                # Button to show all teams
+                dict(
+                    label="All Teams",
+                    method="update",
+                    args=[{"visible": [True] * len(fig.data)}]
+                ),
+            ] +
+            # Button for each team
+            [dict(
+                label=f"Team {team_id}",
+                method="update",
+                args=[{"visible": [
+                    # For each trace, handle special cases and team filtering
+                    True if not hasattr(trace, 'name') or trace.mode == 'text'  # Keep death markers
+                    else True if getattr(trace, 'name', None) == 'Threshold'  # Keep threshold line
+                    else True if getattr(trace, 'name', None) and trace.name.startswith(f'T{team_id}_')  # Check team
+                    else False
+                    for trace in fig.data
+                ]}]
+            ) for team_id in unique_teams],
+            active=0,
+            font={"size": 12}
+        )
+    ]
+    
+    # Update layout with buttons
     fig.update_layout(
-        title='Score Evolution Over Time with Threshold',
-        xaxis_title="Turn Number",
-        yaxis_title="Score",
+        title=dict(
+            text='Score Evolution Over Time - By True Team',
+            y=0.95,
+            x=0.5,
+            xanchor='center',
+            yanchor='top'
+        ),
+        margin=dict(t=150, r=150, b=50, l=50),
+        height=PLOT_HEIGHT,
+        width=PLOT_WIDTH,
         hovermode='x unified',
         showlegend=True,
         legend=dict(
@@ -144,68 +234,7 @@ def update_score_evolution(iteration):
             xanchor="left",
             x=1.05
         ),
-        height=PLOT_HEIGHT,
-        width=PLOT_WIDTH,
-        margin=PLOT_MARGIN
-    )
-    
-    return fig
-
-# Callback for contribution vs withdrawal
-@app.callback(
-    Output('contribution-withdrawal', 'figure'),
-    [Input('iteration-filter', 'value')]
-)
-def update_contribution_withdrawal(iteration):
-    filtered_data = agent_records[agent_records['IterationNumber'] == iteration]
-    
-    fig = go.Figure()
-    
-    # Group by team ID
-    for team_id in filtered_data['TrueSomasTeamID'].unique():
-        team_data = filtered_data[filtered_data['TrueSomasTeamID'] == team_id]
-        team_color = px.colors.qualitative.Set1[team_id % len(px.colors.qualitative.Set1)]
-        
-        # Calculate mean values per turn for this team
-        mean_data = team_data.groupby('TurnNumber').agg({
-            'Contribution': 'mean',
-            'Withdrawal': 'mean'
-        }).reset_index()
-        
-        fig.add_trace(go.Scatter(
-            x=mean_data['TurnNumber'],
-            y=mean_data['Contribution'],
-            name=f'Team {team_id} - Contribution',
-            mode='lines+markers',
-            line=dict(color=team_color),
-            marker=dict(symbol='circle')
-        ))
-        
-        fig.add_trace(go.Scatter(
-            x=mean_data['TurnNumber'],
-            y=mean_data['Withdrawal'],
-            name=f'Team {team_id} - Withdrawal',
-            mode='lines+markers',
-            line=dict(color=team_color, dash='dash'),
-            marker=dict(symbol='square')
-        ))
-    
-    fig.update_layout(
-        title='Average Contribution vs Withdrawal Over Time by Team',
-        xaxis_title="Turn Number",
-        yaxis_title="Value",
-        hovermode='x unified',
-        showlegend=True,
-        legend=dict(
-            groupclick="toggleitem",
-            yanchor="top",
-            y=0.99,
-            xanchor="left",
-            x=1.05
-        ),
-        height=PLOT_HEIGHT,
-        width=PLOT_WIDTH,
-        margin=PLOT_MARGIN
+        updatemenus=updatemenus
     )
     
     return fig
@@ -216,7 +245,7 @@ def update_contribution_withdrawal(iteration):
     [Input('iteration-filter', 'value')]
 )
 def update_common_pool(iteration):
-    filtered_data = team_records[team_records['IterationNumber'] == iteration]
+    filtered_data = data['team_records'][data['team_records']['IterationNumber'] == iteration]
     
     fig = go.Figure()
     
@@ -244,7 +273,7 @@ def update_common_pool(iteration):
         ),
         height=PLOT_HEIGHT,
         width=PLOT_WIDTH,
-        margin=PLOT_MARGIN
+        margin=dict(t=150, r=150, b=50, l=50)
     )
     
     return fig
@@ -295,9 +324,242 @@ def update_agent_status(iteration):
         ),
         height=PLOT_HEIGHT,
         width=PLOT_WIDTH,
-        margin=PLOT_MARGIN
+        margin=dict(t=150, r=150, b=50, l=50)
     )
         
+    return fig
+
+# Add new callback for team-based score evolution
+@app.callback(
+    Output('score-evolution-by-team', 'figure'),
+    [Input('iteration-filter', 'value'),
+     Input('interval-component', 'n_intervals')]
+)
+def update_score_evolution_by_team(iteration, n_intervals):
+    # Reload data each time
+    data = load_data()
+    filtered_data = data['agent_records'][data['agent_records']['IterationNumber'] == iteration]
+    threshold_data = data['common_records'][data['common_records']['IterationNumber'] == iteration]
+    
+    fig = go.Figure()
+    
+    # Get all unique TeamIDs for creating buttons
+    unique_teams = sorted(filtered_data['TeamID'].unique())
+    
+    # Group agents by their TeamID instead of TrueSomasTeamID
+    for idx, (team_id, team_data) in enumerate(filtered_data.groupby('TeamID')):
+        # Create a consistent color for this team
+        team_color = px.colors.qualitative.Set1[idx % len(px.colors.qualitative.Set1)]
+        
+        # Plot each agent in the team
+        for agent_id in team_data['AgentID'].unique():
+            agent_data = team_data[team_data['AgentID'] == agent_id]
+            
+            # Find where agent dies (if it does)
+            death_point = None
+            if any(~agent_data['IsAlive']):
+                death_data = agent_data[~agent_data['IsAlive']]
+                if not death_data.empty:
+                    death_point = death_data.iloc[0]
+            
+            # Plot including the death point
+            if death_point is not None:
+                # Include all data up to and including death point
+                plot_data = agent_data[agent_data['TurnNumber'] <= death_point['TurnNumber']]
+            else:
+                plot_data = agent_data
+            
+            if not plot_data.empty:
+                # Get the first row of agent_data to extract consistent metadata
+                agent_info = agent_data.iloc[0]
+                fig.add_trace(go.Scatter(
+                    x=plot_data['TurnNumber'],
+                    y=plot_data['Score'],
+                    name=f'T{agent_info["TrueSomasTeamID"]}_{team_id[:4]}_{agent_id[:8]}',
+                    mode='lines',
+                    line=dict(color=team_color)
+                ))
+            
+            # Add skull emoji at death point if agent dies
+            if death_point is not None:
+                fig.add_trace(go.Scatter(
+                    x=[death_point['TurnNumber']],
+                    y=[death_point['Score']],
+                    mode='text',
+                    text=['💀'],
+                    textfont=dict(size=20),
+                    showlegend=False,
+                    hoverinfo='skip'
+                ))
+    
+    # Add threshold line
+    fig.add_trace(go.Scatter(
+        x=threshold_data['TurnNumber'] + 1,  # Add 1 to shift right
+        y=threshold_data['Threshold'],
+        name='Threshold',
+        mode='lines',
+        line=dict(color='red', dash='dash'),
+    ))
+    
+    # Add vertical lines for threshold application turns
+    threshold_turns = threshold_data[threshold_data['ThresholdAppliedInTurn'] == True]['TurnNumber']
+    for turn in threshold_turns:
+        fig.add_vline(
+            x=turn,
+            line_dash="dash",
+            line_color="red",
+            opacity=0.5
+        )
+    
+    # Add buttons for team visibility
+    updatemenus = [
+        dict(
+            type="dropdown",
+            direction="down",
+            x=-0.1,
+            y=1.2,
+            xanchor="left",
+            yanchor="top",
+            showactive=True,
+            bgcolor='rgb(238, 238, 238)',
+            bordercolor='rgb(200, 200, 200)',
+            borderwidth=1,
+            pad={"r": 10, "t": 10},
+            buttons=[
+                # Button to show all teams
+                dict(
+                    label="All Teams",
+                    method="update",
+                    args=[{"visible": [True] * len(fig.data)}]
+                ),
+            ] +
+            # Button for each team
+            [dict(
+                label=f"Team {team_id[:4]}",
+                method="update",
+                args=[{"visible": [
+                    # For each trace, handle special cases and team filtering
+                    True if not hasattr(trace, 'name') or trace.mode == 'text'  # Keep death markers
+                    else True if getattr(trace, 'name', None) == 'Threshold'  # Keep threshold line
+                    else True if getattr(trace, 'name', None) and team_id[:4] in trace.name  # Check team
+                    else False
+                    for trace in fig.data
+                ]}]
+            ) for team_id in unique_teams],
+            active=0,
+            font={"size": 12}
+        )
+    ]
+    
+    # Update layout with buttons
+    fig.update_layout(
+        title=dict(
+            text='Score Evolution Over Time - By Team',
+            y=0.95,
+            x=0.5,
+            xanchor='center',
+            yanchor='top'
+        ),
+        margin=dict(t=150, r=150, b=50, l=50),
+        height=PLOT_HEIGHT,
+        width=PLOT_WIDTH,
+        hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            groupclick="toggleitem",
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=1.05
+        ),
+        updatemenus=updatemenus
+    )
+    
+    return fig
+
+# Add new callback for individual net contributions
+@app.callback(
+    Output('individual-net-contributions', 'figure'),
+    [Input('iteration-filter', 'value'),
+     Input('interval-component', 'n_intervals')]
+)
+def update_individual_net_contributions(iteration, n_intervals):
+    # Reload data each time
+    data = load_data()
+    filtered_data = data['agent_records'][data['agent_records']['IterationNumber'] == iteration]
+    
+    fig = go.Figure()
+    
+    # Group agents by their true team ID
+    for team_id in filtered_data['TrueSomasTeamID'].unique():
+        team_data = filtered_data[filtered_data['TrueSomasTeamID'] == team_id]
+        team_color = px.colors.qualitative.Set1[team_id % len(px.colors.qualitative.Set1)]
+        
+        # Plot each agent in the team
+        for agent_id in team_data['AgentID'].unique():
+            agent_data = team_data[team_data['AgentID'] == agent_id]
+            
+            # Find where agent dies (if it does)
+            death_point = None
+            if any(~agent_data['IsAlive']):
+                death_data = agent_data[~agent_data['IsAlive']]
+                if not death_data.empty:
+                    death_point = death_data.iloc[0]
+            
+            # Plot including the death point
+            if death_point is not None:
+                plot_data = agent_data[agent_data['TurnNumber'] <= death_point['TurnNumber']]
+            else:
+                plot_data = agent_data
+            
+            if not plot_data.empty:
+                agent_info = agent_data.iloc[0]
+                # Calculate net contribution (contribution minus withdrawal)
+                plot_data['NetContribution'] = plot_data['Contribution'] - plot_data['Withdrawal']
+                
+                # Plot net contribution line
+                fig.add_trace(go.Scatter(
+                    x=plot_data['TurnNumber'],
+                    y=plot_data['NetContribution'],
+                    name=f'T{team_id}_{agent_info["TeamID"][:4]}_{agent_id[:8]}',
+                    mode='lines',
+                    line=dict(color=team_color)
+                ))
+                
+                # Add skull emoji at death point if agent dies
+                if death_point is not None:
+                    net_at_death = death_point['Contribution'] - death_point['Withdrawal']
+                    fig.add_trace(go.Scatter(
+                        x=[death_point['TurnNumber']],
+                        y=[net_at_death],
+                        mode='text',
+                        text=['💀'],
+                        textfont=dict(size=20),
+                        showlegend=False,
+                        hoverinfo='skip'
+                    ))
+    
+    # Add a zero line for reference
+    fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+    
+    fig.update_layout(
+        title='Individual Agent Net Contributions Over Time',
+        xaxis_title="Turn Number",
+        yaxis_title="Net Contribution (Contribution - Withdrawal)",
+        hovermode='x unified',
+        showlegend=True,
+        legend=dict(
+            groupclick="toggleitem",
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=1.05
+        ),
+        height=PLOT_HEIGHT,
+        width=PLOT_WIDTH,
+        margin=dict(t=150, r=150, b=50, l=50)
+    )
+    
     return fig
 
 # Add some CSS styling

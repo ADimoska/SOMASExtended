@@ -67,6 +67,7 @@ type IExtendedAgent interface {
 	GetContributionAuditVote() Vote
 	GetWithdrawalAuditVote() Vote
 	GetTrueSomasTeamID() int
+	HasTeam() bool
 
 	// Team4 AoA Functions
 	Team4_GetRankUpVote() map[uuid.UUID]int
