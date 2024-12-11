@@ -9,11 +9,13 @@ import (
 )
 
 type Team struct {
-	TeamID     uuid.UUID
-	Agents     []uuid.UUID
-	TeamAoA    IArticlesOfAssociation
-	TeamAoAID  int
-	commonPool int
+	TeamID         uuid.UUID
+	Agents         []uuid.UUID
+	TeamAoA        IArticlesOfAssociation
+	TeamAoAID      int
+	commonPool     int
+	knownThreshold int  // current threshold set by server
+	validThreshold bool // flag if the threshold has been updated this turn
 }
 
 func (team *Team) GetCommonPool() int {
@@ -42,6 +44,27 @@ func NewTeam(teamID uuid.UUID) *Team {
 		Agents:     []uuid.UUID{}, // Initialize an empty slice of agent UUIDs
 		TeamAoA:    teamAoA,       // Initialize strategy as 0
 	}
+}
+
+/**
+* Set the known threshold so that agents can adapt their behaviour based on
+* this. AGENTS PLEASE DON'T CALL THIS - in an ideal world we would use
+* pre-signed certificates to know that only the server updated this but our
+* code is not prioritising security.
+ */
+func (team *Team) SetKnownThreshold(threshold int) {
+	team.knownThreshold = threshold
+	team.validThreshold = true
+}
+
+// Same as above, @agents please don't call this
+func (team *Team) InvalidateThreshold() {
+	team.validThreshold = false
+}
+
+// Return the known threshold and the flag that determines if its valid or not
+func (team *Team) GetKnownThreshold(threshold int) (int, bool) {
+	return team.knownThreshold, team.validThreshold
 }
 
 // --------- Recording Functions ---------
