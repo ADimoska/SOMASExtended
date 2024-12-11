@@ -3,10 +3,12 @@ package agents
 import (
 	// "fmt"
 	"log"
+	"strconv"
 
 	"github.com/google/uuid"
 
 	"github.com/ADimoska/SOMASExtended/common"
+	"github.com/ADimoska/SOMASExtended/gameRecorder"
 	baseAgent "github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 )
 
@@ -110,7 +112,8 @@ func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int 
 		aoaExpectedContribution := a1.Server.GetTeam(a1.GetID()).TeamAoA.GetExpectedContribution(a1.GetID(), a1.Score)
 		switch a1.agentType {
 		case Honest, CheatLongTerm:
-			return aoaExpectedContribution
+			// return aoaExpectedContribution
+			return a1.Score
 		case CheatShortTerm:
 			// Contribute less than expected
 			contributedAmount := aoaExpectedContribution - cheat_amount
@@ -381,4 +384,32 @@ func (mi *Team1Agent) GetTrueSomasTeamID() int {
 // Get agent personality type for debug purposes
 func (mi *Team1Agent) GetAgentType() int {
 	return int(mi.agentType)
+}
+
+// ----------------------- Data Recording Functions -----------------------
+func (mi *Team1Agent) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
+	
+	specialNote := "-1"
+	if mi.HasTeam() {
+		teamAoA := mi.Server.GetTeam(instance.GetID()).TeamAoA
+		switch teamAoA := teamAoA.(type) {
+			case *common.Team1AoA:
+				specialNote = "Rank: " + strconv.Itoa(teamAoA.GetAgentRank(instance.GetID()))
+		}
+
+	}
+	
+	record := gameRecorder.NewAgentRecord(
+		instance.GetID(),
+		instance.GetTrueSomasTeamID(),
+		instance.GetTrueScore(),
+		instance.GetStatedContribution(instance),
+		instance.GetActualContribution(instance),
+		instance.GetActualWithdrawal(instance),
+		instance.GetStatedWithdrawal(instance),
+		instance.GetTeamID(),
+		specialNote,
+		
+	)
+	return record
 }

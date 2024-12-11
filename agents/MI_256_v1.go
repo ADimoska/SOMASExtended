@@ -833,7 +833,7 @@ func (mi *MI_256_v1) RandomizeCharacter() {
 	mi.evilness = rand.Intn(3) + 1
 	mi.haveIlied = false
 	mi.Initialize_opninions()
-	mi.AoARanking = []int{4, 1, 2, 3, 4, 5}
+	mi.AoARanking = []int{1, 4, 2, 3, 4, 5}
 	mi.SetAoARanking(mi.AoARanking)
 }
 

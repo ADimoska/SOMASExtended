@@ -86,11 +86,16 @@ func (t *Team1AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 	var totalWeightedSum float64
 	totalWeightedSum = 0
 	for _, rank := range t.ranking {
-		totalWeightedSum += weightFunction(float64(t.rankBoundary[rank]))
+		if rank != 0{
+			totalWeightedSum += weightFunction(float64(t.rankBoundary[rank-1]))
+		}
 	}
 
 	// Retrieve the boundary value for the given agent, adjusted by its ranking
-	agentBoundary := float64(t.rankBoundary[t.ranking[agentId]])
+	agentBoundary := 0.0
+	if t.ranking[agentId] != 0{
+		agentBoundary = float64(t.rankBoundary[t.ranking[agentId]-1])
+	}
 
 	// Compute the weight for the agent based on the boundary
 	agentWeight := weightFunction(agentBoundary)
@@ -189,24 +194,37 @@ func (t *Team1AoA) WeightedRandomSelection(agentIds []uuid.UUID) uuid.UUID {
 	}
 
 	totalWeight := 0
+	weights := make(map[uuid.UUID]int)
+
+	// Calculate weights for each agent and compute the total weight
 	for _, agentId := range agentIds {
-		totalWeight += t.ranking[agentId]
+		weight := t.ranking[agentId] + 1 // Ensure weights are non-zero
+		if weight < 0 {
+			log.Fatalf("Negative weight for agent %v", agentId)
+		}
+		weights[agentId] = weight
+		totalWeight += weight
 	}
+
 	if totalWeight == 0 {
 		log.Fatal("All agents have 0 weight")
 	}
 
+	// Generate a random number between 1 and totalWeight
 	randomNumber := rand.Intn(totalWeight) + 1
+
+	// Select an agent based on the random number
 	cumulativeWeight := 0
 	for _, agentId := range agentIds {
-		cumulativeWeight += t.ranking[agentId]
+		cumulativeWeight += weights[agentId]
 		if cumulativeWeight >= randomNumber {
 			return agentId
 		}
 	}
 
+	// This should never happen, but just in case
 	log.Fatal("Failed to select an agent")
-	return uuid.Nil // This line will never be reached due to log.Fatal
+	return uuid.Nil
 }
 
 // SelectNChairs selects n distinct agents to be chairs, with probability of selection based on rank.
@@ -250,10 +268,20 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 * the system to 'self-organise' itself and decide on institutionalised facts
  */
 func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+
+	newRanking := make(map[uuid.UUID]int)
+	for agentUUID, rank := range t.ranking {		
+		if _, exists := agentMap[agentUUID]; exists {
+			newRanking[agentUUID] = rank
+		}
+	}
+	
+	t.ranking = newRanking
+
 	// Extract keys from map
-	agentIDs := make([]uuid.UUID, len(agentMap))
+	agentIDs := make([]uuid.UUID, len(team.Agents))
 	i := 0
-	for k := range agentMap {
+	for _, k := range team.Agents {
 		agentIDs[i] = k
 		i++
 	}
@@ -308,10 +336,27 @@ func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUI
 	var current map[uuid.UUID]int
 	var prev map[uuid.UUID]int
 
+	newRanking := make(map[uuid.UUID]int)
+	for agentUUID, rank := range t.ranking {		
+		if _, exists := agentMap[agentUUID]; exists {
+			newRanking[agentUUID] = rank
+		}
+	}
+	
+	t.ranking = newRanking
+
 	for i := 0; i < 10; i++ {
 		chairsAgree := false
 
-		chairs := t.SelectNChairs(team.Agents, 2)
+		var numChairs int
+		if len(t.ranking) < 2 {
+			numChairs = len(t.ranking) 
+		} else {
+			numChairs = 2
+		}
+
+
+		chairs := t.SelectNChairs(team.Agents, numChairs)
 		for _, chairId := range chairs {
 			chair := agentMap[chairId]
 			current = chair.Team1_ChairUpdateRanks(t.ranking)
@@ -366,17 +411,22 @@ func (t *Team1AoA) GetAgentNewRank(agentId uuid.UUID) int {
 		boundary := t.rankBoundary[rank]
 		if agentTotalContributions >= boundary {
 			newRank = rank + 1
+			break
 		}
 	}
 	// Speed Limit to climb rank
 	if newRank > agentCurrentRank+1 {
-		newRank = agentCurrentRank + 1
+		newRank = min(agentCurrentRank + 1, 5)
 	} else if newRank < agentCurrentRank-1 {
-		newRank = agentCurrentRank - 1
+		newRank = max(agentCurrentRank - 1, 0)
 	}
 
 	// log.fatal("Agent total contribution is less than the minimum boundary")
-	return newRank // or an appropriate default value or error code
+	return newRank  // or an appropriate default value or error code
+}
+
+func (t *Team1AoA) GetAgentRank(agentId uuid.UUID) int {
+	return t.ranking[agentId]
 }
 
 func (f *Team1AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
@@ -393,7 +443,7 @@ func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 	agentLQueue := make(map[uuid.UUID]*LeakyQueue)
 	for _, agent := range team.Agents {
 		auditResult[agent] = list.New()
-		ranking[agent] = 1
+		ranking[agent] = 0
 		agentLQueue[agent] = NewLeakyQueue(5)
 	}
 
