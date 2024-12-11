@@ -365,11 +365,11 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	}
 
 	// If and only if exposeThresholds is true, expose to agents
-    if cs.exposeThresholds {
-        for _, team := range cs.Teams {
-            team.SetKnownThreshold(cs.roundScoreThreshold)
-        }
-    }
+	if cs.exposeThresholds {
+		for _, team := range cs.Teams {
+			team.SetKnownThreshold(cs.roundScoreThreshold)
+		}
+	}
 
 	cs.teamsMutex.Lock()
 
@@ -646,9 +646,10 @@ func (cs *EnvironmentServer) Start() {
 }
 
 // custom init that gets called earlier
-func (cs *EnvironmentServer) Init(turnsForThreshold int) {
+func (cs *EnvironmentServer) Init(turnsForThreshold int, exposeThresholds bool) {
 	cs.DataRecorder = gameRecorder.CreateRecorder()
 	cs.thresholdTurns = turnsForThreshold
+	cs.exposeThresholds = exposeThresholds
 }
 
 func (cs *EnvironmentServer) reviveDeadAgents() {

@@ -63,7 +63,7 @@ func (team *Team) InvalidateThreshold() {
 }
 
 // Return the known threshold and the flag that determines if its valid or not
-func (team *Team) GetKnownThreshold(threshold int) (int, bool) {
+func (team *Team) GetKnownThreshold() (int, bool) {
 	return team.knownThreshold, team.validThreshold
 }
 
