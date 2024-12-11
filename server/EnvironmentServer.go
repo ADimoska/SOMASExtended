@@ -595,28 +595,26 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			// Update the team's strategy
 			switch preference {
 			case 1:
-				team.TeamAoA = common.CreateTeam1AoA(team)
-				team.TeamAoAID = 1
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			case 2:
-				team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
-				team.TeamAoAID = 2
-				cs.ElectNewLeader(team.TeamID)
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			case 3:
-				team.TeamAoA = common.CreateFixedAoA(1)
-				// TODO: Change when AoA 3 is implemented
-				team.TeamAoAID = 0
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			case 4:
-				team.TeamAoA = common.CreateTeam4AoA(team)
-				team.TeamAoAID = 4
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			case 5:
-				team.TeamAoA = common.CreateTeam5AoA()
-				team.TeamAoAID = 5
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			case 6:
-				team.TeamAoA = common.CreateTeam6AoA()
-				team.TeamAoAID = 6
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			default:
-				team.TeamAoA = common.CreateFixedAoA(1)
-				team.TeamAoAID = 0
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			}
 
 			cs.Teams[team.TeamID] = team
