@@ -10,10 +10,21 @@ import (
 	baseAgent "github.com/MattSScott/basePlatformSOMAS/v2/pkg/agent"
 )
 
-type Pair struct {
-	Data1 int // Stated or TurnScore
-	Data2 int // Expected or ReRolls
+type AgentScoreInfo struct {
+	TurnScore int
+	Rerolls   int
 }
+
+type AgentContributionInfo struct {
+	ContributionStated int
+	ContributionExpected int
+}
+
+type AgentWithdrawalInfo struct {
+	WithdrawalStated int
+	WithdrawalExpected int
+}
+
 
 type AgentMemory struct {
 	honestyScore int
@@ -25,9 +36,9 @@ type AgentMemory struct {
 	LastScoreCount        int
 
 	// Slice of all previous history
-	historyContribution []Pair
-	historyWithdrawal   []Pair
-	historyScore        []Pair
+	historyContribution []AgentContributionInfo
+	historyWithdrawal   []AgentWithdrawalInfo
+	historyScore        []AgentScoreInfo // turnScore and rerolls
 }
 
 // AgentType is an enumeration of different agent behaviors.
@@ -242,10 +253,11 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 			// Limit by the last contributions
 			relevantContributions := memoryEntry.historyContribution[:memoryEntry.LastContributionCount]
 			for _, contribution := range relevantContributions {
-				if contribution.Data1 > suspicious_contribution && contribution.Data1 > highestStatedContribution {
-					highestStatedContribution = contribution.Data1
+				if contribution.ContributionStated > suspicious_contribution && contribution.ContributionStated > highestStatedContribution {
+					highestStatedContribution = contribution.ContributionStated
 					suspectID = agentID
 				}
+				// TODO Add functionality to check if stated contribution is lower than expected. 
 			}
 		}
 
@@ -278,7 +290,7 @@ func (a1 *Team1Agent) GetWithdrawalAuditVote() common.Vote {
 		for agentID, memoryEntry := range a1.memory {
 			relevantWithdrawals := memoryEntry.historyWithdrawal[:memoryEntry.LastWithdrawalCount]
 			for _, withdrawal := range relevantWithdrawals {
-				discrepancy := withdrawal.Data2 - withdrawal.Data1 //expected - stated
+				discrepancy := withdrawal.WithdrawalExpected - withdrawal.WithdrawalStated //expected - stated
 				if discrepancy > highestDiscrepancy {
 					highestDiscrepancy = discrepancy
 					suspectID = agentID
@@ -319,9 +331,9 @@ func (mi *Team1Agent) HandleContributionMessage(msg *common.ContributionMessage)
 	memoryEntry := mi.memory[msg.GetSender()]
 
 	// Modify the historyContribution field
-	memoryEntry.historyContribution = append(memoryEntry.historyContribution, Pair{
+	memoryEntry.historyContribution = append(memoryEntry.historyContribution, AgentContributionInfo{	
 		msg.StatedAmount,
-		msg.ExpectedAmount,
+		msg.ExpectedAmount,		
 	})
 
 	// Update Index
@@ -340,7 +352,7 @@ func (mi *Team1Agent) HandleScoreReportMessage(msg *common.ScoreReportMessage) {
 	memoryEntry := mi.memory[msg.GetSender()]
 
 	// Modify the historyContribution field
-	memoryEntry.historyScore = append(memoryEntry.historyContribution, Pair{
+	memoryEntry.historyScore = append(memoryEntry.historyScore, AgentScoreInfo{
 		msg.TurnScore,
 		msg.Rerolls,
 	})
@@ -361,7 +373,7 @@ func (mi *Team1Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 	memoryEntry := mi.memory[msg.GetSender()]
 
 	// Modify the historyContribution field
-	memoryEntry.historyWithdrawal = append(memoryEntry.historyContribution, Pair{
+	memoryEntry.historyWithdrawal = append(memoryEntry.historyWithdrawal, AgentWithdrawalInfo{
 		msg.StatedAmount,
 		msg.ExpectedAmount,
 	})
