@@ -199,74 +199,74 @@ func (t2a *Team2Agent) GetRole() bool {
 
 // Part 2: Core Game Flow Functions
 
-// ---------- TEAM FORMING ----------
-func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+// // ---------- TEAM FORMING ----------
+// func (t2a *Team2Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
 
-	// trustThreshold := 10 // invite agents who are above this threshold
-	// invitationList := []uuid.UUID{}
-	// // Iterate through all agents and add those with
-	// for _, agentInfo := range agentInfoList {
-	// 	agentUUID := agentInfo.AgentUUID
-	// 	// Initialize trust score map if it hasn't been initialized yet
-	// 	if t2a.trustScore[agentUUID] == 0 {
-	// 		t2a.SetTrustScore(agentUUID)
-	// 	}
+// 	// trustThreshold := 10 // invite agents who are above this threshold
+// 	// invitationList := []uuid.UUID{}
+// 	// // Iterate through all agents and add those with
+// 	// for _, agentInfo := range agentInfoList {
+// 	// 	agentUUID := agentInfo.AgentUUID
+// 	// 	// Initialize trust score map if it hasn't been initialized yet
+// 	// 	if t2a.trustScore[agentUUID] == 0 {
+// 	// 		t2a.SetTrustScore(agentUUID)
+// 	// 	}
 
-	// 	// Skip if it's our own ID
-	// 	if agentUUID == t2a.GetID() {
-	// 		continue
-	// 	}
+// 	// 	// Skip if it's our own ID
+// 	// 	if agentUUID == t2a.GetID() {
+// 	// 		continue
+// 	// 	}
 
-	// 	// Get current trust score for this agent
-	// 	trustScore := t2a.trustScore[agentUUID]
+// 	// 	// Get current trust score for this agent
+// 	// 	trustScore := t2a.trustScore[agentUUID]
 
-	// 	// If agent is above threshold, append to invite list
-	// 	if trustScore > trustThreshold {
-	// 		invitationList = append(invitationList, agentUUID)
-	// 	}
-	// }
+// 	// 	// If agent is above threshold, append to invite list
+// 	// 	if trustScore > trustThreshold {
+// 	// 		invitationList = append(invitationList, agentUUID)
+// 	// 	}
+// 	// }
 
-	// return invitationList
-	return t2a.ExtendedAgent.DecideTeamForming(agentInfoList)
-}
+// 	// return invitationList
+// 	return t2a.ExtendedAgent.DecideTeamForming(agentInfoList)
+// }
 
-func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
-	log.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
+// func (t2a *Team2Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
+// 	log.Printf("Agent %s received team forming invitation from %s\n", t2a.GetID(), msg.GetSender())
 
-	// Already in a team - reject invitation
-	if t2a.TeamID != (uuid.UUID{}) {
-		if t2a.VerboseLevel > 6 {
-			log.Printf("Agent %s rejected invitation from %s - already in team %v\n",
-				t2a.GetID(), msg.GetSender(), t2a.TeamID)
-		}
-		return
-	}
+// 	// Already in a team - reject invitation
+// 	if t2a.TeamID != (uuid.UUID{}) {
+// 		if t2a.VerboseLevel > 6 {
+// 			log.Printf("Agent %s rejected invitation from %s - already in team %v\n",
+// 				t2a.GetID(), msg.GetSender(), t2a.TeamID)
+// 		}
+// 		return
+// 	}
 
-	sender := msg.GetSender()
-	// Set the trust score if there is no previous record of this agent
-	if _, ok := t2a.trustScore[sender]; !ok {
-		t2a.SetTrustScore(sender)
-	}
+// 	sender := msg.GetSender()
+// 	// Set the trust score if there is no previous record of this agent
+// 	if _, ok := t2a.trustScore[sender]; !ok {
+// 		t2a.SetTrustScore(sender)
+// 	}
 
-	t2a.sendOpinionMessages(sender, 3) // Ask our top 3 most trusted agent about their opinions of our current agent
+// 	t2a.sendOpinionMessages(sender, 3) // Ask our top 3 most trusted agent about their opinions of our current agent
 
-	// Get the sender's trust score
-	senderTrustScore := t2a.trustScore[sender]
+// 	// Get the sender's trust score
+// 	senderTrustScore := t2a.trustScore[sender]
 
-	if senderTrustScore > 60 {
-		// Handle team creation/joining based on sender's team status
-		sender := msg.GetSender()
-		if t2a.Server.CheckAgentAlreadyInTeam(sender) {
-			existingTeamID := t2a.Server.AccessAgentByID(sender).GetTeamID()
-			t2a.joinExistingTeam(existingTeamID)
-		} else {
-			t2a.createNewTeam(sender)
-		}
-	} else {
-		log.Printf("Agent %s rejected invitation from %s - already in team %v\n",
-			t2a.GetID(), msg.GetSender(), t2a.TeamID)
-	}
-}
+// 	if senderTrustScore > 60 {
+// 		// Handle team creation/joining based on sender's team status
+// 		sender := msg.GetSender()
+// 		if t2a.Server.CheckAgentAlreadyInTeam(sender) {
+// 			existingTeamID := t2a.Server.AccessAgentByID(sender).GetTeamID()
+// 			t2a.joinExistingTeam(existingTeamID)
+// 		} else {
+// 			t2a.createNewTeam(sender)
+// 		}
+// 	} else {
+// 		log.Printf("Agent %s rejected invitation from %s - already in team %v\n",
+// 			t2a.GetID(), msg.GetSender(), t2a.TeamID)
+// 	}
+// }
 
 func (t2a *Team2Agent) HandleAgentOpinionRequestMessage(msg *common.AgentOpinionRequestMessage) {
 	// Respond to opinion requests from other agents

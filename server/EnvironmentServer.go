@@ -424,9 +424,10 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.ResetAgents()
 
 	// start team forming
-	cs.StartAgentTeamForming()
+	teamSize := 5
+	cs.StartAgentTeamForming(teamSize)
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(10 * time.Second)
 	// take votes at team level and allocate Strategy.
 	cs.allocateAoAs()
 
@@ -787,23 +788,42 @@ func (cs *EnvironmentServer) IsAllAgentsDead() bool {
 
 // team forming
 
-func (cs *EnvironmentServer) StartAgentTeamForming() {
+func (cs *EnvironmentServer) StartAgentTeamForming(teamSize int) {
 	// Clear existing teams at the start of team formation
 	cs.teamsMutex.Lock()
 	cs.Teams = make(map[uuid.UUID]*common.Team)
 	cs.teamsMutex.Unlock()
 
-	// Get updated agent info and let agents form teams
+	// Get updated agent info and agent map
 	agentInfo := cs.UpdateAndGetAgentExposedInfo()
+	agentMap := cs.GetAgentMap()
+
+	log.Println("agentinfo")
+	log.Println(agentInfo)
+	log.Println("agentMap")
+	log.Println(agentMap)
 
 	log.Printf("------------- [server] Starting team formation -------------\n\n")
 
-	// Launch team formation for each agent
-	for _, agent := range cs.GetAgentMap() {
-		agent.StartTeamForming(agent, agentInfo)
+	// Launch team formation for each agent in agentInfo
+	counter := 0
+	for _, info := range agentInfo {
+		// Find the corresponding agent in the agentMap
+		agent, exists := agentMap[info.AgentUUID]
+		if !exists {
+			log.Printf("Warning: No matching agent found in agentMap for UUID: %s\n", info.AgentUUID)
+			continue
+		}
+
+		// Start team forming for every `teamSize` group
+		if counter%teamSize == 0 {
+			agent.StartTeamForming(agent, agentInfo, teamSize)
+		}
+
+		counter++
 	}
 
-	// print team status
+	// Print team status
 	cs.LogTeamStatus()
 }
 
@@ -972,6 +992,7 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 		newTeamRecord.TurnNumber = cs.turn
 		newTeamRecord.IterationNumber = cs.iteration
 		newTeamRecord.TeamCommonPool = team.GetCommonPool()
+		newTeamRecord.TeamSize = len(team.Agents)
 		teamRecords = append(teamRecords, newTeamRecord)
 	}
 

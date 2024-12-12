@@ -16,4 +16,5 @@ type TeamRecord struct {
 	TeamCommonPool int
 	AgentsAlive    []uuid.UUID
 	AgentsDead     []uuid.UUID
+	TeamSize       int
 }

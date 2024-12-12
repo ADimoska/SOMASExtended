@@ -207,40 +207,40 @@ func (team3 *Team3Agent) MLModelPredictStickRoll(currentScore, previousRoll int)
 
 // ----------------------- Strategies -----------------------
 // Team-forming Strategy
-func (team3 *Team3Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	log.Printf("DecideTeamForming called for agent %s\n", team3.GetID())
-	invitationList := []uuid.UUID{}
-	for _, agentInfo := range agentInfoList {
-		// Exclude the agent itself
-		if agentInfo.AgentUUID == team3.GetID() {
-			continue
-		}
-		// Check if the agent is not already in a team
-		if agentInfo.AgentTeamID == (uuid.UUID{}) {
-			invitationList = append(invitationList, agentInfo.AgentUUID)
-		}
-	}
+// func (team3 *Team3Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+// 	log.Printf("DecideTeamForming called for agent %s\n", team3.GetID())
+// 	invitationList := []uuid.UUID{}
+// 	for _, agentInfo := range agentInfoList {
+// 		// Exclude the agent itself
+// 		if agentInfo.AgentUUID == team3.GetID() {
+// 			continue
+// 		}
+// 		// Check if the agent is not already in a team
+// 		if agentInfo.AgentTeamID == (uuid.UUID{}) {
+// 			invitationList = append(invitationList, agentInfo.AgentUUID)
+// 		}
+// 	}
 
-	if len(invitationList) > 0 {
-		// Randomly choose an agent to invite
-		rand.Shuffle(len(invitationList), func(i, j int) {
-			invitationList[i], invitationList[j] = invitationList[j], invitationList[i]
-		})
-		chosenAgent := invitationList[0]
+// 	if len(invitationList) > 0 {
+// 		// Randomly choose an agent to invite
+// 		rand.Shuffle(len(invitationList), func(i, j int) {
+// 			invitationList[i], invitationList[j] = invitationList[j], invitationList[i]
+// 		})
+// 		chosenAgent := invitationList[0]
 
-		// Send the invitation
-		team3.SendTeamFormingInvitation([]uuid.UUID{chosenAgent})
+// 		// Send the invitation
+// 		team3.SendTeamFormingInvitation([]uuid.UUID{chosenAgent})
 
-		// Log the chosen agent
-		log.Printf("Agent %s sent invitation to %s\n", team3.GetID(), chosenAgent)
+// 		// Log the chosen agent
+// 		log.Printf("Agent %s sent invitation to %s\n", team3.GetID(), chosenAgent)
 
-		// Return a slice containing the chosen agent
-		return []uuid.UUID{chosenAgent}
-	}
+// 		// Return a slice containing the chosen agent
+// 		return []uuid.UUID{chosenAgent}
+// 	}
 
-	log.Printf("No available agents to invite for agent %s\n", team3.GetID())
-	return []uuid.UUID{}
-}
+// 	log.Printf("No available agents to invite for agent %s\n", team3.GetID())
+// 	return []uuid.UUID{}
+// }
 
 // Dice Strategy
 func (team3 *Team3Agent) StickOrAgain(turn int, score int) bool {
@@ -736,37 +736,37 @@ func (team3 *Team3Agent) PrintMemoryReport() {
 	log.Printf("=====================================\n")
 }
 
-// HandleTeamFormationMessage handles receiving team formation invitations
-func (team3 *Team3Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
-	senderID := msg.GetSender()
+// // HandleTeamFormationMessage handles receiving team formation invitations
+// func (team3 *Team3Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
+// 	senderID := msg.GetSender()
 
-	// Check if we've interacted with this agent before
-	if _, exists := team3.contributionLies[senderID]; exists {
-		// We know this agent - check their memory score
-		score := team3.GetAgentMemoryScore(senderID)
-		shouldAccept := score > 50
+// 	// Check if we've interacted with this agent before
+// 	if _, exists := team3.contributionLies[senderID]; exists {
+// 		// We know this agent - check their memory score
+// 		score := team3.GetAgentMemoryScore(senderID)
+// 		shouldAccept := score > 50
 
-		log.Printf("Agent %v received team invitation from known agent %v with memory score %d. Accepting: %v",
-			team3.GetID(), senderID, score, shouldAccept)
+// 		log.Printf("Agent %v received team invitation from known agent %v with memory score %d. Accepting: %v",
+// 			team3.GetID(), senderID, score, shouldAccept)
 
-		// Record response
-		team3.invitationResponses[senderID] = shouldAccept
+// 		// Record response
+// 		team3.invitationResponses[senderID] = shouldAccept
 
-	} else {
-		// New agent - accept invitation
-		log.Printf("Agent %v received team invitation from unknown agent %v. Accepting by default.",
-			team3.GetID(), senderID)
+// 	} else {
+// 		// New agent - accept invitation
+// 		log.Printf("Agent %v received team invitation from unknown agent %v. Accepting by default.",
+// 			team3.GetID(), senderID)
 
-		team3.invitationResponses[senderID] = true
-	}
+// 		team3.invitationResponses[senderID] = true
+// 	}
 
-	// Update tracking
-	team3.invitationsSent[senderID] = true
+// 	// Update tracking
+// 	team3.invitationsSent[senderID] = true
 
-	// Print debug information
-	team3.PrintLikeabilityStatus()
-	team3.PrintMemoryReport()
-}
+// 	// Print debug information
+// 	team3.PrintLikeabilityStatus()
+// 	team3.PrintMemoryReport()
+// }
 
 // Add these new types
 type NeuralNetwork struct {
@@ -852,17 +852,6 @@ func (team3 *Team3Agent) GetActualContribution(instance common.IExtendedAgent) i
 	cheatInputs := team3.prepareCheatInputs()
 	cheatProbability := team3.cheatNN.Forward(cheatInputs)
 	team3.lastCheatProbability = cheatProbability
-
-	// Log the decision-making process
-	fmt.Println("---------------------")
-	fmt.Printf("Agent %s - Cheat Decision Process:\n", team3.GetID())
-	fmt.Printf("Current Score: %d\n", team3.Score)
-	fmt.Printf("Expected Contribution: %d\n", expectedContribution)
-	fmt.Printf("Cheat Probability: %.2f\n", cheatProbability)
-	fmt.Printf("Common Pool: %d\n", team3.Server.GetTeamCommonPool(team3.GetTeamID()))
-	fmt.Printf("Team Size: %d\n", len(team3.Server.GetTeam(team3.GetID()).Agents))
-	fmt.Printf("Success Rate: %.2f%%\n", team3.cheatSuccessRate*100)
-	fmt.Printf("Decision: %s\n", map[bool]string{true: "CHEAT", false: "HONEST"}[cheatProbability > 0.5])
 
 	// Record this decision
 	team3.cheatHistory = append(team3.cheatHistory, CheatRecord{

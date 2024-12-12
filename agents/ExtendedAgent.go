@@ -452,38 +452,63 @@ func Roll3Dice() int {
 // }
 
 // ----------------------- Team forming functions -----------------------
-func (mi *ExtendedAgent) StartTeamForming(instance common.IExtendedAgent, agentInfoList []common.ExposedAgentInfo) {
+func (mi *ExtendedAgent) StartTeamForming(instance common.IExtendedAgent, agentInfoList []common.ExposedAgentInfo, teamSize int) {
 	// TODO: implement team forming logic
 	if mi.VerboseLevel > 6 {
 		log.Printf("%s is starting team formation\n", mi.GetID())
 	}
 
-	chosenAgents := instance.DecideTeamForming(agentInfoList)
+	chosenAgents := instance.DecideTeamForming(agentInfoList, teamSize)
+	log.Println("I choose these")
+	log.Println(chosenAgents)
 	mi.SendTeamFormingInvitation(chosenAgents)
 	mi.SignalMessagingComplete()
 }
 
-func (mi *ExtendedAgent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+// func (mi *ExtendedAgent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+// 	invitationList := []uuid.UUID{}
+// 	for _, agentInfo := range agentInfoList {
+// 		// exclude the agent itself
+// 		if agentInfo.AgentUUID == mi.GetID() {
+// 			continue
+// 		}
+// 		if agentInfo.AgentTeamID == (uuid.UUID{}) {
+// 			invitationList = append(invitationList, agentInfo.AgentUUID)
+// 		}
+// 	}
+
+// 	// random choice from the invitation list
+// 	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
+// 	if len(invitationList) == 0 {
+// 		return []uuid.UUID{}
+// 	}
+// 	chosenAgent := invitationList[0]
+
+// 	// Return a slice containing the chosen agent
+// 	return []uuid.UUID{chosenAgent}
+// }
+
+func (mi *ExtendedAgent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo, teamSize int) []uuid.UUID {
 	invitationList := []uuid.UUID{}
-	for _, agentInfo := range agentInfoList {
-		// exclude the agent itself
+
+	// Find the position of the calling agent in the list
+	var selfIndex int
+	for i, agentInfo := range agentInfoList {
 		if agentInfo.AgentUUID == mi.GetID() {
-			continue
-		}
-		if agentInfo.AgentTeamID == (uuid.UUID{}) {
-			invitationList = append(invitationList, agentInfo.AgentUUID)
+			selfIndex = i
+			break
 		}
 	}
 
-	// random choice from the invitation list
-	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
-	if len(invitationList) == 0 {
-		return []uuid.UUID{}
+	// Collect the next N agents after the calling agent
+	for i := selfIndex + 1; i < len(agentInfoList) && len(invitationList) < teamSize-1; i++ {
+		// Add only agents not already in a team
+		if agentInfoList[i].AgentTeamID == (uuid.UUID{}) {
+			invitationList = append(invitationList, agentInfoList[i].AgentUUID)
+		}
 	}
-	chosenAgent := invitationList[0]
 
-	// Return a slice containing the chosen agent
-	return []uuid.UUID{chosenAgent}
+	return invitationList
 }
 
 func (mi *ExtendedAgent) SendTeamFormingInvitation(agentIDs []uuid.UUID) {

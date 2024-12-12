@@ -16,7 +16,7 @@ type IServer interface {
 	UpdateAndGetAgentExposedInfo() []ExposedAgentInfo
 	IsAgentDead(agentID uuid.UUID) bool
 	GetAgentKilledScore(agentID uuid.UUID) int
-	StartAgentTeamForming()
+	StartAgentTeamForming(teamSize int)
 
 	GetTeam(agentID uuid.UUID) *Team
 	GetTeamFromTeamID(teamID uuid.UUID) *Team

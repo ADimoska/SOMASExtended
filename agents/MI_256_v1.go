@@ -226,28 +226,28 @@ func (mi *MI_256_v1) AnyoneCheatedAfterWithdrawal() {
 
 }
 
-// Team-forming Strategy
-func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	invitationList := []uuid.UUID{}
-	for _, agentInfo := range agentInfoList {
-		// exclude the agent itself
-		if agentInfo.AgentUUID == mi.GetID() {
-			continue
-		}
-		if agentInfo.AgentTeamID == (uuid.UUID{}) {
-			invitationList = append(invitationList, agentInfo.AgentUUID)
-		}
+// // Team-forming Strategy
+// func (mi *MI_256_v1) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
+// 	invitationList := []uuid.UUID{}
+// 	for _, agentInfo := range agentInfoList {
+// 		// exclude the agent itself
+// 		if agentInfo.AgentUUID == mi.GetID() {
+// 			continue
+// 		}
+// 		if agentInfo.AgentTeamID == (uuid.UUID{}) {
+// 			invitationList = append(invitationList, agentInfo.AgentUUID)
+// 		}
 
-	}
+// 	}
 
-	// TODO: implement team forming logic
-	// random choice from the invitation list
-	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
-	chosenAgent := invitationList[0]
+// 	// TODO: implement team forming logic
+// 	// random choice from the invitation list
+// 	rand.Shuffle(len(invitationList), func(i, j int) { invitationList[i], invitationList[j] = invitationList[j], invitationList[i] })
+// 	chosenAgent := invitationList[0]
 
-	// Return a slice containing the chosen agent
-	return []uuid.UUID{chosenAgent}
-}
+// 	// Return a slice containing the chosen agent
+// 	return []uuid.UUID{chosenAgent}
+// }
 
 // Dice Strategy
 func (mi *MI_256_v1) StickOrAgain(accumulatedScore int, prevRoll int) bool {
