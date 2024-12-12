@@ -17,7 +17,7 @@ type Team1AoA struct {
 	ranking          map[uuid.UUID]int
 	rankBoundary     [5]int
 	agentLQueue      map[uuid.UUID]*LeakyQueue
-	commonPoolWeight float64
+	minCommonPoolLeftover int
 }
 
 // LeakyQueue represents a queue with a fixed capacity.
@@ -60,7 +60,7 @@ func (t *Team1AoA) ResetAuditMap() {
 
 // TODO: Add functionality for expected contribution to change based on rank
 func (t *Team1AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
-	return 1 // For now using boundary as minimum for all ranks, later have per rank minimums? But need to vote what is min?
+	return 0 // Our AoA doesn't need minimum, but if you contribute nothing, you will get nothing
 }
 
 func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
@@ -78,7 +78,7 @@ func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 
 // For now divide by 10
 func weightFunction(rank float64) float64 {
-	weight := rank / 10.0 // make this
+	weight := 5.0 // make this rank/2 or something
 	return weight
 }
 
@@ -87,21 +87,25 @@ func (t *Team1AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 	totalWeightedSum = 0
 	for _, rank := range t.ranking {
 		if rank != 0{
-			totalWeightedSum += weightFunction(float64(t.rankBoundary[rank-1]))
+			totalWeightedSum += weightFunction(float64(rank))
 		}
 	}
 
 	// Retrieve the boundary value for the given agent, adjusted by its ranking
 	agentBoundary := 0.0
 	if t.ranking[agentId] != 0{
-		agentBoundary = float64(t.rankBoundary[t.ranking[agentId]-1])
+		agentBoundary = float64(t.ranking[agentId])
 	}
 
 	// Compute the weight for the agent based on the boundary
 	agentWeight := weightFunction(agentBoundary)
 
 	// Compute the weighted share of the common pool for the agent
-	poolShare := float64(commonPool) / (totalWeightedSum + t.commonPoolWeight)
+	var poolShare float64
+	poolShare = 0
+	if ((commonPool > t.minCommonPoolLeftover) && (totalWeightedSum > 0)){
+		poolShare = float64(commonPool-t.minCommonPoolLeftover) / (totalWeightedSum)
+	}
 
 	// Calculate the expected withdrawal for the agent
 	expectedWithdrawal := agentWeight * poolShare
@@ -290,6 +294,11 @@ func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IE
 	var chair2res [5]int // result of second randomly-elected chair
 	socialDecision := false
 
+	if (len(team.Agents) < 2){
+		log.Printf("Only 1 Chair left! Boundaries wont update")
+		return
+	}
+
 	// Attempt 10 times to get an agreed-upon vote
 	for range 10 {
 		// Select two chairs
@@ -344,6 +353,14 @@ func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUI
 	}
 	
 	t.ranking = newRanking
+
+	if (len(team.Agents) < 2){
+		chair := t.SelectNChairs(team.Agents, 1)[0]
+		rankings := agentMap[chair].Team1_ChairUpdateRanks(t.ranking)
+		t.ranking = rankings
+		log.Printf("Only 1 Chair left! Rank updated by single agent")
+		return
+	}
 
 	for i := 0; i < 10; i++ {
 		chairsAgree := false
@@ -452,7 +469,7 @@ func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 		ranking:          ranking,
 		rankBoundary:     [5]int{10, 20, 30, 40, 50},
 		agentLQueue:      agentLQueue,
-		commonPoolWeight: 5,
+		minCommonPoolLeftover: 5,
 	}
 }
 

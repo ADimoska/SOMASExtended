@@ -29,7 +29,7 @@ type Team2Agent struct {
 func Team2_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team2Agent {
 	extendedAgent := GetBaseAgents(funcs, agentConfig)
 	extendedAgent.TrueSomasTeamID = 2                  // Our true team ID
-	extendedAgent.AoARanking = []int{1, 2, 3, 4, 5, 6} // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
+	extendedAgent.AoARanking = []int{2, 1, 3, 4, 5, 6} // just ours for now. TODO: CHANGE WHEN WE KNOW OTHER AOAs
 
 	return &Team2Agent{
 		ExtendedAgent:      extendedAgent,

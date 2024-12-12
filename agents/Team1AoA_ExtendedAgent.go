@@ -242,7 +242,12 @@ func calculateMedian(sortedValues []int) int {
 * OVERRIDE - You get a say in what you think the rank boundaries should be!
  */
 func (mi *ExtendedAgent) Team1_BoundaryProposalRequestHandler(msg *common.Team1RankBoundaryRequestMessage) {
-	bounds := [5]int{3, 40, 200, 500, 2000}
+	var bounds [5]int
+	if mi.Score >= 5{
+		bounds = [5]int{int(0.2*float64(mi.Score)), int(0.4*float64(mi.Score)), int(0.6*float64(mi.Score)), int(0.8*float64(mi.Score)), int(1*float64(mi.Score))}
+	}else{
+		bounds = [5]int{3, 20, 500, 1000}
+	}
 
 	resp := &common.Team1RankBoundaryResponseMessage{
 		BaseMessage: mi.CreateBaseMessage(),

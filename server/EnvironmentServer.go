@@ -44,6 +44,7 @@ func init() {
 
 func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	log.Println("\nRunning turn for team ", team.TeamID)
+	team.TeamAoA.RunPreIterationAoaLogic(team, cs.GetAgentMap())
 	// Sum of contributions from all agents in the team for this turn
 	agentContributionsTotal := 0
 	for _, agentID := range team.Agents {
@@ -434,9 +435,6 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.allocateAoAs()
 
 	// Perform any functionality needed by AoA at start of iteration.
-	for _, team := range cs.Teams {
-		team.TeamAoA.RunPreIterationAoaLogic(team, cs.GetAgentMap())
-	}
 }
 
 func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
