@@ -92,21 +92,26 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Contribution Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
+		log.Printf("Agent %v has been audited for Contribution\n", agentToAudit)
 
 		if auditResult {
 			cs.ApplyPunishment(team, agentToAudit)
+			log.Printf("Agent %v has been punished\n", agentToAudit)
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
 					cs.ElectNewLeader(team.TeamID)
 				}
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
+					log.Printf("Team2AoA Contribution: Agent %v has been removed from the team due to multiple offences\n", agentToAudit)
 				}
 			} else if team.TeamAoAID == 1 {
 				if team.TeamAoA.(*common.Team1AoA).GetNumberOfOffences(agentToAudit) >= 2 {
+					team.TeamAoA.(*common.Team1AoA).RemoveAgentFromTeam(agentToAudit)
 					cs.RemoveAgentFromTeam(agentToAudit)
 					// reset the number of offences for the agent
 					team.TeamAoA.(*common.Team1AoA).ResetNumberOfOffences(agentToAudit)
+					log.Printf("Team1AoA Contribution: Agent %v has been removed from the team due to multiple offences\n", agentToAudit)
 				}
 			}
 
@@ -173,6 +178,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 
 		if auditResult {
 			cs.ApplyPunishment(team, agentToAudit)
+			log.Printf("Agent %v has been audited for Withdraw\n", agentToAudit)
 
 			if team.TeamAoAID == 2 {
 				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
@@ -180,12 +186,15 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 				}
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
+					log.Printf("Team2AoA Withdraw: Agent %v has been removed from the team due to multiple offences\n", agentToAudit)
 				}
 			} else if team.TeamAoAID == 1 {
 				if team.TeamAoA.(*common.Team1AoA).GetNumberOfOffences(agentToAudit) >= 2 {
+					team.TeamAoA.(*common.Team1AoA).RemoveAgentFromTeam(agentToAudit)
 					cs.RemoveAgentFromTeam(agentToAudit)
 					// reset the number of offences for the agent
 					team.TeamAoA.(*common.Team1AoA).ResetNumberOfOffences(agentToAudit)
+					log.Printf("Team1AoA Withdraw: Agent %v has been removed from the team due to multiple offences\n", agentToAudit)
 				}
 			}
 
@@ -619,7 +628,7 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			// Update the team's strategy
 			switch preference {
 			case 1:
-				team.TeamAoA = common.CreateTeam1AoA(team)
+				team.TeamAoA = common.CreateTeam1AoA(team, 5)
 				team.TeamAoAID = 1
 			case 2:
 				team.TeamAoA = common.CreateTeam2AoA(team, uuid.Nil, 5)
