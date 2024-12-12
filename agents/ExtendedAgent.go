@@ -41,6 +41,9 @@ type ExtendedAgent struct {
 	// Team1 AoA Agent Memory
 	team1RankBoundaryProposals [][5]int
 	team1Ballots               [][3]int
+
+	// Team3 AoA Agent Memory
+	currentStrategy common.Strategy
 }
 
 type AgentConfig struct {
@@ -591,4 +594,43 @@ func (mi *ExtendedAgent) Team2_GetLeaderVote() common.Vote {
 	leader := agentsInTeam[rand.Intn(len(agentsInTeam))]
 
 	return common.CreateVote(1, mi.GetID(), leader)
+}
+
+// ----------------------- Team 3 AoA Functions -----------------------
+
+func (mi *ExtendedAgent) Team3_GetStrategyVote() []common.Strategy {
+	score := mi.GetTrueScore()
+
+	// First choice based on score
+	var firstChoice common.Strategy
+	switch {
+	case score > 50:
+		firstChoice = common.Resolutes
+	case score >= 20:
+		firstChoice = common.Moderates
+	default:
+		firstChoice = common.Lenient
+	}
+
+	// Random second choice
+	var secondChoice common.Strategy
+	for {
+		randStrategy := common.Strategy(rand.Intn(3))
+		if randStrategy != firstChoice {
+			secondChoice = randStrategy
+			break
+		}
+	}
+
+	return []common.Strategy{firstChoice, secondChoice}
+}
+
+// Helper function to set strategy
+func (mi *ExtendedAgent) Team3_SetStrategy(strategy common.Strategy) {
+	mi.currentStrategy = strategy
+}
+
+// Helper function to get current strategy
+func (mi *ExtendedAgent) Team3_GetCurrentStrategy() common.Strategy {
+	return mi.currentStrategy
 }

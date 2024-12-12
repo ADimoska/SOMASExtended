@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io"
 	"log"
 	"os"
@@ -47,6 +48,9 @@ func main() {
 		VerboseLevel: 10,
 	}
 
+	argExposeThresholds := flag.Bool("exposeThresholds", false, "Expose the thresholds to the agents")
+	flag.Parse()
+
 	serv := &envServer.EnvironmentServer{
 		// note: the zero turn is used for team forming
 		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
@@ -57,7 +61,8 @@ func main() {
 		Teams: make(map[uuid.UUID]*common.Team),
 	}
 	serv.Init(
-		3, // turns to apply threshold once
+		3,                    // turns to apply threshold once
+		*argExposeThresholds, // expose thresholds
 	)
 	serv.SetGameRunner(serv)
 

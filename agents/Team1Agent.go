@@ -3,6 +3,7 @@ package agents
 import (
 	// "fmt"
 	"log"
+	"math"
 
 	"github.com/google/uuid"
 
@@ -144,6 +145,14 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 		commonPool := a1.Server.GetTeam(a1.GetID()).GetCommonPool()
 		aoaExpectedWithdrawal := a1.Server.GetTeam(a1.GetID()).TeamAoA.GetExpectedWithdrawal(a1.GetID(), a1.Score, commonPool)
 		currentRank := 0
+
+		/* If the threshold is known (this only occurs in some games), then just
+		   withdraw the minimum you need to survive. */
+		knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
+		if ok {
+			return int(math.Max(float64(knownThreshold)-float64(a1.Score), 0.0))
+		}
+
 		switch a1.agentType {
 		case Honest:
 			return aoaExpectedWithdrawal
@@ -151,7 +160,7 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 			// Perform type assertion to get Team1AoA
 			teamAoA, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
 			if ok {
-				currentRank = teamAoA.GetAgentNewRank(a1.GetID())
+				currentRank = teamAoA.GetAgentRank(a1.GetID())
 				if currentRank > 1 {
 					// Agent has risen up a rank, start over-withdrawing
 					withdrawalAmount := aoaExpectedWithdrawal + cheat_amount // Over-withdraw by 3 if possible to
@@ -225,7 +234,7 @@ func (a1 *Team1Agent) hasClimbedRankAndWithdrawn() bool {
 		if !ok {
 			return false // If unable to access Team1AoA, assume no rank climb
 		}
-		currentRank := teamAoA.GetAgentNewRank(a1.GetID())
+		currentRank := teamAoA.GetAgentRank(a1.GetID())
 		memoryEntry := a1.memory[a1.GetID()]
 		return currentRank > 1 && len(memoryEntry.historyWithdrawal) > 0
 	} else {
