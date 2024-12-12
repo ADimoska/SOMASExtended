@@ -31,7 +31,7 @@ func TestCondorcetWinner(t *testing.T) {
 	// Force AoA to team 1
 	teamID := serv.CreateAndInitTeamWithAgents(agentIDs)
 	team := serv.GetTeamFromTeamID(teamID)
-	team.TeamAoA = common.CreateTeam1AoA(team)
+	team.TeamAoA = common.CreateTeam1AoA(team, 5)
 
 	/* Mock function to overwrite the voting of an agent. This particular
 	 * function simulates a random vote. Note that this rarely produces a
