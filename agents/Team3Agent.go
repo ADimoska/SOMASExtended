@@ -35,6 +35,16 @@ type Team3Agent struct {
 	numberOfLies        map[uuid.UUID]int
 	invitationResponses map[uuid.UUID]bool // true if accepted, false if rejected
 	invitationsSent     map[uuid.UUID]bool // track if we've sent an invitation
+
+	// Neural Network for cheating
+	cheatNN              *NeuralNetwork
+	cheatHistory         []CheatRecord
+	lastCheatProbability float64
+	wasAudited           bool
+	wasCaughtCheating    bool
+	cheatSuccessRate     float64
+	totalAudits          int
+	successfulCheats     int
 }
 
 // Structure to store weights
@@ -121,6 +131,8 @@ func Team3_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 		numberOfLies:        make(map[uuid.UUID]int),
 		invitationResponses: make(map[uuid.UUID]bool),
 		invitationsSent:     make(map[uuid.UUID]bool),
+		cheatNN:             NewNeuralNetwork(4, 3), // 4 inputs, 3 hidden neurons
+		cheatHistory:        make([]CheatRecord, 0),
 	}
 	team3.initializeNeuralNetworkStickRoll()
 
@@ -196,32 +208,37 @@ func (team3 *Team3Agent) MLModelPredictStickRoll(currentScore, previousRoll int)
 // ----------------------- Strategies -----------------------
 // Team-forming Strategy
 func (team3 *Team3Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	log.Printf("Called overriden DecideTeamForming\n")
+	log.Printf("DecideTeamForming called for agent %s\n", team3.GetID())
 	invitationList := []uuid.UUID{}
 	for _, agentInfo := range agentInfoList {
-		// exclude the agent itself
+		// Exclude the agent itself
 		if agentInfo.AgentUUID == team3.GetID() {
 			continue
 		}
+		// Check if the agent is not already in a team
 		if agentInfo.AgentTeamID == (uuid.UUID{}) {
 			invitationList = append(invitationList, agentInfo.AgentUUID)
 		}
 	}
 
 	if len(invitationList) > 0 {
-		// random choice from the invitation list
+		// Randomly choose an agent to invite
 		rand.Shuffle(len(invitationList), func(i, j int) {
 			invitationList[i], invitationList[j] = invitationList[j], invitationList[i]
 		})
 		chosenAgent := invitationList[0]
 
-		// Send the invitation using our tracking method
+		// Send the invitation
 		team3.SendTeamFormingInvitation([]uuid.UUID{chosenAgent})
+
+		// Log the chosen agent
+		log.Printf("Agent %s sent invitation to %s\n", team3.GetID(), chosenAgent)
 
 		// Return a slice containing the chosen agent
 		return []uuid.UUID{chosenAgent}
 	}
 
+	log.Printf("No available agents to invite for agent %s\n", team3.GetID())
 	return []uuid.UUID{}
 }
 
@@ -307,7 +324,7 @@ func (team3 *Team3Agent) StartRollingDice(instance common.IExtendedAgent) {
 		} else {
 			team3.Bust = true // Set bust status
 			if team3.VerboseLevel > 4 {
-				fmt.Printf("%s **BURSTED!** round: %v, current score: %v\n", team3.GetID(), rounds, currentScore)
+				fmt.Printf("%s *BURSTED!* round: %v, current score: %v\n", team3.GetID(), rounds, currentScore)
 			}
 			turnScore = 0
 			break
@@ -426,8 +443,9 @@ func (team3 *Team3Agent) trainModelStickRoll() {
 
 // Contribution Strategy
 func (team3 *Team3Agent) DecideContribution() int {
-	// TODO: implement contribution strategy
-	return 1
+	// Use the GetActualContribution method to determine the contribution
+	actualContribution := team3.GetActualContribution(team3)
+	return actualContribution
 }
 
 // Withdrawal Strategy
@@ -568,16 +586,11 @@ func (team3 *Team3Agent) GetTotalLies(agentID uuid.UUID) int {
 // Track when you send invitations
 func (team3 *Team3Agent) SendTeamFormingInvitation(agentIDs []uuid.UUID) {
 	for _, agentID := range agentIDs {
-		invitationMsg := &common.TeamFormationMessage{
-			BaseMessage: team3.CreateBaseMessage(),
-			AgentInfo:   team3.GetExposedInfo(),
-			Message:     "Would you like to form a team?",
-		}
-		team3.invitationsSent[agentID] = true // Mark that we sent an invitation
-		team3.SendSynchronousMessage(invitationMsg, agentID)
-		log.Printf("Agent %s sent invitation to %s\n", team3.GetID(), agentID)
+		log.Printf("Sending team formation invitation from %s to %s\n", team3.GetID(), agentID)
+		// Implement the logic to send an invitation
+		// This might involve updating a map or sending a message
+		team3.invitationsSent[agentID] = true
 	}
-	team3.PrintLikeabilityStatus() // Print after sending invitations
 }
 
 // Check if an agent likes you
@@ -659,6 +672,13 @@ func (team3 *Team3Agent) PrintMemoryReport() {
 
 	// Print report for each agent
 	for agentID := range seenAgents {
+		// Check if the agent exists in the server
+		agent := team3.Server.AccessAgentByID(agentID)
+		if agent == nil {
+			log.Printf("Agent %s is nil, skipping...\n", agentID)
+			continue
+		}
+
 		score := team3.GetAgentMemoryScore(agentID)
 		totalLies := team3.GetTotalLies(agentID)
 		numberOfLies := team3.numberOfLies[agentID]
@@ -670,7 +690,7 @@ func (team3 *Team3Agent) PrintMemoryReport() {
 
 		// Check actual team status
 		sameTeam := team3.HasTeam() &&
-			team3.GetTeamID() == team3.Server.AccessAgentByID(agentID).GetTeamID()
+			team3.GetTeamID() == agent.GetTeamID()
 
 		log.Printf("  - Team Formation Status:")
 		if sameTeam {
@@ -701,10 +721,246 @@ func (team3 *Team3Agent) HandleTeamFormationMessage(msg *common.TeamFormationMes
 
 	// If we accept the invitation (by joining their team), record it as accepted
 	if team3.GetTeamID() == msg.AgentInfo.AgentTeamID {
+		// accept if memory > 50, decline otherwise
 		team3.invitationResponses[senderID] = true
-		log.Printf("DEBUG: Agent %s accepted and joined team with Agent %s\n", team3.GetID(), senderID)
+
 	} else {
 		team3.invitationResponses[senderID] = false
-		log.Printf("DEBUG: Agent %s rejected team invitation from Agent %s\n", team3.GetID(), senderID)
+
 	}
+}
+
+// Add these new types
+type NeuralNetwork struct {
+	inputLayer  *mat.Dense
+	hiddenLayer *mat.Dense
+	outputLayer *mat.Dense
+	weights1    *mat.Dense
+	weights2    *mat.Dense
+}
+
+type CheatRecord struct {
+	inputs     []float64
+	outcome    bool
+	wasAudited bool
+	score      int
+	commonPool int
+}
+
+// Add these new methods
+func NewNeuralNetwork(inputSize, hiddenSize int) *NeuralNetwork {
+	// Initialize weights with random values
+	w1Data := make([]float64, inputSize*hiddenSize)
+	w2Data := make([]float64, hiddenSize)
+
+	for i := range w1Data {
+		w1Data[i] = rand.Float64()*2 - 1
+	}
+	for i := range w2Data {
+		w2Data[i] = rand.Float64()*2 - 1
+	}
+
+	return &NeuralNetwork{
+		inputLayer:  mat.NewDense(1, inputSize, nil),
+		hiddenLayer: mat.NewDense(1, hiddenSize, nil),
+		outputLayer: mat.NewDense(1, 1, nil),
+		weights1:    mat.NewDense(inputSize, hiddenSize, w1Data),
+		weights2:    mat.NewDense(hiddenSize, 1, w2Data),
+	}
+}
+
+// Add neural network methods
+func (nn *NeuralNetwork) Forward(inputs []float64) float64 {
+	nn.inputLayer.SetRow(0, inputs)
+
+	nn.hiddenLayer.Mul(nn.inputLayer, nn.weights1)
+	applyFunction(nn.hiddenLayer, sigmoid)
+
+	nn.outputLayer.Mul(nn.hiddenLayer, nn.weights2)
+	applyFunction(nn.outputLayer, sigmoid)
+
+	return nn.outputLayer.At(0, 0)
+}
+
+func (team3 *Team3Agent) prepareCheatInputs() []float64 {
+	inputs := make([]float64, 4)
+
+	// Normalize inputs
+	score := float64(team3.Score)
+	giniIndex := calculateGiniIndex(team3) // Assume this function calculates the Gini index
+	commonPool := float64(team3.Server.GetTeamCommonPool(team3.GetTeamID()))
+	teamSize := float64(len(team3.Server.GetTeam(team3.GetID()).Agents))
+
+	inputs[0] = score / 100.0              // Normalized score
+	inputs[1] = giniIndex                  // Gini index
+	inputs[2] = commonPool / (score * 2.0) // Pool relative to score
+	inputs[3] = teamSize / 10.0            // Normalized team size
+
+	return inputs
+}
+
+// Modify GetActualContribution to use neural network for cheating decisions
+func (team3 *Team3Agent) GetActualContribution(instance common.IExtendedAgent) int {
+	fmt.Println("Entering GetActualContribution")
+
+	if !team3.HasTeam() {
+		fmt.Println("No team, returning 0")
+		return 0
+	}
+
+	expectedContribution := team3.Server.GetTeam(team3.GetID()).TeamAoA.GetExpectedContribution(team3.GetID(), team3.GetTrueScore())
+
+	// Get cheat probability from neural network
+	cheatInputs := team3.prepareCheatInputs()
+	cheatProbability := team3.cheatNN.Forward(cheatInputs)
+	team3.lastCheatProbability = cheatProbability
+
+	// Log the decision-making process
+	fmt.Println("---------------------")
+	fmt.Printf("Agent %s - Cheat Decision Process:\n", team3.GetID())
+	fmt.Printf("Current Score: %d\n", team3.Score)
+	fmt.Printf("Expected Contribution: %d\n", expectedContribution)
+	fmt.Printf("Cheat Probability: %.2f\n", cheatProbability)
+	fmt.Printf("Common Pool: %d\n", team3.Server.GetTeamCommonPool(team3.GetTeamID()))
+	fmt.Printf("Team Size: %d\n", len(team3.Server.GetTeam(team3.GetID()).Agents))
+	fmt.Printf("Success Rate: %.2f%%\n", team3.cheatSuccessRate*100)
+	fmt.Printf("Decision: %s\n", map[bool]string{true: "CHEAT", false: "HONEST"}[cheatProbability > 0.5])
+
+	// Record this decision
+	team3.cheatHistory = append(team3.cheatHistory, CheatRecord{
+		inputs:     cheatInputs,
+		outcome:    false, // Will be updated after audit
+		wasAudited: false,
+		score:      team3.Score,
+		commonPool: team3.Server.GetTeamCommonPool(team3.GetTeamID()),
+	})
+
+	// Decide whether to cheat based on probability
+	if cheatProbability > 0.5 {
+		// Cheat by contributing less
+		actualContribution := int(float64(expectedContribution) * (0.5 + (rand.Float64() * 0.3)))
+		if actualContribution > team3.Score {
+			actualContribution = team3.Score
+		}
+		fmt.Printf("Agent %s decided to CHEAT. Actual Contribution: %d\n", team3.GetID(), actualContribution)
+		return actualContribution
+	}
+
+	// Honest contribution
+	if team3.Score < expectedContribution {
+		fmt.Printf("Agent %s decided to be HONEST. Actual Contribution: %d\n", team3.GetID(), team3.Score)
+		return team3.Score
+	}
+	fmt.Printf("Agent %s decided to be HONEST. Actual Contribution: %d\n", team3.GetID(), expectedContribution)
+	return expectedContribution
+}
+
+// Add this to handle audit results
+func (team3 *Team3Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
+	if agentID == team3.GetID() {
+		team3.wasAudited = true
+		team3.wasCaughtCheating = !result
+		team3.totalAudits++
+
+		if !team3.wasCaughtCheating && team3.lastCheatProbability > 0.5 {
+			team3.successfulCheats++
+		}
+		team3.cheatSuccessRate = float64(team3.successfulCheats) / float64(team3.totalAudits)
+
+		fmt.Println("---------------------")
+		fmt.Printf("**AUDIT RESULTS**\n")
+		fmt.Printf("***Agent ID: %v\n", team3.GetID())
+		fmt.Printf("***Last Cheat Probability: %.2f\n", team3.lastCheatProbability)
+		fmt.Printf("***Was Caught: %v\n", team3.wasCaughtCheating)
+		fmt.Printf("***Total Successful Cheats: %d\n", team3.successfulCheats)
+		fmt.Printf("***Total Audits: %d\n", team3.totalAudits)
+		fmt.Printf("***Overall Success Rate: %.2f%%\n", team3.cheatSuccessRate*100)
+
+		if len(team3.cheatHistory) > 0 {
+			lastIdx := len(team3.cheatHistory) - 1
+			team3.cheatHistory[lastIdx].wasAudited = true
+			team3.cheatHistory[lastIdx].outcome = result
+		}
+	}
+}
+
+// Add these helper functions
+func applyFunction(m *mat.Dense, fn func(float64) float64) {
+	rows, cols := m.Dims()
+	for i := 0; i < rows; i++ {
+		for j := 0; j < cols; j++ {
+			m.Set(i, j, fn(m.At(i, j)))
+		}
+	}
+}
+
+// Add these new types
+type CheatNeuralNetwork struct {
+	inputLayer  *mat.Dense
+	hiddenLayer *mat.Dense
+	outputLayer *mat.Dense
+	weights1    *mat.Dense
+	weights2    *mat.Dense
+}
+
+// Add these new methods
+func NewCheatNeuralNetwork(inputSize, hiddenSize int) *CheatNeuralNetwork {
+	// Initialize weights with random values
+	w1Data := make([]float64, inputSize*hiddenSize)
+	w2Data := make([]float64, hiddenSize)
+
+	for i := range w1Data {
+		w1Data[i] = rand.Float64()*2 - 1
+	}
+	for i := range w2Data {
+		w2Data[i] = rand.Float64()*2 - 1
+	}
+
+	return &CheatNeuralNetwork{
+		inputLayer:  mat.NewDense(1, inputSize, nil),
+		hiddenLayer: mat.NewDense(1, hiddenSize, nil),
+		outputLayer: mat.NewDense(1, 1, nil),
+		weights1:    mat.NewDense(inputSize, hiddenSize, w1Data),
+		weights2:    mat.NewDense(hiddenSize, 1, w2Data),
+	}
+}
+
+// Add neural network methods
+func (nn *CheatNeuralNetwork) Forward(inputs []float64) float64 {
+	nn.inputLayer.SetRow(0, inputs)
+
+	nn.hiddenLayer.Mul(nn.inputLayer, nn.weights1)
+	applyFunction(nn.hiddenLayer, sigmoid)
+
+	nn.outputLayer.Mul(nn.hiddenLayer, nn.weights2)
+	applyFunction(nn.outputLayer, sigmoid)
+
+	return nn.outputLayer.At(0, 0)
+}
+
+func calculateGiniIndex(team3 *Team3Agent) float64 {
+	team := team3.Server.GetTeam(team3.GetID())
+	if team == nil || len(team.Agents) < 2 {
+		return 0.0
+	}
+
+	scores := make([]float64, len(team.Agents))
+	for i, agentID := range team.Agents {
+		scores[i] = float64(team3.Server.AccessAgentByID(agentID).GetTrueScore())
+	}
+
+	mean := 0.0
+	for _, score := range scores {
+		mean += score
+	}
+	mean /= float64(len(scores))
+
+	sumDiffs := 0.0
+	for i := range scores {
+		for j := range scores {
+			sumDiffs += math.Abs(scores[i] - scores[j])
+		}
+	}
+
+	return sumDiffs / (2 * float64(len(scores)) * mean)
 }
