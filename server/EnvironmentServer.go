@@ -47,6 +47,7 @@ func init() {
 
 func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	log.Println("\nRunning turn for team ", team.TeamID)
+	team.TeamAoA.RunPreIterationAoaLogic(team, cs.GetAgentMap())
 	// Sum of contributions from all agents in the team for this turn
 	agentContributionsTotal := 0
 	for _, agentID := range team.Agents {
@@ -78,6 +79,8 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	//  Different to the withdrawal phase!
 	team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
 
+	team.TeamAoA.RunPostContributionAoaLogic(team, cs.GetAgentMap())
+
 	// Initiate Contribution Audit vote
 	contributionAuditVotes := []common.Vote{}
 	for _, agentID := range team.Agents {
@@ -105,7 +108,14 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
+			} else if team.TeamAoAID == 1 {
+				if team.TeamAoA.(*common.Team1AoA).GetNumberOfOffences(agentToAudit) >= 2 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+					// reset the number of offences for the agent
+					team.TeamAoA.(*common.Team1AoA).ResetNumberOfOffences(agentToAudit)
+				}
 			}
+
 		}
 
 		for _, agentID := range team.Agents {
@@ -182,7 +192,14 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
+			} else if team.TeamAoAID == 1 {
+				if team.TeamAoA.(*common.Team1AoA).GetNumberOfOffences(agentToAudit) >= 2 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+					// reset the number of offences for the agent
+					team.TeamAoA.(*common.Team1AoA).ResetNumberOfOffences(agentToAudit)
+				}
 			}
+
 		}
 
 		for _, agentID := range team.Agents {
@@ -452,9 +469,6 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.allocateAoAs()
 
 	// Perform any functionality needed by AoA at start of iteration.
-	for _, team := range cs.Teams {
-		team.TeamAoA.RunPreIterationAoaLogic(team, cs.GetAgentMap())
-	}
 }
 
 func runCopelandVote(team *common.Team, cs *EnvironmentServer) []int {
