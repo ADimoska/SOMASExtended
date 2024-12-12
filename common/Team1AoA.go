@@ -18,6 +18,7 @@ type Team1AoA struct {
 	rankBoundary          [5]int
 	agentLQueue           map[uuid.UUID]*LeakyQueue
 	minCommonPoolLeftover int
+	offenceMap            map[uuid.UUID]int //TODO: Might need to change to leaky queue
 }
 
 // LeakyQueue represents a queue with a fixed capacity.
@@ -450,7 +451,22 @@ func (f *Team1AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingRe
 }
 
 func (t *Team1AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
-	return (agentScore * 25) / 100
+	// return (agentScore * 25) / 100
+	rank := t.GetAgentRank(agentId)
+	// add 1 to offenceMap
+	t.offenceMap[agentId]++
+	return (agentScore * (rank + 1) * 10) / 100
+}
+
+func (t *Team1AoA) GetNumberOfOffences(agentId uuid.UUID) int {
+	if _, ok := t.offenceMap[agentId]; !ok {
+		return 0
+	}
+	return t.offenceMap[agentId]
+}
+
+func (t *Team1AoA) ResetNumberOfOffences(agentId uuid.UUID) {
+	t.offenceMap[agentId] = 0
 }
 
 func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
