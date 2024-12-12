@@ -6,27 +6,20 @@ package main
 
 import (
 	"bou.ke/monkey"
+	agents "github.com/ADimoska/SOMASExtended/agents"
 	"github.com/ADimoska/SOMASExtended/common"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"reflect"
 	"testing"
-
-	agents "github.com/ADimoska/SOMASExtended/agents"
 )
 
 func TestCondorcetWinner(t *testing.T) {
-	serv, agentIDs := CreateTestServer()
+	serv, agentIDs := CreateTestServer(true)
 
 	// Remove all team 4 agents, their use of the MI_256 agent prevents us from
 	// being able to monkey-patch anything. Honestly might create issues down
 	// the line as well.
-	for _, agent := range serv.GetAgentMap() {
-		if agent.GetTrueSomasTeamID() == 4 {
-			// remove.
-			serv.RemoveAgent(agent)
-		}
-	}
 
 	// Force AoA to team 1
 	teamID := serv.CreateAndInitTeamWithAgents(agentIDs)
@@ -54,6 +47,7 @@ func TestCondorcetWinner(t *testing.T) {
 	defer monkey.UnpatchAll()
 
 	testAgents := team.TeamAoA.(*common.Team1AoA).SelectNChairs(agentIDs, 2)
+
 	res1 := serv.GetAgentMap()[testAgents[0]].Team1_AgreeRankBoundaries()
 	res2 := serv.GetAgentMap()[testAgents[1]].Team1_AgreeRankBoundaries()
 	assert.Equal(t, res1, res2)
