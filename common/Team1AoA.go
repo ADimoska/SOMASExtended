@@ -446,6 +446,7 @@ func (t *Team1AoA) GetAgentRank(agentId uuid.UUID) int {
 	return t.ranking[agentId]
 }
 
+// TO_CHECK - added new function
 func (t *Team1AoA) GetRankThresholds() [5]int {
 	return t.rankBoundary
 }
