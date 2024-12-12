@@ -15,7 +15,7 @@ import (
 )
 
 func TestCondorcetWinner(t *testing.T) {
-	serv, agentIDs := CreateTestServer()
+	serv, agentIDs := CreateTestServer(true)
 
 	// Remove all team 4 agents, their use of the MI_256 agent prevents us from
 	// being able to monkey-patch anything. Honestly might create issues down

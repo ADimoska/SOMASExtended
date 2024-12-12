@@ -22,7 +22,7 @@ import (
 /*
 * Return a test server environment
  */
-func CreateTestServer() (*envServer.EnvironmentServer, []uuid.UUID) {
+func CreateTestServer(createSpecificAgents bool) (*envServer.EnvironmentServer, []uuid.UUID) {
 	// Default test config
 	agentConfig := agents.AgentConfig{
 		InitScore:    0,
@@ -40,12 +40,14 @@ func CreateTestServer() (*envServer.EnvironmentServer, []uuid.UUID) {
 
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
-		// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
 		agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
-		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig, 0))
-		agentPopulation = append(agentPopulation, agents.Team2_CreateAgent(serv, agentConfig))
-		agentPopulation = append(agentPopulation, agents.Team3_CreateAgent(serv, agentConfig))
-		// Add other teams' agents here
+		if createSpecificAgents {
+			// agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
+			agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig, 0))
+			agentPopulation = append(agentPopulation, agents.Team2_CreateAgent(serv, agentConfig))
+			agentPopulation = append(agentPopulation, agents.Team3_CreateAgent(serv, agentConfig))
+			// Add other teams' agents here
+		}
 	}
 
 	for _, agent := range agentPopulation {
@@ -82,7 +84,7 @@ func mockVoteAlwaysFalse(mi *agents.ExtendedAgent, candidateID uuid.UUID) bool {
  */
 func TestAlwaysAccept(t *testing.T) {
 	// Default Test Configuration
-	serv, agentIDs := CreateTestServer()
+	serv, agentIDs := CreateTestServer(false)
 
 	teamID := serv.CreateAndInitTeamWithAgents(agentIDs)
 	agents := serv.GetAgentsInTeam(teamID)
@@ -103,7 +105,7 @@ func TestAlwaysAccept(t *testing.T) {
  */
 func TestAlwaysReject(t *testing.T) {
 	// Create a test server and put all the agents in the same team
-	serv, agentIDs := CreateTestServer()
+	serv, agentIDs := CreateTestServer(false)
 	serv.CreateAndInitTeamWithAgents(agentIDs)
 
 	// Monkey-path the voting method to always reject
@@ -126,7 +128,7 @@ func TestAlwaysReject(t *testing.T) {
  */
 func TestAcceptIfInCurrentTeam(t *testing.T) {
 	// Create a test server and put all the agents in the same team
-	serv, agentIDs := CreateTestServer()
+	serv, agentIDs := CreateTestServer(false)
 
 	// Create two sub-teams, each with half the agents.
 	numAgents := len(agentIDs)
@@ -170,7 +172,7 @@ func TestAcceptIfInCurrentTeam(t *testing.T) {
  */
 func TestAllocateOrphans(t *testing.T) {
 	// Create the test server
-	serv, agentIDs := CreateTestServer()
+	serv, agentIDs := CreateTestServer(false)
 	agent_map := serv.GetAgentMap()
 
 	// Allocate all agents but the first two to a team
