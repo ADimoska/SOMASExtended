@@ -248,6 +248,7 @@ func (mi *ExtendedAgent) Team1_BoundaryProposalRequestHandler(msg *common.Team1R
 	} else {
 		bounds = [5]int{3, 100, 500, 1000}
 	}
+	// bounds = [5]int{0, 1, 2, 3, 4}
 
 	resp := &common.Team1RankBoundaryResponseMessage{
 		BaseMessage: mi.CreateBaseMessage(),

@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	// "github.com/ADimoska/SOMASExtended/agents"
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	// "github.com/MattSScott/basePlatformSOMAS/v2/pkg/server"
 	"github.com/google/uuid"
 )
@@ -271,7 +272,7 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 * Set-up logic that can be called at the start of an iteration in order for
 * the system to 'self-organise' itself and decide on institutionalised facts
  */
-func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
 
 	newRanking := make(map[uuid.UUID]int)
 	for agentUUID, rank := range t.ranking {
@@ -331,9 +332,12 @@ func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IE
 	// decision made, in that the results of the chairs matched.
 	if socialDecision {
 		t.rankBoundary = chair1res
+		dataRecorder.RecordTeam1RankBoundaries(team.TeamID, t.rankBoundary)
+
 	} else {
 		log.Printf("Rank boundaries unchanged - 10 instances of foul play occurred.")
 	}
+
 }
 
 func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {

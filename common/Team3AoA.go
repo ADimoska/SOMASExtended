@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"time"
 
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	"github.com/google/uuid"
 )
 
@@ -338,7 +339,7 @@ func (t *Team3AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 }
 
 // RunPreIterationAoaLogic collects votes from agents and determines the strategy for the iteration
-func (t *Team3AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+func (t *Team3AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
 	votes := make([]Vote, 0)
 
 	// Collect votes and log each agent's vote

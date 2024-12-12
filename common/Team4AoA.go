@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"sort"
 
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	"github.com/google/uuid"
 )
 
@@ -426,8 +427,7 @@ func (f *Team4AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingRe
 	return make(map[uuid.UUID]int)
 }
 
-func (t *Team4AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
-
+func (t *Team4AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
 }
 
 func (t *Team4AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {

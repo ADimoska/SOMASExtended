@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	"github.com/google/uuid"
 )
 
@@ -174,7 +175,8 @@ func (f *Team5AOA) KickOutAgent(agentId uuid.UUID) bool {
 	return false
 }
 
-func (t *Team5AOA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)     {}
+func (t *Team5AOA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
+}
 func (t *Team5AOA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
 
 func (f *Team5AOA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {

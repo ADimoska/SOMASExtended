@@ -47,7 +47,7 @@ func init() {
 
 func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	log.Println("\nRunning turn for team ", team.TeamID)
-	team.TeamAoA.RunPreIterationAoaLogic(team, cs.GetAgentMap())
+	team.TeamAoA.RunPreIterationAoaLogic(team, cs.GetAgentMap(), cs.DataRecorder)
 	// Sum of contributions from all agents in the team for this turn
 	agentContributionsTotal := 0
 	for _, agentID := range team.Agents {
