@@ -492,8 +492,31 @@ func (team3 *Team3Agent) UpdateContributionLies(agentID uuid.UUID) {
 		log.Printf("DEBUG [AUDIT]: Agent %s LIED on contribution! Expected: %d, Actual: %d, Lie Amount: %d\n",
 			agentID, expectedContribution, actualContribution, lieAmount)
 	} else {
-		log.Printf("DEBUG [AUDIT]: Agent %s honest on contribution. Expected: %d, Actual: %d\n",
-			agentID, expectedContribution, actualContribution)
+		// Reward honest contribution in memory
+		currentScore := team3.GetAgentMemoryScore(agentID)
+		newScore := currentScore + 5
+		if newScore > 100 {
+			newScore = 100 // Cap at 100
+		}
+
+		// Update memory score (you might need to add a method to set memory score)
+		team3.SetAgentMemoryScore(agentID, newScore)
+
+		log.Printf("DEBUG [AUDIT]: Agent %s honest on contribution. Memory score increased by 5 to %d\n",
+			agentID, newScore)
+	}
+}
+
+// Add this helper method to set memory scores
+func (team3 *Team3Agent) SetAgentMemoryScore(agentID uuid.UUID, score int) {
+	// Implement based on your memory system
+	// This might involve updating multiple fields that affect the memory score
+
+	// For example, you might want to reduce the number of recorded lies
+	if score > team3.GetAgentMemoryScore(agentID) {
+		team3.contributionLies[agentID] = 0
+		team3.withdrawalLies[agentID] = 0
+		team3.numberOfLies[agentID] = 0
 	}
 }
 
@@ -713,21 +736,36 @@ func (team3 *Team3Agent) PrintMemoryReport() {
 	log.Printf("=====================================\n")
 }
 
-// Add a method to handle receiving team formation invitations
+// HandleTeamFormationMessage handles receiving team formation invitations
 func (team3 *Team3Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
 	senderID := msg.GetSender()
-	// Record that we received an invitation from this agent
-	team3.invitationsSent[senderID] = true
 
-	// If we accept the invitation (by joining their team), record it as accepted
-	if team3.GetTeamID() == msg.AgentInfo.AgentTeamID {
-		// accept if memory > 50, decline otherwise
-		team3.invitationResponses[senderID] = true
+	// Check if we've interacted with this agent before
+	if _, exists := team3.contributionLies[senderID]; exists {
+		// We know this agent - check their memory score
+		score := team3.GetAgentMemoryScore(senderID)
+		shouldAccept := score > 50
+
+		log.Printf("Agent %v received team invitation from known agent %v with memory score %d. Accepting: %v",
+			team3.GetID(), senderID, score, shouldAccept)
+
+		// Record response
+		team3.invitationResponses[senderID] = shouldAccept
 
 	} else {
-		team3.invitationResponses[senderID] = false
+		// New agent - accept invitation
+		log.Printf("Agent %v received team invitation from unknown agent %v. Accepting by default.",
+			team3.GetID(), senderID)
 
+		team3.invitationResponses[senderID] = true
 	}
+
+	// Update tracking
+	team3.invitationsSent[senderID] = true
+
+	// Print debug information
+	team3.PrintLikeabilityStatus()
+	team3.PrintMemoryReport()
 }
 
 // Add these new types
