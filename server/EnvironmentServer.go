@@ -92,7 +92,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Contribution Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
-		log.Printf("Agent %v has been audited for Contribution\n", agentToAudit)
+		log.Printf("[server] Agent %v audited (contribution), result: %v\n", agentToAudit, auditResult)
 
 		leaderAudited := false
 
@@ -127,6 +127,8 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 			agent.SetAgentContributionAuditResult(agentToAudit, auditResult)
 		}
 	}
+
+	team.TeamAoA.RunPostContributionAoaLogic(team, cs.GetAgentMap())
 
 	orderedAgents := team.TeamAoA.GetWithdrawalOrder(team.Agents)
 	for _, agentID := range orderedAgents {
@@ -180,6 +182,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// Execute Withdrawal Audit if necessary
 	if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
+		log.Printf("[server] Agent %v audited (withdrawal), result: %v\n", agentToAudit, auditResult)
 
 		leaderAudited := false
 
@@ -661,7 +664,7 @@ func (cs *EnvironmentServer) allocateAoAs() {
 			}
 
 			cs.Teams[team.TeamID] = team
-			log.Printf("Team %v has AoA: %v\n", team.TeamID, winners[randomI])
+			log.Printf("Team %v has AoA: %v\n", team.TeamID, team.TeamAoAID)
 
 		}
 	}
@@ -952,7 +955,7 @@ func (cs *EnvironmentServer) GetTeamIDs() []uuid.UUID {
 // Can be used to find the amount in the common pool for a team. If this is used,
 // it should be logged on the server (to prevent cheating)
 func (cs *EnvironmentServer) GetTeamCommonPool(teamID uuid.UUID) int {
-	log.Printf("Get Team Common Pool called! Team ID: %v\n", teamID)
+	// log.Printf("Get Team Common Pool called! Team ID: %v\n", teamID)
 	team := cs.Teams[teamID]
 	return team.GetCommonPool()
 }
