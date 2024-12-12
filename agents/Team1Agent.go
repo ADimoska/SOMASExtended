@@ -3,8 +3,8 @@ package agents
 import (
 	// "fmt"
 	"log"
-	"strconv"
 	"math"
+	"strconv"
 
 	"github.com/google/uuid"
 
@@ -397,17 +397,17 @@ func (mi *Team1Agent) GetAgentType() int {
 
 // ----------------------- Data Recording Functions -----------------------
 func (mi *Team1Agent) RecordAgentStatus(instance common.IExtendedAgent) gameRecorder.AgentRecord {
-	
+
 	specialNote := "-1"
 	if mi.HasTeam() {
 		teamAoA := mi.Server.GetTeam(instance.GetID()).TeamAoA
 		switch teamAoA := teamAoA.(type) {
-			case *common.Team1AoA:
-				specialNote = "Rank: " + strconv.Itoa(teamAoA.GetAgentRank(instance.GetID()))
+		case *common.Team1AoA:
+			specialNote = "Rank: " + strconv.Itoa(teamAoA.GetAgentRank(instance.GetID()))
 		}
 
 	}
-	
+
 	record := gameRecorder.NewAgentRecord(
 		instance.GetID(),
 		instance.GetTrueSomasTeamID(),
@@ -418,7 +418,6 @@ func (mi *Team1Agent) RecordAgentStatus(instance common.IExtendedAgent) gameReco
 		instance.GetStatedWithdrawal(instance),
 		instance.GetTeamID(),
 		specialNote,
-		
 	)
 	return record
 }

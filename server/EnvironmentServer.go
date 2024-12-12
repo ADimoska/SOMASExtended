@@ -78,7 +78,6 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	// 	Agents do not get to see the common pool before deciding their contribution
 	//  Different to the withdrawal phase!
 	team.SetCommonPool(team.GetCommonPool() + agentContributionsTotal)
-	
 
 	team.TeamAoA.RunPostContributionAoaLogic(team, cs.GetAgentMap())
 

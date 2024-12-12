@@ -13,10 +13,10 @@ import (
 )
 
 type Team1AoA struct {
-	auditResult      map[uuid.UUID]*list.List
-	ranking          map[uuid.UUID]int
-	rankBoundary     [5]int
-	agentLQueue      map[uuid.UUID]*LeakyQueue
+	auditResult           map[uuid.UUID]*list.List
+	ranking               map[uuid.UUID]int
+	rankBoundary          [5]int
+	agentLQueue           map[uuid.UUID]*LeakyQueue
 	minCommonPoolLeftover int
 }
 
@@ -78,7 +78,7 @@ func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 
 // For now divide by 10
 func weightFunction(rank float64) float64 {
-	weight := rank/2 //5.0 // make this rank/2 or something
+	weight := rank / 2 //5.0 // make this rank/2 or something
 	return weight
 }
 
@@ -86,14 +86,14 @@ func (t *Team1AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 	var totalWeightedSum float64
 	totalWeightedSum = 0
 	for _, rank := range t.ranking {
-		if rank != 0{
+		if rank != 0 {
 			totalWeightedSum += weightFunction(float64(rank))
 		}
 	}
 
 	// Retrieve the boundary value for the given agent, adjusted by its ranking
 	agentBoundary := 0.0
-	if t.ranking[agentId] != 0{
+	if t.ranking[agentId] != 0 {
 		agentBoundary = float64(t.ranking[agentId])
 	}
 
@@ -103,7 +103,7 @@ func (t *Team1AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 	// Compute the weighted share of the common pool for the agent
 	var poolShare float64
 	poolShare = 0
-	if ((commonPool > t.minCommonPoolLeftover) && (totalWeightedSum > 0)){
+	if (commonPool > t.minCommonPoolLeftover) && (totalWeightedSum > 0) {
 		poolShare = float64(commonPool-t.minCommonPoolLeftover) / (totalWeightedSum)
 	}
 
@@ -274,12 +274,12 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
 func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
 
 	newRanking := make(map[uuid.UUID]int)
-	for agentUUID, rank := range t.ranking {		
+	for agentUUID, rank := range t.ranking {
 		if _, exists := agentMap[agentUUID]; exists {
 			newRanking[agentUUID] = rank
 		}
 	}
-	
+
 	t.ranking = newRanking
 
 	// Extract keys from map
@@ -294,7 +294,7 @@ func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IE
 	var chair2res [5]int // result of second randomly-elected chair
 	socialDecision := false
 
-	if (len(team.Agents) < 2){
+	if len(team.Agents) < 2 {
 		log.Printf("Only 1 Chair left! Boundaries wont update")
 		return
 	}
@@ -346,15 +346,15 @@ func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUI
 	var prev map[uuid.UUID]int
 
 	newRanking := make(map[uuid.UUID]int)
-	for agentUUID, rank := range t.ranking {		
+	for agentUUID, rank := range t.ranking {
 		if _, exists := agentMap[agentUUID]; exists {
 			newRanking[agentUUID] = rank
 		}
 	}
-	
+
 	t.ranking = newRanking
 
-	if (len(team.Agents) < 2){
+	if len(team.Agents) < 2 {
 		chair := t.SelectNChairs(team.Agents, 1)[0]
 		rankings := agentMap[chair].Team1_ChairUpdateRanks(t.ranking)
 		t.ranking = rankings
@@ -367,11 +367,10 @@ func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUI
 
 		var numChairs int
 		if len(t.ranking) < 2 {
-			numChairs = len(t.ranking) 
+			numChairs = len(t.ranking)
 		} else {
 			numChairs = 2
 		}
-
 
 		chairs := t.SelectNChairs(team.Agents, numChairs)
 		for _, chairId := range chairs {
@@ -433,13 +432,13 @@ func (t *Team1AoA) GetAgentNewRank(agentId uuid.UUID) int {
 	}
 	// Speed Limit to climb rank
 	if newRank > agentCurrentRank+1 {
-		newRank = min(agentCurrentRank + 1, 5)
+		newRank = min(agentCurrentRank+1, 5)
 	} else if newRank < agentCurrentRank-1 {
-		newRank = max(agentCurrentRank - 1, 0)
+		newRank = max(agentCurrentRank-1, 0)
 	}
 
 	// log.fatal("Agent total contribution is less than the minimum boundary")
-	return newRank  // or an appropriate default value or error code
+	return newRank // or an appropriate default value or error code
 }
 
 func (t *Team1AoA) GetAgentRank(agentId uuid.UUID) int {
@@ -465,10 +464,10 @@ func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
 	}
 
 	return &Team1AoA{
-		auditResult:      auditResult,
-		ranking:          ranking,
-		rankBoundary:     [5]int{10, 20, 30, 40, 50},
-		agentLQueue:      agentLQueue,
+		auditResult:           auditResult,
+		ranking:               ranking,
+		rankBoundary:          [5]int{10, 20, 30, 40, 50},
+		agentLQueue:           agentLQueue,
 		minCommonPoolLeftover: 5,
 	}
 }
