@@ -152,7 +152,7 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 
 	// Make it easier to audit a leader, this ensures the leader can't outvote the rest and stay in power
 	leaderVotes := voteMap[t.Leader]
-	if leaderVotes >= max(1, count/2) {
+	if leaderVotes >= max(1, (count/2)-1) {
 		return t.Leader
 	}
 
