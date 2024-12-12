@@ -20,11 +20,6 @@ func TestCondorcetWinner(t *testing.T) {
 	// Remove all team 4 agents, their use of the MI_256 agent prevents us from
 	// being able to monkey-patch anything. Honestly might create issues down
 	// the line as well.
-	for _, agent := range serv.GetAgentMap() {
-		if agent.GetTrueSomasTeamID() == 4 {
-			serv.RemoveAgent(agent)
-		}
-	}
 
 	// Force AoA to team 1
 	teamID := serv.CreateAndInitTeamWithAgents(agentIDs)
