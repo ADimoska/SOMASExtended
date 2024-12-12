@@ -23,4 +23,4 @@ jobs:
         run: go mod download
 
       - name: Run tests
-        run: go test -v ./...  # Run all tests in current directory and all subdirectories
+        run: go test -v -count=1 ./...  # Run all tests in current directory and all subdirectories
