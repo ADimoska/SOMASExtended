@@ -17,15 +17,14 @@ type AgentScoreInfo struct {
 }
 
 type AgentContributionInfo struct {
-	ContributionStated int
+	ContributionStated   int
 	ContributionExpected int
 }
 
 type AgentWithdrawalInfo struct {
-	WithdrawalStated int
+	WithdrawalStated   int
 	WithdrawalExpected int
 }
-
 
 type AgentMemory struct {
 	honestyScore *common.LeakyQueue
@@ -56,7 +55,6 @@ const (
 	// CheatLongTerm (Value: 1): Agents who always contribute honestly. After
 	// rising in rank, they start withdrawing more than allowed.
 	CheatLongTerm
-
 
 	// CheatShortTerm (Value: 2): Agents who immediately start cheating. They
 	// overstate their contributions and withdraw more than allowed.
@@ -222,7 +220,6 @@ func (a1 *Team1Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 	}
 }
 
-
 func (a *Team1Agent) GetAoARanking() []int {
 	return []int{1, 2, 5}
 }
@@ -268,7 +265,7 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 					highestStatedContribution = contribution.ContributionStated
 					suspectID = agentID
 				}
-				// TODO Add functionality to check if stated contribution is lower than expected. 
+				// TODO Add functionality to check if stated contribution is lower than expected.
 			}
 		}
 
@@ -323,7 +320,7 @@ func (a1 *Team1Agent) GetWithdrawalAuditVote() common.Vote {
 	return common.CreateVote(0, a1.GetID(), uuid.Nil) // Default: No preference
 }
 
-func (a1 *Team1Agent) AddAgentToMemory (agentID uuid.UUID, honestyScoreLength int) {
+func (a1 *Team1Agent) AddAgentToMemory(agentID uuid.UUID, honestyScoreLength int) {
 	// Add agent to memory if not already present
 	if _, exists := a1.memory[agentID]; !exists {
 		a1.memory[agentID] = AgentMemory{
@@ -331,7 +328,7 @@ func (a1 *Team1Agent) AddAgentToMemory (agentID uuid.UUID, honestyScoreLength in
 
 			// TODO: Do the other fields need to be initialized?
 			// No??? should exists as nil slices that can be appended to
-			
+
 		}
 	}
 
@@ -349,13 +346,13 @@ func (a1 *Team1Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result 
 	if result {
 		// Agent was dishonest
 		// check that agent is in memory
-		a1.memory[agentID].honestyScore.Push(-1)		
+		a1.memory[agentID].honestyScore.Push(-1)
 	} else {
 		// agent was honest
 		a1.memory[agentID].honestyScore.Push(1)
 	}
 }
-	
+
 func (a1 *Team1Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) {
 	// Update the memory of the agent who was audited
 
@@ -368,7 +365,7 @@ func (a1 *Team1Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bo
 	if result {
 		// Agent was dishonest
 		// check that agent is in memory
-		a1.memory[agentID].honestyScore.Push(-1)		
+		a1.memory[agentID].honestyScore.Push(-1)
 	} else {
 		// agent was honest
 		a1.memory[agentID].honestyScore.Push(1)
@@ -376,7 +373,7 @@ func (a1 *Team1Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bo
 }
 
 func (a1 *Team1Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
-	// Look at the honesty map of an agent 
+	// Look at the honesty map of an agent
 	// If the agent has a negative score, they are dishonest
 	// If the agent has a positive score, they are honest
 	value, exists := a1.memory[candidateID]
@@ -394,7 +391,6 @@ func (a1 *Team1Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 	}
 }
 
-
 func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig, ag_type AgentType) *Team1Agent {
 	return &Team1Agent{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
@@ -402,6 +398,7 @@ func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedA
 		agentType:     ag_type,
 	}
 }
+
 // ----------------- Messaging functions -----------------------
 
 func (mi *Team1Agent) HandleContributionMessage(msg *common.ContributionMessage) {
@@ -410,7 +407,7 @@ func (mi *Team1Agent) HandleContributionMessage(msg *common.ContributionMessage)
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
 	}
 
-	// check that the agent has been intialised in the memory 
+	// check that the agent has been intialised in the memory
 	if _, exists := mi.memory[msg.GetSender()]; !exists {
 		mi.AddAgentToMemory(msg.GetSender(), 5)
 	}
@@ -418,9 +415,9 @@ func (mi *Team1Agent) HandleContributionMessage(msg *common.ContributionMessage)
 	memoryEntry := mi.memory[msg.GetSender()]
 
 	// Modify the historyContribution field
-	memoryEntry.historyContribution = append(memoryEntry.historyContribution, AgentContributionInfo{	
+	memoryEntry.historyContribution = append(memoryEntry.historyContribution, AgentContributionInfo{
 		msg.StatedAmount,
-		msg.ExpectedAmount,		
+		msg.ExpectedAmount,
 	})
 
 	// Update Index
@@ -436,7 +433,7 @@ func (mi *Team1Agent) HandleScoreReportMessage(msg *common.ScoreReportMessage) {
 			mi.GetID(), msg.GetSender(), msg.TurnScore)
 	}
 
-	// check that the agent has been intialised in the memory 
+	// check that the agent has been intialised in the memory
 	if _, exists := mi.memory[msg.GetSender()]; !exists {
 		mi.AddAgentToMemory(msg.GetSender(), 5)
 	}
@@ -462,11 +459,10 @@ func (mi *Team1Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
 	}
 
-	// check that the agent has been intialised in the memory 
+	// check that the agent has been intialised in the memory
 	if _, exists := mi.memory[msg.GetSender()]; !exists {
 		mi.AddAgentToMemory(msg.GetSender(), 5)
 	}
-	
 
 	memoryEntry := mi.memory[msg.GetSender()]
 

@@ -106,7 +106,7 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 					team.TeamAoA.(*common.Team1AoA).ResetNumberOfOffences(agentToAudit)
 				}
 			}
-	
+
 		}
 
 		for _, agentID := range team.Agents {
