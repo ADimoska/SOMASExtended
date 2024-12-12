@@ -535,12 +535,12 @@ func (mi *ExtendedAgent) HasTeam() bool {
 	return mi.TeamID != (uuid.UUID{})
 }
 
-// In RunStartOfIteration, the server loops through each agent in each team
-// and sets the teams AoA by majority vote from the agents in that team.
+// Update the agent's preference for AoA ranking
 func (mi *ExtendedAgent) SetAoARanking(Preferences []int) {
 	mi.AoARanking = Preferences
 }
 
+// Get the agent's preference for AoA ranking
 func (mi *ExtendedAgent) GetAoARanking() []int {
 	return mi.AoARanking
 }

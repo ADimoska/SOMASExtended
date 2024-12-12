@@ -27,7 +27,7 @@ type AgentWithdrawalInfo struct {
 
 
 type AgentMemory struct {
-	honestyScore int
+	honestyScore *common.LeakyQueue
 
 	// Count to ensure that you only read the actual values, even if slice might be larger size with irrelvant entries
 	// This is due to how append works: https://stackoverflow.com/questions/38543825/appending-one-element-to-nil-slice-increases-capacity-by-two
@@ -55,6 +55,7 @@ const (
 	// CheatLongTerm (Value: 1): Agents who always contribute honestly. After
 	// rising in rank, they start withdrawing more than allowed.
 	CheatLongTerm
+
 
 	// CheatShortTerm (Value: 2): Agents who immediately start cheating. They
 	// overstate their contributions and withdraw more than allowed.
@@ -212,6 +213,7 @@ func (a1 *Team1Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 	}
 }
 
+
 func (a *Team1Agent) GetAoARanking() []int {
 	return []int{1, 2, 5}
 }
@@ -312,6 +314,59 @@ func (a1 *Team1Agent) GetWithdrawalAuditVote() common.Vote {
 	return common.CreateVote(0, a1.GetID(), uuid.Nil) // Default: No preference
 }
 
+func (a1 *Team1Agent) AddAgentToMemory (agentID uuid.UUID, honestyScoreLength int) {
+	// Add agent to memory if not already present
+	if _, exists := a1.memory[agentID]; !exists {
+		a1.memory[agentID] = AgentMemory{
+			honestyScore: common.NewLeakyQueue(5),
+
+			// TODO: Do the other fields need to be initialized?
+			// No??? should exists as nil slices that can be appended to
+			
+		}
+	}
+
+}
+
+func (a1 *Team1Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
+	// Update the memory of the agent who was audited
+
+	// check that the agent has been added to the memory
+	// if not, add the agent to the memory
+	if _, exists := a1.memory[agentID]; !exists {
+		a1.AddAgentToMemory(agentID, 5)
+	}
+
+	if result {
+		// Agent was dishonest
+		// check that agent is in memory
+		a1.memory[agentID].honestyScore.Push(-1)		
+	} else {
+		// agent was honest
+		a1.memory[agentID].honestyScore.Push(1)
+	}
+}
+	
+func (a1 *Team1Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) {
+	// Update the memory of the agent who was audited
+
+	// check that the agent has been added to the memory
+	// if not, add the agent to the memory
+	if _, exists := a1.memory[agentID]; !exists {
+		a1.AddAgentToMemory(agentID, 5)
+	}
+
+	if result {
+		// Agent was dishonest
+		// check that agent is in memory
+		a1.memory[agentID].honestyScore.Push(-1)		
+	} else {
+		// agent was honest
+		a1.memory[agentID].honestyScore.Push(1)
+	}
+}
+
+
 func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig, ag_type AgentType) *Team1Agent {
 	return &Team1Agent{
 		ExtendedAgent: GetBaseAgents(funcs, agentConfig),
@@ -319,13 +374,17 @@ func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedA
 		agentType:     ag_type,
 	}
 }
-
 // ----------------- Messaging functions -----------------------
 
 func (mi *Team1Agent) HandleContributionMessage(msg *common.ContributionMessage) {
 	if mi.VerboseLevel > 8 {
 		log.Printf("Agent %s received contribution notification from %s: amount=%d\n",
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
+	}
+
+	// check that the agent has been intialised in the memory 
+	if _, exists := mi.memory[msg.GetSender()]; !exists {
+		mi.AddAgentToMemory(msg.GetSender(), 5)
 	}
 
 	memoryEntry := mi.memory[msg.GetSender()]
@@ -349,6 +408,11 @@ func (mi *Team1Agent) HandleScoreReportMessage(msg *common.ScoreReportMessage) {
 			mi.GetID(), msg.GetSender(), msg.TurnScore)
 	}
 
+	// check that the agent has been intialised in the memory 
+	if _, exists := mi.memory[msg.GetSender()]; !exists {
+		mi.AddAgentToMemory(msg.GetSender(), 5)
+	}
+
 	memoryEntry := mi.memory[msg.GetSender()]
 
 	// Modify the historyContribution field
@@ -369,6 +433,12 @@ func (mi *Team1Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
 		log.Printf("Agent %s received withdrawal notification from %s: amount=%d\n",
 			mi.GetID(), msg.GetSender(), msg.StatedAmount)
 	}
+
+	// check that the agent has been intialised in the memory 
+	if _, exists := mi.memory[msg.GetSender()]; !exists {
+		mi.AddAgentToMemory(msg.GetSender(), 5)
+	}
+	
 
 	memoryEntry := mi.memory[msg.GetSender()]
 
