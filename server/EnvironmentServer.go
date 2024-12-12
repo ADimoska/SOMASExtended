@@ -99,7 +99,14 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
+			} else if team.TeamAoAID == 1 {
+				if team.TeamAoA.(*common.Team1AoA).GetNumberOfOffences(agentToAudit) >= 2 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+					// reset the number of offences for the agent
+					team.TeamAoA.(*common.Team1AoA).ResetNumberOfOffences(agentToAudit)
+				}
 			}
+	
 		}
 
 		for _, agentID := range team.Agents {
@@ -171,7 +178,14 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
+			} else if team.TeamAoAID == 1 {
+				if team.TeamAoA.(*common.Team1AoA).GetNumberOfOffences(agentToAudit) >= 2 {
+					cs.RemoveAgentFromTeam(agentToAudit)
+					// reset the number of offences for the agent
+					team.TeamAoA.(*common.Team1AoA).ResetNumberOfOffences(agentToAudit)
+				}
 			}
+
 		}
 
 		for _, agentID := range team.Agents {
