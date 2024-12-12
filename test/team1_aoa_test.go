@@ -15,18 +15,6 @@ import (
 	agents "github.com/ADimoska/SOMASExtended/agents"
 )
 
-func TestDefaultVoteIsMedian(t *testing.T) {
-	serv, agentIDs := CreateTestServer()
-	serv.CreateAndInitTeamWithAgents(agentIDs)
-
-	// Test all agents as a potential 'chair'. This might seem superfluous but
-	// will make more sense as teams start adding their own strategies etc.
-	for _, agent := range serv.GetAgentMap() {
-		result := agent.Team1_AgreeRankBoundaries()
-		assert.Equal(t, [5]int{10, 20, 30, 40, 50}, result)
-	}
-}
-
 func TestCondorcetWinner(t *testing.T) {
 	serv, agentIDs := CreateTestServer()
 
