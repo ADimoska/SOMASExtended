@@ -90,12 +90,18 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	if agentToAudit := team.TeamAoA.GetVoteResult(contributionAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetContributionAuditResult(agentToAudit)
 
+		leaderAudited := false
+
+		if team.TeamAoAID == 2 {
+			if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
+				cs.ElectNewLeader(team.TeamID)
+				leaderAudited = true
+			}
+		}
+
 		if auditResult {
 			cs.ApplyPunishment(team, agentToAudit)
-			if team.TeamAoAID == 2 {
-				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
-					cs.ElectNewLeader(team.TeamID)
-				}
+			if team.TeamAoAID == 2 && !leaderAudited {
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
@@ -161,13 +167,18 @@ func (cs *EnvironmentServer) RunTurnDefault(team *common.Team) {
 	if agentToAudit := team.TeamAoA.GetVoteResult(withdrawalAuditVotes); agentToAudit != uuid.Nil {
 		auditResult := team.TeamAoA.GetWithdrawalAuditResult(agentToAudit)
 
+		leaderAudited := false
+
+		if team.TeamAoAID == 2 {
+			if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
+				cs.ElectNewLeader(team.TeamID)
+				leaderAudited = true
+			}
+		}
+
 		if auditResult {
 			cs.ApplyPunishment(team, agentToAudit)
-
-			if team.TeamAoAID == 2 {
-				if agentToAudit == team.TeamAoA.(*common.Team2AoA).GetLeader() {
-					cs.ElectNewLeader(team.TeamID)
-				}
+			if team.TeamAoAID == 2 && !leaderAudited {
 				if team.TeamAoA.(*common.Team2AoA).GetOffences(agentToAudit) == 3 {
 					cs.RemoveAgentFromTeam(agentToAudit)
 				}
