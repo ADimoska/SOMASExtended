@@ -1,9 +1,10 @@
 package common
 
 import (
-	"container/list"
+	// "container/list"
 	// "errors"
 	"log"
+	math "math"
 	"math/rand"
 	"sort"
 
@@ -14,7 +15,7 @@ import (
 )
 
 type Team1AoA struct {
-	auditResult           map[uuid.UUID]*list.List
+	auditResult           *AuditRecord
 	ranking               map[uuid.UUID]int
 	rankBoundary          [5]int
 	agentLQueue           map[uuid.UUID]*LeakyQueue
@@ -56,9 +57,9 @@ func (q *LeakyQueue) Sum() int {
 	return q.sum
 }
 
-func (t *Team1AoA) ResetAuditMap() {
-	t.auditResult = make(map[uuid.UUID]*list.List)
-}
+// func (t *Team1AoA) ResetAuditMap() {
+// 	t.auditResult = make(map[uuid.UUID]*list.List)
+// }
 
 // TODO: Add functionality for expected contribution to change based on rank
 func (t *Team1AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) int {
@@ -66,10 +67,16 @@ func (t *Team1AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) in
 }
 
 func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int) {
-	if _, ok := t.auditResult[agentId]; !ok {
-		t.auditResult[agentId] = list.New()
+
+	var infraction int
+
+	if agentStatedContribution > agentActualContribution {
+		infraction = 1
+	} else {
+		infraction = 0
 	}
-	t.auditResult[agentId].PushBack((agentStatedContribution > agentActualContribution))
+
+	t.auditResult.AddRecord(agentId, infraction)
 
 	if _, ok := t.agentLQueue[agentId]; !ok {
 		t.agentLQueue[agentId] = NewLeakyQueue(5)
@@ -80,7 +87,7 @@ func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 
 // For now divide by 10
 func weightFunction(rank float64) float64 {
-	weight := rank / 2 //5.0 // make this rank/2 or something
+	weight := math.Ceil((rank + 1) / 2) //5.0 // make this rank/2 or something
 	return weight
 }
 
@@ -116,7 +123,15 @@ func (t *Team1AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 }
 
 func (t *Team1AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
-	t.auditResult[agentId].PushBack((agentActualWithdrawal > agentStatedWithdrawal) || (agentActualWithdrawal > t.GetExpectedWithdrawal(agentId, agentScore, commonPool)))
+	var infraction int
+	if (agentActualWithdrawal > agentStatedWithdrawal) || (agentActualWithdrawal > t.GetExpectedWithdrawal(agentId, agentScore, commonPool)) {
+		// Punish agent
+		infraction = 1
+	} else {
+		infraction = 0
+	}
+
+	t.auditResult.AddRecord(agentId, infraction)
 }
 
 func (t *Team1AoA) GetAuditCost(commonPool int) int {
@@ -147,42 +162,23 @@ func (t *Team1AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	return highestVotedID
 }
 
+func (t *Team1AoA) GetAuditResult(agentId uuid.UUID) bool {
+	warnings := t.auditResult.GetAllInfractions(agentId)
+	offences := t.offenceMap[agentId]
+	offences += warnings
+
+	t.offenceMap[agentId] = offences
+
+	t.auditResult.ClearAllInfractions(agentId)
+	return offences > 0
+}
+
 func (t *Team1AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
-	list, ok := t.auditResult[agentId]
-	if !ok || list == nil {
-		return false
-	}
-
-	lastElement := list.Back()
-	if lastElement == nil {
-		return false
-	}
-
-	value, ok := lastElement.Value.(int)
-	if !ok {
-		return false
-	}
-
-	return value == 1
+	return t.GetAuditResult(agentId)
 }
 
 func (t *Team1AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
-	list, ok := t.auditResult[agentId]
-	if !ok || list == nil {
-		return false
-	}
-
-	lastElement := list.Back()
-	if lastElement == nil {
-		return false
-	}
-
-	value, ok := lastElement.Value.(int)
-	if !ok {
-		return false
-	}
-
-	return value == 1
+	return t.GetAuditResult(agentId)
 }
 
 func (t *Team1AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
@@ -298,6 +294,7 @@ func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IE
 
 	if len(team.Agents) < 2 {
 		log.Printf("Only 1 Chair left! Boundaries wont update")
+		dataRecorder.RecordTeam1RankBoundaries(team.TeamID, t.rankBoundary)
 		return
 	}
 
@@ -333,12 +330,12 @@ func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IE
 	// decision made, in that the results of the chairs matched.
 	if socialDecision {
 		t.rankBoundary = chair1res
-		dataRecorder.RecordTeam1RankBoundaries(team.TeamID, t.rankBoundary)
 
 	} else {
 		log.Printf("Rank boundaries unchanged - 10 instances of foul play occurred.")
 	}
 
+	dataRecorder.RecordTeam1RankBoundaries(team.TeamID, t.rankBoundary)
 }
 
 func (t *Team1AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
@@ -458,7 +455,8 @@ func (t *Team1AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	// return (agentScore * 25) / 100
 	rank := t.GetAgentRank(agentId)
 	// add 1 to offenceMap
-	t.offenceMap[agentId]++
+	// t.offenceMap[agentId]++
+	t.ranking[agentId] = 0
 	return (agentScore * (rank + 1) * 10) / 100
 }
 
@@ -473,22 +471,27 @@ func (t *Team1AoA) ResetNumberOfOffences(agentId uuid.UUID) {
 	t.offenceMap[agentId] = 0
 }
 
-func CreateTeam1AoA(team *Team) IArticlesOfAssociation {
-	auditResult := make(map[uuid.UUID]*list.List)
+func (t *Team1AoA) RemoveAgentFromTeam(agentId uuid.UUID) {
+	delete(t.ranking, agentId)
+	delete(t.agentLQueue, agentId)
+	delete(t.offenceMap, agentId)
+}
+
+func CreateTeam1AoA(team *Team, auditDuration int) IArticlesOfAssociation {
 	ranking := make(map[uuid.UUID]int)
 	agentLQueue := make(map[uuid.UUID]*LeakyQueue)
 	for _, agent := range team.Agents {
-		auditResult[agent] = list.New()
 		ranking[agent] = 0
 		agentLQueue[agent] = NewLeakyQueue(5)
 	}
 
 	return &Team1AoA{
-		auditResult:           auditResult,
+		auditResult:           NewAuditRecord(auditDuration),
 		ranking:               ranking,
 		rankBoundary:          [5]int{10, 20, 30, 40, 50},
 		agentLQueue:           agentLQueue,
 		minCommonPoolLeftover: 5,
+		offenceMap:            make(map[uuid.UUID]int),
 	}
 }
 
