@@ -375,6 +375,25 @@ func (a1 *Team1Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bo
 	}
 }
 
+func (a1 *Team1Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
+	// Look at the honesty map of an agent 
+	// If the agent has a negative score, they are dishonest
+	// If the agent has a positive score, they are honest
+	value, exists := a1.memory[candidateID]
+
+	if !exists {
+		return true
+	}
+
+	switch a1.agentType {
+	case Honest:
+		return value.honestyScore.Sum() > 0
+	default:
+		return true
+
+	}
+}
+
 
 func Create_Team1Agent(funcs baseAgent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig, ag_type AgentType) *Team1Agent {
 	return &Team1Agent{
