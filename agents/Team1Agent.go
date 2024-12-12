@@ -138,12 +138,12 @@ func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int 
 			// if threshold known - try to rise up a rank, without dying
 			knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
 			if ok {
-				amount_to_next_rank_value := a1.AmountToNextRank()
-				if amount_to_next_rank_value < a1.Score-knownThreshold {
+				if a1.AmountToNextRank() < (a1.Score - knownThreshold) {
 					actualContribution = a1.AmountToNextRank()
+				} else {
+					actualContribution = int((3 / 10) * (a1.Score - knownThreshold))
 				}
-				//CHECK: what happens in this case if can't safely climb - min contribution??
-				//currently will just stay at 0 contribution if threshold greater than value needed to rank climb
+				//TO_CHECK: what happens in this case if can't safely climb - min contribution??
 			} else {
 				//if threshold unknown - contribute max(check difference to next rank, 30% of savings)
 				actualContribution = int(math.Max(float64(a1.AmountToNextRank()), float64((3/10)*a1.Score)))
@@ -221,7 +221,7 @@ func (a1 *Team1Agent) GetStatedContribution(instance common.IExtendedAgent) int 
 	case CheatShortTerm:
 		teamAoA, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
 		if !ok {
-			// If unable to access Team1AoA, just use actual contribution with some fixed cheating
+			// If unable to access Team1AoA, just use actual contribution with some fixed cheating value
 			return actualContribution + overstate_contribution
 		}
 		//State what they would have contributed to climb the next rank (but didn't actually do)
@@ -239,7 +239,7 @@ func (a1 *Team1Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 		return actualWithdrawal
 	case CheatShortTerm:
 		// Understate the withdrawal by fixed amount = 3
-		statedWithdrawal := actualWithdrawal - cheat_amount //CHECK: Are we happy with this?
+		statedWithdrawal := actualWithdrawal - cheat_amount //TO_CHECK: Are we happy with this?
 		if statedWithdrawal < 0 {
 			statedWithdrawal = min_stated_withdrawal // = 1
 		}
