@@ -36,6 +36,9 @@ type EnvironmentServer struct {
 	thresholdTurns         int
 	thresholdAppliedInTurn bool
 	allAgentsDead          bool
+
+	// game config parameters :D
+	exposeThresholds bool // expose current threshold to agents
 }
 
 func init() {
@@ -366,10 +369,21 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 	// Attempt to allocate the orphans to their preferred teams
 	cs.AllocateOrphans()
 
-	cs.turn = j
+	cs.turn = j // set the turn
+
+	// Invalidate known thresholds in all teams
+	for _, team := range cs.Teams {
+		team.InvalidateThreshold()
+	}
+
+	// If and only if exposeThresholds is true, expose to agents
+	if cs.exposeThresholds {
+		for _, team := range cs.Teams {
+			team.SetKnownThreshold(cs.roundScoreThreshold)
+		}
+	}
 
 	cs.teamsMutex.Lock()
-	// defer cs.teamsMutex.Unlock()
 
 	for _, team := range cs.Teams {
 		if len(team.Agents) == 0 {
@@ -384,12 +398,8 @@ func (cs *EnvironmentServer) RunTurn(i, j int) {
 			cs.RunTurnTeam5(team)
 		default:
 			cs.RunTurnDefault(team)
-
 		}
-
 	}
-
-	// TODO: Reallocate agents who left their teams during the turn
 
 	// check if threshold turn
 
@@ -649,9 +659,10 @@ func (cs *EnvironmentServer) Start() {
 }
 
 // custom init that gets called earlier
-func (cs *EnvironmentServer) Init(turnsForThreshold int) {
+func (cs *EnvironmentServer) Init(turnsForThreshold int, exposeThresholds bool) {
 	cs.DataRecorder = gameRecorder.CreateRecorder()
 	cs.thresholdTurns = turnsForThreshold
+	cs.exposeThresholds = exposeThresholds
 }
 
 func (cs *EnvironmentServer) reviveDeadAgents() {
@@ -1176,4 +1187,13 @@ func (cs *EnvironmentServer) GetTeamsByAoA(aoa int) []common.Team {
 		}
 	}
 	return teams
+}
+
+/**
+* Update the Global Known Threshold for each team.
+ */
+func (cs *EnvironmentServer) UpdateKnownThresholds() {
+	for _, team := range cs.Teams {
+		team.SetKnownThreshold(cs.roundScoreThreshold)
+	}
 }
