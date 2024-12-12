@@ -602,9 +602,8 @@ func (cs *EnvironmentServer) allocateAoAs() {
 				team.TeamAoAID = 2
 				cs.ElectNewLeader(team.TeamID)
 			case 3:
-				team.TeamAoA = common.CreateFixedAoA(1)
-				// TODO: Change when AoA 3 is implemented
-				team.TeamAoAID = 0
+				team.TeamAoA = common.CreateTeam3AoA()
+				team.TeamAoAID = 3
 			case 4:
 				team.TeamAoA = common.CreateTeam4AoA(team)
 				team.TeamAoAID = 4
