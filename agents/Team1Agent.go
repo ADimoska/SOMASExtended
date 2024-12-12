@@ -3,7 +3,6 @@ package agents
 import (
 	// "fmt"
 	"log"
-	"math"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -124,10 +123,19 @@ func (a1 *Team1Agent) AmountToNextRank() int {
 		// If unable to access Team1AoA, just return 0 - this shouldn't happen
 		return 0
 	}
+
 	currentRank := teamAoA.GetAgentRank(a1.GetID())
 	thresholds := teamAoA.GetRankThresholds()
-	amount_to_next_rank := thresholds[currentRank+1] - a1.Score
-	return amount_to_next_rank
+
+	// Check if the agent is already at the highest rank
+	if currentRank+1 >= len(thresholds) {
+		// Already at the highest rank, no "next rank" exists
+		return 0
+	}
+
+	// Calculate the amount to the next rank
+	amountToNextRank := thresholds[currentRank+1] - a1.Score
+	return max(amountToNextRank, 0)
 }
 
 func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int {
@@ -135,18 +143,15 @@ func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int 
 		actualContribution := 0
 		switch a1.agentType {
 		case Rational, CheatLongTerm:
-			// if threshold known - try to rise up a rank, without dying
+			//if threshold known - try to rise up a rank, without dying
 			knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
 			if ok {
 				if a1.AmountToNextRank() < (a1.Score - knownThreshold) {
 					actualContribution = a1.AmountToNextRank()
-				} else {
-					actualContribution = int((3 / 10) * (a1.Score - knownThreshold))
 				}
-				//TO_CHECK: what happens in this case if can't safely climb - min contribution??
 			} else {
 				//if threshold unknown - contribute max(check difference to next rank, 30% of savings)
-				actualContribution = int(math.Max(float64(a1.AmountToNextRank()), float64((3/10)*a1.Score)))
+				actualContribution = int(max(float64(a1.AmountToNextRank()), (0.3 * float64(a1.Score))))
 			}
 			return actualContribution
 		case CheatShortTerm:
@@ -203,8 +208,8 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 		   withdraw the minimum you need to survive. */
 		knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
 		if ok {
-			survival := int(math.Max(float64(knownThreshold)-float64(a1.Score), 0.0))
-			return int(math.Max(float64(decision), float64(survival)))
+			survival := int(max(float64(knownThreshold)-float64(a1.Score), 0.0))
+			return int(max(float64(decision), float64(survival)))
 		}
 		return decision
 	} else {
@@ -214,21 +219,25 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 }
 
 func (a1 *Team1Agent) GetStatedContribution(instance common.IExtendedAgent) int {
-	actualContribution := instance.GetActualContribution(instance)
-	switch a1.agentType {
-	case Rational, CheatLongTerm:
-		return actualContribution
-	case CheatShortTerm:
-		teamAoA, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
-		if !ok {
-			// If unable to access Team1AoA, just use actual contribution with some fixed cheating value
-			return actualContribution + overstate_contribution
+	if a1.HasTeam() {
+		actualContribution := instance.GetActualContribution(instance)
+		switch a1.agentType {
+		case Rational, CheatLongTerm:
+			return actualContribution
+		case CheatShortTerm:
+			_, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
+			if !ok {
+				// If unable to access Team1AoA, just use actual contribution with some fixed cheating value
+				return actualContribution + overstate_contribution
+			}
+			//State what they would have contributed to climb the next rank (but didn't actually do)
+			statedContribution := a1.AmountToNextRank()
+			return statedContribution
+		default:
+			return actualContribution
 		}
-		//State what they would have contributed to climb the next rank (but didn't actually do)
-		statedContribution := a1.AmountToNextRank()
-		return statedContribution
-	default:
-		return actualContribution
+	} else {
+		return 0
 	}
 }
 
