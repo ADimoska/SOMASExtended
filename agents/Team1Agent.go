@@ -148,7 +148,7 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 			// Perform type assertion to get Team1AoA
 			teamAoA, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
 			if ok {
-				currentRank = teamAoA.GetAgentNewRank(a1.GetID())
+				currentRank = teamAoA.GetAgentRank(a1.GetID())
 				if currentRank > 1 {
 					// Agent has risen up a rank, start over-withdrawing
 					withdrawalAmount := aoaExpectedWithdrawal + cheat_amount // Over-withdraw by 3 if possible to
@@ -221,7 +221,7 @@ func (a1 *Team1Agent) hasClimbedRankAndWithdrawn() bool {
 		if !ok {
 			return false // If unable to access Team1AoA, assume no rank climb
 		}
-		currentRank := teamAoA.GetAgentNewRank(a1.GetID())
+		currentRank := teamAoA.GetAgentRank(a1.GetID())
 		memoryEntry := a1.memory[a1.GetID()]
 		return currentRank > 1 && len(memoryEntry.historyWithdrawal) > 0
 	} else {
