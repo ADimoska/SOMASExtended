@@ -147,16 +147,10 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 		aoaExpectedWithdrawal := a1.Server.GetTeam(a1.GetID()).TeamAoA.GetExpectedWithdrawal(a1.GetID(), a1.Score, commonPool)
 		currentRank := 0
 
-		/* If the threshold is known (this only occurs in some games), then just
-		   withdraw the minimum you need to survive. */
-		knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
-		if ok {
-			return int(math.Max(float64(knownThreshold)-float64(a1.Score), 0.0))
-		}
-
+		decision := 0
 		switch a1.agentType {
 		case Honest:
-			return aoaExpectedWithdrawal
+			decision = aoaExpectedWithdrawal
 		case CheatLongTerm:
 			// Perform type assertion to get Team1AoA
 			teamAoA, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
@@ -168,21 +162,31 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 					if withdrawalAmount > commonPool {
 						withdrawalAmount = aoaExpectedWithdrawal //doesn't take whole pool to avoid getting caught
 					}
-					return withdrawalAmount
+					decision = withdrawalAmount
+				} else {
+					decision = aoaExpectedWithdrawal
 				}
-				return aoaExpectedWithdrawal
+			} else {
+				decision = aoaExpectedWithdrawal
 			}
-			return aoaExpectedWithdrawal
 		case CheatShortTerm:
 			// Over-withdraw regardless of rank
 			withdrawalAmount := aoaExpectedWithdrawal + cheat_amount
 			if withdrawalAmount > commonPool { //takes whatever is left in pool if withdrawalAmount is too much
 				withdrawalAmount = commonPool
 			}
-			return withdrawalAmount
+			decision = withdrawalAmount
 		default:
-			return aoaExpectedWithdrawal
+			decision = aoaExpectedWithdrawal
 		}
+		/* If the threshold is known (this only occurs in some games), then just
+		   withdraw the minimum you need to survive. */
+		knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
+		if ok {
+			survival := int(math.Max(float64(knownThreshold)-float64(a1.Score), 0.0))
+			return int(math.Max(float64(decision), float64(survival)))
+		}
+		return decision
 	} else {
 		log.Println("Agent does not have a team")
 		return 0
