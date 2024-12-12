@@ -54,7 +54,7 @@ func main() {
 	serv := &envServer.EnvironmentServer{
 		// note: the zero turn is used for team forming
 		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
-			2,                   //  iterations
+			3,                   //  iterations
 			100,                 //  turns per iteration
 			50*time.Millisecond, //  max duration
 			10),                 //  message bandwidth
@@ -103,6 +103,6 @@ func main() {
 	serv.LogTeamStatus()
 
 	// record data
-	serv.DataRecorder.GamePlaybackSummary()
+	// serv.DataRecorder.GamePlaybackSummary()
 	gameRecorder.ExportToCSV(serv.DataRecorder, "visualization_output/csv_data")
 }

@@ -23,10 +23,12 @@ type AgentRecord struct {
 	StatedWithdrawal   int
 
 	TeamID uuid.UUID
+
+	// special indicator fields for agents
+	SpecialNote string
 }
 
-// NewAgentRecord creates a new instance of AgentRecord
-func NewAgentRecord(agentID uuid.UUID, trueSomasTeamID int, score int, contribution int, statedContribution int, withdrawal int, statedWithdrawal int, teamID uuid.UUID) AgentRecord {
+func NewAgentRecord(agentID uuid.UUID, trueSomasTeamID int, score int, contribution int, statedContribution int, withdrawal int, statedWithdrawal int, teamID uuid.UUID, specialNote string) AgentRecord {
 	return AgentRecord{
 		AgentID:            agentID,
 		TrueSomasTeamID:    trueSomasTeamID,
@@ -36,6 +38,7 @@ func NewAgentRecord(agentID uuid.UUID, trueSomasTeamID int, score int, contribut
 		Withdrawal:         withdrawal,
 		StatedWithdrawal:   statedWithdrawal,
 		TeamID:             teamID,
+		SpecialNote:        specialNote,
 	}
 }
 

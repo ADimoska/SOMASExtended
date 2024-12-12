@@ -98,4 +98,7 @@ type IExtendedAgent interface {
 
 	// Team 2 specific functions
 	Team2_GetLeaderVote() Vote
+
+	// Team 3 specific functions
+	Team3_GetStrategyVote() []Strategy
 }

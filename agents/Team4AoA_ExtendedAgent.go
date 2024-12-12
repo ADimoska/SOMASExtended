@@ -5,6 +5,7 @@ package agents
 import (
 	"log"
 	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -18,7 +19,8 @@ func (mi *ExtendedAgent) Team4_GetRankUpVote() map[uuid.UUID]int {
 }
 
 func (mi *ExtendedAgent) Team4_GetConfession() bool {
-	return false
+	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return rng.Intn(2) == 1
 }
 
 func (mi *ExtendedAgent) Team4_StateConfessionToTeam() {
@@ -43,7 +45,16 @@ func (mi *ExtendedAgent) Team4_HandleConfessionMessage(msg *common.Team4_Confess
 
 // Get agents vote map for
 func (mi *ExtendedAgent) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
-	return make(map[uuid.UUID]int)
+	log.Printf("Called overriden GetProposedWithdrawalVote()")
+	agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
+	proposedWithdrawals := make(map[uuid.UUID]int)
+
+	for _, agentId := range agentsInTeam {
+		proposedWithdrawals[agentId] = rand.Intn(2)
+	}
+
+	log.Println(proposedWithdrawals)
+	return proposedWithdrawals
 }
 
 func (mi *ExtendedAgent) Team4_GetProposedWithdrawal(instance common.IExtendedAgent) int {
@@ -71,10 +82,18 @@ func (mi *ExtendedAgent) Team4_ProposeWithdrawal() int {
 		// double check if score in agent is sufficient (this should be handled by AoA though)
 		commonPool := mi.Server.GetTeam(mi.GetID()).GetCommonPool()
 		aoaExpectedWithdrawal := mi.Server.GetTeam(mi.GetID()).TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.GetTrueScore(), commonPool)
+
+		// Seed the random generator
+		rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+		// Generate a random number between 0 and 10
+		randomAddition := rng.Intn(11) // Intn(11) generates a number in [0, 10]
+		// Add the random number to the expected withdrawal
+		aoaExpectedWithdrawal += randomAddition
 		if commonPool < aoaExpectedWithdrawal {
 			return commonPool
 		}
-		return aoaExpectedWithdrawal + rand.Intn(4)
+		return aoaExpectedWithdrawal
 	} else {
 		if mi.VerboseLevel > 6 {
 			log.Printf("[WARNING] Agent %s has no AoA, withdrawing 0\n", mi.GetID())
@@ -92,6 +111,11 @@ func (mi *ExtendedAgent) Team4_HandleProposedWithdrawalMessage(msg *common.Team4
 }
 
 func (mi *ExtendedAgent) Team4_GetPunishmentVoteMap() map[int]int {
-	return make(map[int]int)
+	punishmentVoteMap := make(map[int]int)
 
+	for punishment := 0; punishment <= 4; punishment++ {
+		punishmentVoteMap[punishment] = rand.Intn(5)
+	}
+
+	return punishmentVoteMap
 }
