@@ -39,6 +39,16 @@ func NewLeakyQueue(capacity int) *LeakyQueue {
 	}
 }
 
+// Return LeakyQueue Sum for given agent in team
+func GetLeakyQueueSum(agentId uuid.UUID, team *Team1AoA) int {
+	return team.agentLQueue[agentId].Sum()
+}
+
+// return rank boundaries for given team
+func GetRankBoundaries(team *Team1AoA) [5]int {
+	return team.rankBoundary
+}
+
 // Push adds an element to the queue.
 // If the queue exceeds its capacity, the oldest element is removed.
 func (q *LeakyQueue) Push(value int) {
