@@ -244,9 +244,9 @@ func calculateMedian(sortedValues []int) int {
 func (mi *ExtendedAgent) Team1_BoundaryProposalRequestHandler(msg *common.Team1RankBoundaryRequestMessage) {
 	var bounds [5]int
 	if mi.Score >= 5{
-		bounds = [5]int{int(0.2*float64(mi.Score)), int(0.4*float64(mi.Score)), int(0.6*float64(mi.Score)), int(0.8*float64(mi.Score)), int(1*float64(mi.Score))}
+		bounds = [5]int{int(0.6*float64(mi.Score)), int(0.8*float64(mi.Score)), int(1.0*float64(mi.Score)), int(1.2*float64(mi.Score)), int(1.4*float64(mi.Score))}
 	}else{
-		bounds = [5]int{3, 20, 500, 1000}
+		bounds = [5]int{3, 100, 500, 1000}
 	}
 
 	resp := &common.Team1RankBoundaryResponseMessage{

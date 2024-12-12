@@ -78,7 +78,7 @@ func (t *Team1AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 
 // For now divide by 10
 func weightFunction(rank float64) float64 {
-	weight := 5.0 // make this rank/2 or something
+	weight := rank/2 //5.0 // make this rank/2 or something
 	return weight
 }
 
