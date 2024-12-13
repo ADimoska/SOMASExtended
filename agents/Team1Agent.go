@@ -138,20 +138,61 @@ func (a1 *Team1Agent) AmountToNextRank() int {
 	return max(amountToNextRank, 0)
 }
 
+func (a1 *Team1Agent) GetLatestStatedContributions() int {
+	// Fetch the memory for this agent using its ID
+	agentMemory, exists := a1.memory[a1.GetID()]
+	if !exists {
+		return 0 // No memory found for this agent
+	}
+
+	// Restrict to relevant contributions based on LastContributionCount
+	relevantContributions := agentMemory.historyContribution[:agentMemory.LastContributionCount]
+
+	// Handle cases where there are fewer than 5 contributions
+	startIndex := len(relevantContributions) - 5
+	if startIndex < 0 {
+		startIndex = 0
+	}
+
+	// Extract the latest 5 contributions and calculate their sum
+	latestContributions := relevantContributions[startIndex:]
+
+	total := 0
+	for _, contrib := range latestContributions {
+		total += contrib.ContributionStated
+	}
+
+	count := len(latestContributions)
+	if count == 0 {
+		return 0
+	}
+
+	return total / count // Integer division
+}
+
 func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int {
 	if a1.HasTeam() {
 		actualContribution := 0
+		avg_last_5_contributions := a1.GetLatestStatedContributions()
 		switch a1.agentType {
 		case Rational, CheatLongTerm:
 			//if threshold known - try to rise up a rank, without dying
 			knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
 			if ok {
-				if a1.AmountToNextRank() < (a1.Score - knownThreshold) {
-					actualContribution = a1.AmountToNextRank()
+				if a1.AmountToNextRank()-(4*avg_last_5_contributions) < (a1.Score - knownThreshold) {
+					actualContribution = a1.AmountToNextRank() - (4 * avg_last_5_contributions)
+				} else if avg_last_5_contributions < (a1.Score - knownThreshold) {
+					//then contribute last n contributions
+					actualContribution = avg_last_5_contributions
+				} else {
+					actualContribution = a1.Score
 				}
 			} else {
 				//if threshold unknown - contribute max(check difference to next rank, 30% of savings)
-				actualContribution = int(max(float64(a1.AmountToNextRank()), (0.3 * float64(a1.Score))))
+				actualContribution = int(max(float64(a1.AmountToNextRank()-(4*avg_last_5_contributions)), (0.3 * float64(a1.Score))))
+				if actualContribution > a1.Score {
+					actualContribution = a1.Score
+				}
 			}
 			return actualContribution
 		case CheatShortTerm:
