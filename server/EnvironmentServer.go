@@ -618,7 +618,8 @@ func (cs *EnvironmentServer) allocateAoAs() {
 				team.TeamAoA = common.CreateFixedAoA(1)
 				team.TeamAoAID = 0
 			}
-
+			team.TeamAoA = common.CreateTeam6AoA()
+			team.TeamAoAID = 6
 			cs.Teams[team.TeamID] = team
 			log.Printf("Team %v has AoA: %v\n", team.TeamID, winners[randomI])
 

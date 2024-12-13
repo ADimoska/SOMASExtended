@@ -1,6 +1,7 @@
 package common
 
 import (
+	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -196,6 +197,7 @@ func (t *Team6AoA) RunContributionMonitoring() {
 			if lastMonitRecord == nil {
 				// if agent being monitored was good last turn, move them down a stage
 				t.agentsToMonitor[monitAgent] -= 1
+				log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
 			} else {
 				if monitStage == 1 {
 					// stage 1, half of actual
@@ -209,9 +211,12 @@ func (t *Team6AoA) RunContributionMonitoring() {
 					if monitCheck <= float64(lastMonitRecord.Expected) {
 						// agent gets away with it
 						t.agentsToMonitor[monitAgent] -= 1
+						log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
+
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
 					}
 
 				} else if monitStage == 2 {
@@ -229,9 +234,11 @@ func (t *Team6AoA) RunContributionMonitoring() {
 					if monitCheck <= float64(lastMonitRecord.Expected) {
 						// agent gets away with it
 						t.agentsToMonitor[monitAgent] -= 1
+						log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
 					}
 
 				} else if monitStage >= 3 {
@@ -245,10 +252,13 @@ func (t *Team6AoA) RunContributionMonitoring() {
 
 					if monitCheck <= float64(lastMonitRecord.Expected) && monitStage == 3 {
 						// agent gets away with it
+						log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
 						t.agentsToMonitor[monitAgent] -= 1
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
+
 					}
 				}
 			}
@@ -259,6 +269,8 @@ func (t *Team6AoA) RunContributionMonitoring() {
 			} else if monitStage > 3 {
 				// agent has passed stage 3 of monitoring, must get kicked out
 				// KILL/KICKOUT AGENT
+				log.Printf("Agent %v has been placed into stage %d monitoring", monitAgent, t.agentsToMonitor[monitAgent])
+
 			}
 		}
 		if monitStage == 0 {
@@ -445,10 +457,12 @@ func (t *Team6AoA) CalculateVotingPower() map[uuid.UUID]float64 {
 
 func (t *Team6AoA) GetPunishment(agentScore int, agentID uuid.UUID) int { // Punishments decided for agent
 	cheatingHistory := t.auditHistory[agentID]
+
 	startIndex := 0
 	numberOfTurns := 4                          // Can be changed later depending on game length
 	if len(cheatingHistory) > 2*numberOfTurns { // Multiply by two as there are two audits per turn
 		startIndex = len(cheatingHistory) - 2*numberOfTurns
+
 	}
 
 	cheatingCount := 0
@@ -472,6 +486,8 @@ func (t *Team6AoA) GetPunishment(agentScore int, agentID uuid.UUID) int { // Pun
 		// kill that bad boi
 		// remove the entirety of its score and let it die by threshold
 		deduction = float64(agentScore)
+		//log the agent that has been killed
+		log.Printf("Agent %v has been killed due to cheating", agentID)
 	}
 
 	return int(deduction)
