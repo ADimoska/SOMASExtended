@@ -271,6 +271,15 @@ func (t *Team1AoA) SelectNChairs(agentIds []uuid.UUID, n int) []uuid.UUID {
  */
 func (t *Team1AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
 
+	// check that everyone in the team is in the ranking
+	// if not add them to the ranking
+	for _, agent := range team.Agents {
+		if _, exists := t.ranking[agent]; !exists {
+			t.ranking[agent] = 0
+		}
+	}
+
+	// Check that all agents in the ranking are alive
 	newRanking := make(map[uuid.UUID]int)
 	for agentUUID, rank := range t.ranking {
 		if _, exists := agentMap[agentUUID]; exists {
@@ -455,11 +464,9 @@ func (t *Team1AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	// return (agentScore * 25) / 100
 	if _, exists := t.ranking[agentId]; exists {
 		rank := t.GetAgentRank(agentId)
-		// add 1 to offenceMap
-		// t.offenceMap[agentId]++
 		t.ranking[agentId] = 0
 		return (agentScore * (rank + 1) * 10) / 100
-	}	else {
+	} else {
 		return 0
 	}
 }
