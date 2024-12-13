@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"log"
 	"math"
 
 	common "github.com/ADimoska/SOMASExtended/common"
@@ -9,299 +10,357 @@ import (
 	"github.com/google/uuid"
 )
 
-type Team6_Agent struct {
+type Team6Agent struct {
 	*ExtendedAgent
-	TeamTrust map[uuid.UUID]float64 //this used in deciding auditing votes, and team choosing
 
-	Selfishness float64 //Value from 0 to 1 (most selfish) which affects agent contribution / withdrawal
-	Greed       float64 //Value from 0 to 1 (most greedy) which affects dice rolling strategy
+	// Trust + reputation
+	AgentTrust               map[uuid.UUID]float64 // Trust of other agents
+	WithdrawalAuditCount     int
+	WithdrawalSucessfulCount int
 
-	AgentTurnScore          int
-	AveragePersonalDiceRoll float64
-	ExpectedTeamPool        int
+	// Game state tracking
+	ExpectedCommonPool int
+	AgentTurnScore     int
+
+	// Personality traits
+	Selfishness float64
+	Greed       float64
 }
 
-// constructor for Team6_Agent
-func Team6_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team6_Agent {
+func Team6_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent], agentConfig AgentConfig) *Team6Agent {
+	extendedAgent := GetBaseAgents(funcs, agentConfig)
+	extendedAgent.TrueSomasTeamID = 6
+	extendedAgent.AoARanking = []int{6, 5, 4, 3, 2, 1}
 
-	team6 := &Team6_Agent{
-		ExtendedAgent:           GetBaseAgents(funcs, agentConfig),
-		TeamTrust:               make(map[uuid.UUID]float64),
-		Selfishness:             0.3, //start low selfishness (=> contribute more / withdraw less)
-		Greed:                   0.7, //start high greed
-		AgentTurnScore:          0,
-		AveragePersonalDiceRoll: 0.0,
-		ExpectedTeamPool:        0,
+	return &Team6Agent{
+		ExtendedAgent:            extendedAgent,
+		AgentTrust:               make(map[uuid.UUID]float64),
+		WithdrawalAuditCount:     0,
+		WithdrawalSucessfulCount: 0,
+
+		ExpectedCommonPool: 0,
+		AgentTurnScore:     0,
+
+		Selfishness: 0.3,
+		Greed:       0.6, // start higher greed = more points for voting power
 	}
 
-	team6.TrueSomasTeamID = 6
-	team6.AoARanking = []int{6, 1, 2, 5, 4, 3}
-	return team6
 }
 
-func (mi *Team6_Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
-	if result {
-		mi.UpdateTeamMemberTrust(agentID, -0.2)
-	}
-}
-
-func (mi *Team6_Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) {
-	if result {
-		mi.UpdateTeamMemberTrust(agentID, -0.3)
-	}
-}
-
-func (mi *Team6_Agent) UpdateTeamMemberTrust(agentID uuid.UUID, trustChange float64) {
+// ---------- TRUST SCORE SYSTEM ----------
+func (a6 *Team6Agent) UpdateAgentTrust(agentID uuid.UUID, trustChange float64) {
 	// If agent doesn't exist, initialize with 0.5 trust
-	if _, exists := mi.TeamTrust[agentID]; !exists {
-		mi.TeamTrust[agentID] = 0.5
+	if _, exists := a6.AgentTrust[agentID]; !exists {
+		a6.AgentTrust[agentID] = 0.5
 	}
 
 	// Update trust value
-	mi.TeamTrust[agentID] += trustChange
+	a6.AgentTrust[agentID] += trustChange
 
 	// Clamp trust value between 0 and 1
-	if mi.TeamTrust[agentID] < 0 {
-		mi.TeamTrust[agentID] = 0
-	} else if mi.TeamTrust[agentID] > 1 {
-		mi.TeamTrust[agentID] = 1
+	if a6.AgentTrust[agentID] < 0 {
+		a6.AgentTrust[agentID] = 0
+	} else if a6.AgentTrust[agentID] > 1 {
+		a6.AgentTrust[agentID] = 1
+	}
+}
+func (a6 *Team6Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
+	if result {
+		a6.UpdateAgentTrust(agentID, -0.1)
 	}
 }
 
-func (mi *Team6_Agent) GetTurnScore() int {
-	return mi.AgentTurnScore
-}
-
-// ----------------------- Strategies -----------------------
-
-// so this is all from team 4 strategy stuff: it is up to us to implement the strategies unique to the agents in our team
-
-// Team-forming Strategy
-func (mi *Team6_Agent) DecideTeamForming(agentInfoList []common.ExposedAgentInfo) []uuid.UUID {
-	return mi.ExtendedAgent.DecideTeamForming(agentInfoList)
-}
-
-// Contribution Strategy - HERE WE CAN DEFINE HOW SELFISHNESS / REPUTATION WILL HAVE AN EFFECT ON AN AGENTS STRATEGY
-func (mi *Team6_Agent) GetActualContribution(instance common.IExtendedAgent) int {
-
-	if mi.HasTeam() {
-
-		team := mi.Server.GetTeam(mi.GetID())
-		// calculate expected contribution according to AoAs
-		aoaExpectedContribution := team.TeamAoA.GetExpectedContribution(mi.GetID(), mi.Score)
-
-		// HERE IS AN EXAMPLE OF HOW SELFISHNESS COULD WORK
-		// Note: aoa expected contribution is defined as a fraction of TurnScore,
-		// So we don't need to worry about weird behaviour of trying to contribute more than is scored in a turn
-		contributionChoice := -1
-
-		if mi.Selfishness >= 0.5 {
-			// if this agent is relatively selfish
-			// linearly map 0.5 to 1 selfishness to contribute between aoaExpected and 0
-			contributionChoice = int(math.Floor(2 * (1.0 - mi.Selfishness) * float64(aoaExpectedContribution)))
-		} else {
-			// if this agent is relatively selfless
-			// linearly map 0 to 0.5 selfishness to contribute between (whole of) TurnScore and aoaExpected
-			selfishnessScaling := float64(aoaExpectedContribution-mi.GetTurnScore()) / (0.5)
-			contributionChoice = int(math.Ceil(selfishnessScaling*mi.Selfishness + float64(mi.GetTurnScore())))
-		}
-
-		return contributionChoice
-	} else {
-		// If this agent is not in a team
-		return 0
+func (a6 *Team6Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) {
+	if result {
+		a6.WithdrawalSucessfulCount++
+		a6.UpdateAgentTrust(agentID, -0.3)
 	}
+
+	a6.WithdrawalAuditCount++
 }
 
-// Withdrawal Strategy - THIS NEEDS TO BE DEFINED, IN A SIMILAR WAY TO HOW CONTRIBUTION STRAT MIGHT USE SELFISHNESS AND REPUTATION
-func (mi *Team6_Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
-	if mi.HasTeam() {
+// ---------- DECISION TO STICK  ----------
 
-		team := mi.Server.GetTeam(mi.GetID())
-		teamCommonPool := team.GetCommonPool()
-
-		// Calculate expected withdrawal according to AoAs
-		aoaExpectedWithdrawal := team.TeamAoA.GetExpectedWithdrawal(mi.GetID(), mi.AgentTurnScore, teamCommonPool)
-
-		// Reversed logic for determining withdrawal based on selfishness
-		withdrawalChoice := -1
-
-		if mi.Selfishness < 0.5 {
-			// If the agent is relatively selfless (low selfishness)
-			// Withdraw less than the maximum allowed
-			withdrawalChoice = int(math.Floor(float64(aoaExpectedWithdrawal) * (1 - mi.Selfishness)))
-		} else {
-			// If the agent is relatively selfish (high selfishness)
-			// Withdraw more, mapped between AoA and maximum allowed
-			withdrawalChoice = int(math.Ceil(float64(aoaExpectedWithdrawal) + mi.Selfishness*float64(teamCommonPool-aoaExpectedWithdrawal)))
-		}
-		return withdrawalChoice
-
-	} else {
-		return 0
-	}
-}
-
-// Dice Strategy
-func (mi *Team6_Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
+func (a6 *Team6Agent) StickOrAgain(accumulatedScore int, prevRoll int) bool {
 	// Calculate stick threshold based on agent's greed
 	// Greed value influences how risk-taking an agent is:
 	// - High greed means they will only stick once we reach higher score
 	// - Low greed means they will stick at a lower score
 
 	baseValue := 10.0                            // This is the base value that the agent considers to stick
-	stickThreshold := baseValue * (1 + mi.Greed) // Threshold determined by baseValue and greed level
+	stickThreshold := baseValue * (1 + a6.Greed) // Threshold determined by baseValue and greed level
 
 	// If the agent's turn score reaches or exceeds the stick threshold, they will stick
-	return float64(accumulatedScore) >= stickThreshold
+	willStick := accumulatedScore >= int(stickThreshold)
+
+	return willStick
 }
 
-// Agent returns their preference for an audit on contribution
-// 0: No preference
-// 1: Prefer audit
-// -1: Prefer no audit
-func (mi *Team6_Agent) GetContributionAuditVote() common.Vote {
-	var voteOutAgent uuid.UUID
-	lowestTrust := 0.5
+// ---------- CONTRIBUTION, WITHDRAWAL AND ASSOCIATED AUDITING ----------
 
-	for agentID, trustValue := range mi.TeamTrust {
-		if agentID != mi.GetID() && trustValue <= lowestTrust {
-			lowestTrust = trustValue
-			voteOutAgent = agentID
+func (a6 *Team6Agent) GetActualContribution(instance common.IExtendedAgent) int {
+	if !a6.HasTeam() {
+		log.Printf("Agent %s does not have a team, skipping contribution...\n", a6.GetID())
+		return 0
+	}
+
+	team := a6.Server.GetTeam(a6.GetID())
+	aoa := team.TeamAoA
+	aoaExpectedContribution := aoa.GetExpectedContribution(a6.GetID(), a6.Score)
+
+	contributionChoice := -1
+	if a6.Selfishness >= 0.5 {
+		// if this agent is relatively selfish
+		// linearly map 0.5 to 1 selfishness to contribute between aoaExpected and 0
+		contributionChoice = int(math.Floor(2 * (1.0 - a6.Selfishness) * float64(aoaExpectedContribution)))
+	} else {
+		// if this agent is relatively selfless
+		// linearly map 0 to 0.5 selfishness to contribute between (whole of) TurnScore and aoaExpected
+		selfishnessScaling := float64(aoaExpectedContribution-a6.AgentTurnScore) / (0.5)
+		contributionChoice = int(math.Ceil(selfishnessScaling*a6.Selfishness + float64(a6.AgentTurnScore)))
+	}
+
+	return contributionChoice
+
+}
+
+func (a6 *Team6Agent) GetStatedContribution(instance common.IExtendedAgent) int {
+
+	if !a6.HasTeam() {
+		log.Printf("Agent %s does not have a team, skipping contribution...\n", a6.GetID())
+		return 0
+	}
+
+	// Always state the expected contribution (even if cheating)
+	team := a6.Server.GetTeam(a6.GetID())
+	aoa := team.TeamAoA
+	aoaExpectedContribution := aoa.GetExpectedContribution(a6.GetID(), a6.GetTrueScore())
+	return aoaExpectedContribution
+}
+
+func (a6 *Team6Agent) HandleContributionMessage(msg *common.ContributionMessage) {
+	a6.ExtendedAgent.HandleContributionMessage(msg)
+	a6.ExpectedCommonPool += msg.StatedAmount
+}
+
+func (a6 *Team6Agent) GetContributionAuditVote() common.Vote {
+
+	// Get list of uuids in our team
+	var agentsInTeam []uuid.UUID = a6.Server.GetAgentsInTeam(a6.TeamID)
+	actualPoolSize := a6.Server.GetTeamCommonPool(a6.TeamID)
+
+	// if actual pool size is less than expected
+	if actualPoolSize < a6.ExpectedCommonPool {
+		// someone lied - trust in rest of team decreases
+		for _, agentID := range agentsInTeam {
+			a6.UpdateAgentTrust(agentID, -0.02)
 		}
-	}
 
-	if voteOutAgent == uuid.Nil {
-		return common.CreateVote(0, mi.GetID(), uuid.Nil)
-	}
+		// Vote for least trusted team member (with trust below default 0.5)
+		var votedAgent uuid.UUID
+		lowestTrust := 0.5
 
-	return common.CreateVote(1, mi.GetID(), voteOutAgent)
-}
-
-// Agent returns their preference for an audit on withdrawal
-// 0: No preference
-// 1: Prefer audit
-// -1: Prefer no audit
-// SAME DEAL HERE
-func (mi *Team6_Agent) GetWithdrawalAuditVote() common.Vote {
-	var voteOutAgent uuid.UUID
-	lowestTrust := 0.5
-
-	for agentID, trustValue := range mi.TeamTrust {
-		if agentID != mi.GetID() && trustValue <= lowestTrust {
-			lowestTrust = trustValue
-			voteOutAgent = agentID
+		for _, agentID := range agentsInTeam {
+			if a6.AgentTrust[agentID] <= lowestTrust {
+				lowestTrust = a6.AgentTrust[agentID]
+				votedAgent = agentID
+			}
 		}
-	}
+		a6.ExpectedCommonPool = actualPoolSize
 
-	if voteOutAgent == uuid.Nil {
-		return common.CreateVote(0, mi.GetID(), uuid.Nil)
-	}
-
-	return common.CreateVote(1, mi.GetID(), voteOutAgent)
-}
-
-func (mi *Team6_Agent) UpdateGreed() {
-	// Update greed value based on Current Agent Score and Average Personal Dice Roll
-	if mi.AgentTurnScore > 0 && mi.AveragePersonalDiceRoll > 0 {
-		// Greed increases when the agent's average dice roll is higher
-		// and the current agent score is higher, indicating more risk-taking behavior
-		mi.Greed = (float64(mi.AgentTurnScore) / 100.0) + (mi.AveragePersonalDiceRoll / 6.0)
-
-		// Ensure greed is within bounds [0.0, 1.0]
-		if mi.Greed > 1.0 {
-			mi.Greed = 1.0
-		} else if mi.Greed < 0.0 {
-			mi.Greed = 0.0
+		// Send out message to team members about our opinion
+		// Multiple times to get them to agree with us - exploiting handle opinion
+		// Maxim of Quantity
+		opinion := a6.CreateAgentOpinionResponseMessage(votedAgent, int(lowestTrust*100))
+		for i := 0; i < 5; i++ {
+			a6.BroadcastSyncMessageToTeam(opinion)
 		}
+
+		return common.CreateVote(1, a6.GetID(), votedAgent)
+
 	}
+
+	// if actual pool size is equal or greater than expected
+	a6.ExpectedCommonPool = actualPoolSize
+	return common.CreateVote(0, a6.GetID(), uuid.Nil)
+
 }
 
-func (mi *Team6_Agent) UpdateSelfishness() {
-	team := mi.Server.GetTeam(mi.GetID())
-	if team == nil {
-		mi.Selfishness = 0.5
+// Update greed value based on Current Agent Score and Average Personal Dice Roll
+func (a6 *Team6Agent) UpdateGreed() {
+	const (
+		expectedAverage = 10.5  // Expected average for 3d6
+		scoreThreshold  = 100.0 // Threshold score for greed adjustment
+	)
+
+	rollDeviation := float64(a6.AgentTurnScore) - expectedAverage
+	// Negative deviation means lower roll, positive means higher
+	greedChangeFromRoll := -0.05 * (rollDeviation / expectedAverage)
+
+	scoreDeviation := scoreThreshold - float64(a6.Score)
+	// Positive deviation means score is below threshold, negative means above
+	normalizedScoreDeviation := scoreDeviation / scoreThreshold
+	if normalizedScoreDeviation > 1.0 {
+		normalizedScoreDeviation = 1.0
+	} else if normalizedScoreDeviation < -1.0 {
+		normalizedScoreDeviation = -1.0
+	}
+
+	// Lower score increases greed, higher score decreases it
+	greedChangeFromScore := 0.05 * normalizedScoreDeviation
+
+	newGreed := a6.Greed + greedChangeFromRoll + greedChangeFromScore
+
+	// Clamp greed between 0.0 and 1.0
+	a6.Greed = math.Max(0.0, math.Min(1.0, newGreed))
+
+}
+
+// Update selfishness based on Agent Dice Roll (AveragePersonalDiceRoll), Team Common Pool, and Trust Level of team members
+func (a6 *Team6Agent) UpdateSelfishness() {
+
+	if !a6.HasTeam() {
 		return
 	}
 
-	// Update selfishness based on Agent Dice Roll (AveragePersonalDiceRoll), Team Common Pool, and Trust Level
-	teamCommonPool := mi.Server.GetTeamCommonPool(mi.TeamID)
-
-	if teamCommonPool > 0 && mi.AveragePersonalDiceRoll > 0 {
-		// Selfishness increases when team trust is lower, the average dice roll is higher,
-		// and there is a higher amount of common resources in the team pool.
-
-		// Calculate average team trust
-		agentsInTeam := mi.Server.GetAgentsInTeam(mi.TeamID)
-		totalTrust := 0.0
-		numAgents := 0
-
-		for _, agentID := range agentsInTeam {
-			if agentID == mi.GetID() {
-				continue // Skip ourselves
-			}
-			if trust, exists := mi.TeamTrust[agentID]; exists {
-				totalTrust += trust
-				numAgents++
-			}
-		}
-
-		// Calculate average team trust (default to 0.5 if no other agents)
-		teamTrust := 0.5
-		if numAgents > 0 {
-			teamTrust = totalTrust / float64(numAgents)
-		}
-
-		selfishnessFactor := (1.0 - teamTrust) + (mi.AveragePersonalDiceRoll / 6.0) + (float64(teamCommonPool) / 200.0)
-
-		// Scale selfishness to be between [0.0, 1.0]
-		mi.Selfishness = selfishnessFactor / 3.0
-
-		// Ensure selfishness is within bounds [0.0, 1.0]
-		if mi.Selfishness > 1.0 {
-			mi.Selfishness = 1.0
-		} else if mi.Selfishness < 0.0 {
-			mi.Selfishness = 0.0
-		}
+	// Estimate threshold to be 100 - hardcoded
+	// while score below threshold, increase selfishness slightly
+	const threshold = 100.0
+	var scoreInfluence float64
+	if a6.Score < threshold {
+		dangerLevel := (float64(threshold - a6.Score)) / float64(threshold)
+		scoreInfluence = dangerLevel * 0.1
 	} else {
-		// If no data available, default to a neutral selfishness value
-		mi.Selfishness = 0.5
+		safetyLevel := float64(a6.Score) - threshold
+		scoreInfluence = -0.1 * math.Min(safetyLevel/10.0, 1.0) // Maximum decrease of 0.1
 	}
+
+	// average team trust
+	// higher trust decreases selfishness
+	agentsInTeam := a6.Server.GetAgentsInTeam(a6.TeamID)
+	totalTrust := 0.0
+	for _, agentID := range agentsInTeam {
+		if agentID != a6.GetID() {
+			totalTrust += a6.AgentTrust[agentID]
+		}
+	}
+	avgTrust := totalTrust / float64(len(agentsInTeam))
+	trustInfluence := -0.2 * avgTrust
+
+	newSelfishness := a6.Selfishness + scoreInfluence + trustInfluence
+
+	a6.Selfishness = math.Max(0.0, math.Min(0.9, newSelfishness))
+
 }
 
-func (mi *Team6_Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
+func (a6 *Team6Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
+	if !a6.HasTeam() {
+		return 0
+	}
+
+	commonPool := a6.Server.GetTeam(a6.GetID()).GetCommonPool()
+	aoa := a6.Server.GetTeam(a6.GetID()).TeamAoA
+	aoaExpectedWithdrawal := aoa.GetExpectedWithdrawal(a6.GetID(), a6.GetTrueScore(), commonPool)
+
+	withdrawalChoice := -1
+	if a6.Selfishness < 0.5 {
+		// If the agent is relatively selfless (low selfishness)
+		// Withdraw less than the maximum allowed
+		withdrawalChoice = int(math.Floor(float64(aoaExpectedWithdrawal) * (1 - a6.Selfishness)))
+	} else {
+		// If the agent is relatively selfish (high selfishness)
+		// Withdraw more, mapped between AoA and maximum allowed
+		withdrawalChoice = int(math.Ceil(float64(aoaExpectedWithdrawal) + a6.Selfishness*float64(commonPool-aoaExpectedWithdrawal)))
+	}
+	return withdrawalChoice
+
+}
+
+func (a6 *Team6Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
+	if !a6.HasTeam() {
+		return 0
+	}
+
+	// Always state the expected withdrawal (even if cheating)
+	team := a6.Server.GetTeam(a6.GetID())
+	aoa := team.TeamAoA
+	aoaExpectedWithdrawal := aoa.GetExpectedWithdrawal(a6.GetID(), a6.GetTrueScore(), team.GetCommonPool())
+	return aoaExpectedWithdrawal
+}
+
+func (a6 *Team6Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
+	a6.ExtendedAgent.HandleWithdrawalMessage(msg)
+	a6.ExpectedCommonPool -= msg.StatedAmount
+}
+
+func (a6 *Team6Agent) GetWithdrawalAuditVote() common.Vote {
+	// End of turn, update greed + selfishness
+	a6.UpdateSelfishness()
+	a6.UpdateGreed()
+
+	// Get list of uuids in our team
+	var agentsInTeam []uuid.UUID = a6.Server.GetAgentsInTeam(a6.TeamID)
+	actualPoolSize := a6.Server.GetTeamCommonPool(a6.TeamID)
+
+	// if actual pool size is less than expected
+	if actualPoolSize < a6.ExpectedCommonPool {
+		// someone lied - trust in rest of team decreases
+		for _, agentID := range agentsInTeam {
+			a6.UpdateAgentTrust(agentID, -0.02)
+		}
+
+		// Vote for least trusted team member (with trust below default 0.5)
+		var votedAgent uuid.UUID
+		lowestTrust := 0.5
+
+		for _, agentID := range agentsInTeam {
+			if a6.AgentTrust[agentID] <= lowestTrust {
+				lowestTrust = a6.AgentTrust[agentID]
+				votedAgent = agentID
+			}
+		}
+		a6.ExpectedCommonPool = actualPoolSize
+		return common.CreateVote(1, a6.GetID(), votedAgent)
+
+	}
+
+	// if actual pool size is equal or greater than expected
+	// increase trust in rest of team
+	for _, agentID := range agentsInTeam {
+		a6.UpdateAgentTrust(agentID, 0.01)
+	}
+
+	a6.ExpectedCommonPool = actualPoolSize
+	return common.CreateVote(0, a6.GetID(), uuid.Nil)
+}
+
+func (a6 *Team6Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessage) {
 	// Already in a team - reject invitation
-	if mi.TeamID != (uuid.UUID{}) {
+	if a6.HasTeam() {
 		return
 	}
 
 	sender := msg.GetSender()
 
-	if _, ok := mi.TeamTrust[sender]; !ok {
-		mi.TeamTrust[sender] = 0.5
+	if _, ok := a6.AgentTrust[sender]; !ok {
+		a6.AgentTrust[sender] = 0.5
 	}
 
-	senderTrustValue := mi.TeamTrust[sender]
+	senderTrustValue := a6.AgentTrust[sender]
 	if senderTrustValue >= 0.5 {
 		// Handle team creation/joining based on sender's team status
 		sender := msg.GetSender()
-		if mi.Server.CheckAgentAlreadyInTeam(sender) {
-			existingTeamID := mi.Server.AccessAgentByID(sender).GetTeamID()
-			mi.joinExistingTeam(existingTeamID)
+		if a6.Server.CheckAgentAlreadyInTeam(sender) {
+			existingTeamID := a6.Server.AccessAgentByID(sender).GetTeamID()
+			a6.joinExistingTeam(existingTeamID)
 		} else {
-			mi.createNewTeam(sender)
+			a6.createNewTeam(sender)
 		}
 	}
-}
 
-func (mi *Team6_Agent) HandleWithdrawalMessage(msg *common.WithdrawalMessage) {
-	mi.ExpectedTeamPool -= msg.StatedAmount
-}
-
-func (mi *Team6_Agent) HandleContributionMessage(msg *common.ContributionMessage) {
-	mi.ExpectedTeamPool += msg.StatedAmount
-}
-
-func (mi *Team6_Agent) HandleAgentOpinionResponseMessage(msg *common.AgentOpinionResponseMessage) {
-
+	// reset game state - joined new team
+	a6.ExpectedCommonPool = 0
+	a6.AgentTurnScore = 0
+	a6.WithdrawalAuditCount = 0
+	a6.WithdrawalSucessfulCount = 0
 }
