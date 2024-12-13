@@ -35,32 +35,37 @@ func Team6_CreateAgent(funcs agent.IExposedServerFunctions[common.IExtendedAgent
 	}
 
 	team6.TrueSomasTeamID = 6
+	team6.AoARanking = []int{6, 1, 2, 5, 4, 3}
 	return team6
 }
 
 func (mi *Team6_Agent) SetAgentContributionAuditResult(agentID uuid.UUID, result bool) {
 	if result {
-		mi.TeamTrust[agentID] -= 0.1
+		mi.UpdateTeamMemberTrust(agentID, -0.2)
 	}
 }
 
 func (mi *Team6_Agent) SetAgentWithdrawalAuditResult(agentID uuid.UUID, result bool) {
 	if result {
-		mi.TeamTrust[agentID] -= 0.3
+		mi.UpdateTeamMemberTrust(agentID, -0.3)
 	}
 }
 
-// Set trust for a specific team member
-func (mi *Team6_Agent) SetTeamMemberTrust(agentID uuid.UUID, trust float64) {
-	if _, exists := mi.TeamTrust[agentID]; exists {
-		mi.TeamTrust[agentID] = trust
+func (mi *Team6_Agent) UpdateTeamMemberTrust(agentID uuid.UUID, trustChange float64) {
+	// If agent doesn't exist, initialize with 0.5 trust
+	if _, exists := mi.TeamTrust[agentID]; !exists {
+		mi.TeamTrust[agentID] = 0.5
 	}
-}
 
-// Get trust for a specific team member
-func (mi *Team6_Agent) GetTeamMemberTrust(agentID uuid.UUID) (float64, bool) {
-	trust, exists := mi.TeamTrust[agentID]
-	return trust, exists
+	// Update trust value
+	mi.TeamTrust[agentID] += trustChange
+
+	// Clamp trust value between 0 and 1
+	if mi.TeamTrust[agentID] < 0 {
+		mi.TeamTrust[agentID] = 0
+	} else if mi.TeamTrust[agentID] > 1 {
+		mi.TeamTrust[agentID] = 1
+	}
 }
 
 func (mi *Team6_Agent) GetTurnScore() int {
@@ -277,7 +282,7 @@ func (mi *Team6_Agent) HandleTeamFormationMessage(msg *common.TeamFormationMessa
 	}
 
 	senderTrustValue := mi.TeamTrust[sender]
-	if senderTrustValue > 0.5 {
+	if senderTrustValue >= 0.5 {
 		// Handle team creation/joining based on sender's team status
 		sender := msg.GetSender()
 		if mi.Server.CheckAgentAlreadyInTeam(sender) {
