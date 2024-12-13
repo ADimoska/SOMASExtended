@@ -1,6 +1,8 @@
 package common
 
 import (
+	"log"
+	"slices"
 	"time"
 
 	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
@@ -20,10 +22,11 @@ type Team6AoA struct {
 	decay  float64 // Decay rate for cumulative contributions
 
 	cumulativeContributions map[uuid.UUID]float64           // Cumulative contributions with decay
-	currentContributions    map[uuid.UUID]float64           // Current turn contributions
+	currentContributions    map[uuid.UUID]int               // Current turn contributions
 	auditHistory            map[uuid.UUID][]*CheatingRecord // Audit history per agent
-	agentsToMonitor         map[uuid.UUID]int64             // Monitoring tracking
+	agentsToMonitor         map[uuid.UUID]int               // Monitoring tracking
 
+	turnCommonPool int
 }
 
 func CreateTeam6AoA() IArticlesOfAssociation {
@@ -32,9 +35,11 @@ func CreateTeam6AoA() IArticlesOfAssociation {
 		decay:  float64(0.9), // Decay rate for cumulative contributions
 
 		cumulativeContributions: make(map[uuid.UUID]float64),
-		currentContributions:    make(map[uuid.UUID]float64),           // Current turn contributions
-		auditHistory:            make(map[uuid.UUID][]*CheatingRecord), // Audit history per agent
-		agentsToMonitor:         make(map[uuid.UUID]int64),
+		currentContributions:    make(map[uuid.UUID]int), // Current turn contributions
+		turnCommonPool:          0,
+
+		auditHistory:    make(map[uuid.UUID][]*CheatingRecord), // Audit history per agent
+		agentsToMonitor: make(map[uuid.UUID]int),
 	}
 }
 
@@ -81,9 +86,10 @@ func (t *Team6AoA) GetExpectedContribution(agentId uuid.UUID, agentScore int) in
 
 func (t *Team6AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, commonPool int) int {
 	auditCost := t.GetAuditCost((commonPool))
-	numAgentsInTeam := len(t.auditHistory)
+	numAgentsInTeam := len(t.currentContributions)
+
 	// this should be ok, bc contribution happens before withdrawl, so audithist shld be filled the 1st time this fn is called
-	baseWithdraw := int((commonPool - auditCost) / numAgentsInTeam)
+	baseWithdraw := int((t.turnCommonPool - auditCost) / numAgentsInTeam)
 
 	monitStage, monitExists := t.agentsToMonitor[agentId]
 
@@ -97,12 +103,13 @@ func (t *Team6AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 			withdraw = int(float64(baseWithdraw) * 0)
 		}
 	}
+	// log.Printf("Agent %v expected withdraw: %v, numAgentsInTeam: %v, pool total: %v\n", agentId, withdraw, numAgentsInTeam, commonPool)
 	return withdraw
 }
 
 func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, actualContribution int, agentStatedContribution int) {
 	// Store current contribution
-	t.currentContributions[agentId] = float64(actualContribution)
+	t.currentContributions[agentId] = actualContribution
 
 	// Update cumulative contributions with decay
 	oldCumulative := t.cumulativeContributions[agentId]
@@ -128,9 +135,6 @@ func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 
 func (t *Team6AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
 
-	// auditCost := t.GetAuditCost((commonPool))
-	// numAgentsInTeam := len(t.auditHistory)
-	// expectedWithdrawl := int((commonPool - auditCost) / numAgentsInTeam)
 	expectedWithdrawl := t.GetExpectedWithdrawal(agentId, agentScore, commonPool)
 	// Check for cheating
 	if agentActualWithdrawal > expectedWithdrawl {
@@ -213,6 +217,7 @@ func (t *Team6AoA) RunContributionMonitoring() {
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %s caught in stage 1", monitAgent.String())
 					}
 
 				} else if monitStage == 2 {
@@ -233,6 +238,7 @@ func (t *Team6AoA) RunContributionMonitoring() {
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %s caught in stage 2", monitAgent.String())
 					}
 
 				} else if monitStage >= 3 {
@@ -250,6 +256,7 @@ func (t *Team6AoA) RunContributionMonitoring() {
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %s caught in stage 3", monitAgent.String())
 					}
 				}
 			}
@@ -335,6 +342,7 @@ func (t *Team6AoA) RunWithdrawalMonitoring() {
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %s caught in stage 1", monitAgent.String())
 					}
 
 				} else if monitStage == 2 {
@@ -352,6 +360,7 @@ func (t *Team6AoA) RunWithdrawalMonitoring() {
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %s caught in stage 2", monitAgent.String())
 					}
 
 				} else if monitStage >= 3 {
@@ -369,6 +378,7 @@ func (t *Team6AoA) RunWithdrawalMonitoring() {
 					} else {
 						// agent gets caught
 						t.agentsToMonitor[monitAgent] += 1
+						log.Printf("Agent %s caught in stage 3", monitAgent.String())
 					}
 				}
 			}
@@ -424,7 +434,7 @@ func (t *Team6AoA) CalculateVotingPower() map[uuid.UUID]float64 {
 	for agentID, current := range t.currentContributions {
 		cumulative := t.cumulativeContributions[agentID]
 		// Apply weighting of current vs. cumulative
-		weighted := (t.weight * current) + ((1 - t.weight) * cumulative)
+		weighted := (t.weight * float64(current)) + ((1 - t.weight) * cumulative)
 		weightedContributions[agentID] = weighted
 		totalWeighted += weighted
 	}
@@ -464,7 +474,7 @@ func (t *Team6AoA) GetPunishment(agentScore int, agentID uuid.UUID) int { // Pun
 
 	deduction := minDeduction + (float64(cheatingCount)/float64(numberOfTurns))*(maxDeduction-minDeduction)
 
-	if deduction > minDeduction {
+	if deduction > maxDeduction {
 		deduction = maxDeduction
 	}
 
@@ -492,16 +502,32 @@ func (t *Team6AoA) GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID {
 	return shuffledAgents
 }
 
+func (t *Team6AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+	t.turnCommonPool = team.GetCommonPool()
+
+	agentIDsInTeam := team.Agents // list of agent IDs currently in team
+
+	// remove any agents that are no longer in the team
+	for agentID := range t.currentContributions {
+		if !slices.Contains(agentIDsInTeam, agentID) {
+			delete(t.currentContributions, agentID)
+		}
+	}
+
+	for agentID := range t.agentsToMonitor {
+		if !slices.Contains(agentIDsInTeam, agentID) {
+			delete(t.agentsToMonitor, agentID)
+		}
+	}
+
+	for agentID := range t.cumulativeContributions {
+		if !slices.Contains(agentIDsInTeam, agentID) {
+			delete(t.cumulativeContributions, agentID)
+		}
+	}
+}
+
 // --------------------------------------------------------------------------------------------------------------- //
-
-// not needed, dw abt it, here to fix error complaints
-func (f *Team6AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
-	return make(map[uuid.UUID]int)
-}
-
-// not needed, dw abt it, here to fix error complaints
-func (t *Team6AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
-}
 
 // not needed, dw abt it, here to fix error complaints
 func (t *Team6AoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
@@ -517,5 +543,10 @@ func (t *Team6AoA) Team4_SetRankUp(rankUpVoteMap map[uuid.UUID]map[uuid.UUID]int
 }
 
 // not needed, dw abt it, here to fix error complaints
-func (t *Team6AoA) RunPostContributionAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {
+func (f *Team6AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingResources int) map[uuid.UUID]int {
+	return make(map[uuid.UUID]int)
+}
+
+// not needed, dw abt it, here to fix error complaints
+func (t *Team6AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
 }
