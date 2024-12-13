@@ -201,9 +201,9 @@ func (a1 *Team1Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 	}
 }
 
-func (a *Team1Agent) GetAoARanking() []int {
-	return []int{1, 2, 5}
-}
+// func (a *Team1Agent) GetAoARanking() []int {
+// 	return []int{1, 2, 5}
+// }
 
 func (a1 *Team1Agent) hasClimbedRankAndWithdrawn() bool {
 	if a1.HasTeam() {

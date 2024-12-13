@@ -52,7 +52,7 @@ type AgentConfig struct {
 }
 
 func GetBaseAgents(funcs agent.IExposedServerFunctions[common.IExtendedAgent], configParam AgentConfig) *ExtendedAgent {
-	aoaRanking := []int{1, 2, 3, 4, 5, 6}
+	aoaRanking := []int{4, 4, 4, 4}
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
@@ -566,6 +566,7 @@ func (mi *ExtendedAgent) HasTeam() bool {
 // In RunStartOfIteration, the server loops through each agent in each team
 // and sets the teams AoA by majority vote from the agents in that team.
 func (mi *ExtendedAgent) SetAoARanking(Preferences []int) {
+
 	mi.AoARanking = Preferences
 }
 

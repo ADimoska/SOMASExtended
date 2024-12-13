@@ -17,4 +17,5 @@ type TeamRecord struct {
 	AgentsAlive    []uuid.UUID
 	AgentsDead     []uuid.UUID
 	TeamSize       int
+	TeamAoA        int
 }

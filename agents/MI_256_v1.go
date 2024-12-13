@@ -828,13 +828,13 @@ func (mi *MI_256_v1) Team4_GetProposedWithdrawalVote() map[uuid.UUID]int {
 
 // ---------------------------------------------------------------
 func (mi *MI_256_v1) RandomizeCharacter() {
-	mi.chaoticness = rand.Intn(3) + 1
+	mi.chaoticness = rand.Intn(1) + 3
 
 	mi.evilness = rand.Intn(3) + 1
 	mi.haveIlied = false
 	mi.Initialize_opninions()
-	mi.AoARanking = []int{4, 1, 2, 3, 4, 5}
-	mi.SetAoARanking(mi.AoARanking)
+	// mi.AoARanking = []int{4, 1, 2, 3, 4, 5}
+	// mi.SetAoARanking(mi.AoARanking)
 }
 
 // ----------- functions that update character opinions ---------------------------------

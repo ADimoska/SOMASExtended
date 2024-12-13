@@ -424,10 +424,8 @@ func (cs *EnvironmentServer) RunStartOfIteration(iteration int) {
 	cs.ResetAgents()
 
 	// start team forming
-	teamSize := 5
+	teamSize := 4
 	cs.StartAgentTeamForming(teamSize)
-
-	time.Sleep(10 * time.Second)
 	// take votes at team level and allocate Strategy.
 	cs.allocateAoAs()
 
@@ -993,6 +991,7 @@ func (cs *EnvironmentServer) RecordTurnInfo() {
 		newTeamRecord.IterationNumber = cs.iteration
 		newTeamRecord.TeamCommonPool = team.GetCommonPool()
 		newTeamRecord.TeamSize = len(team.Agents)
+		newTeamRecord.TeamAoA = team.TeamAoAID
 		teamRecords = append(teamRecords, newTeamRecord)
 	}
 
