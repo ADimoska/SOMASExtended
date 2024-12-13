@@ -774,6 +774,11 @@ func ExportToCSV(recorder *ServerDataRecorder, outputDir string) error {
 		return fmt.Errorf("failed to export common records: %v", err)
 	}
 
+	// Export Team1 Rank Records
+	if err := exportStructSliceToCSV(recorder.Turnteam1Rank, filepath.Join(outputDir, "team1Rank_records.csv")); err != nil {
+		return fmt.Errorf("failed to export common records: %v", err)
+	}
+
 	return nil
 }
 
