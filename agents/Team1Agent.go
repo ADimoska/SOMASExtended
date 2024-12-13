@@ -185,10 +185,10 @@ func (a1 *Team1Agent) GetStatedContribution(instance common.IExtendedAgent) int 
 		// Overstate the contribution (hardcoded high values - can change later)
 		//Cheat amount computed from difference between sum of leaky queue and current rank boundary
 		agentTeam := a1.Server.GetTeam(a1.GetID())
-		teamAoA, ok := agentTeam.TeamAoA.(*common.Team1AoA)
+		teamAoA := agentTeam.TeamAoA.(*common.Team1AoA)
 		agentRank := teamAoA.GetAgentRank(a1.GetID())
-		targetRankBoundary := teamAoA.GetRankBoundaries(agentTeam)[agentRank]
-		cheat_amount := targetRankBoundary - teamAoA.GetLeakyQueueSum(a1.GetID(), agentTeam)
+		targetRankBoundary := teamAoA.GetRankBoundaries()[agentRank]
+		cheat_amount := targetRankBoundary - teamAoA.GetLeakyQueueSum(a1.GetID())
 
 		statedContribution := actualContribution + cheat_amount
 

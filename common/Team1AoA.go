@@ -40,12 +40,12 @@ func NewLeakyQueue(capacity int) *LeakyQueue {
 }
 
 // Return LeakyQueue Sum for given agent in team
-func GetLeakyQueueSum(agentId uuid.UUID, team *Team1AoA) int {
+func (team *Team1AoA) GetLeakyQueueSum(agentId uuid.UUID) int {
 	return team.agentLQueue[agentId].Sum()
 }
 
 // return rank boundaries for given team
-func GetRankBoundaries(team *Team1AoA) [5]int {
+func (team *Team1AoA) GetRankBoundaries() [5]int {
 	return team.rankBoundary
 }
 
