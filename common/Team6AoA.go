@@ -3,6 +3,7 @@ package common
 import (
 	"time"
 
+	gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 	"github.com/google/uuid"
 	"golang.org/x/exp/rand"
 	"gonum.org/v1/gonum/stat/distuv"
@@ -500,7 +501,8 @@ func (f *Team6AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingRe
 }
 
 // not needed, dw abt it, here to fix error complaints
-func (t *Team6AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent) {}
+func (t *Team6AoA) RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder) {
+}
 
 // not needed, dw abt it, here to fix error complaints
 func (t *Team6AoA) Team4_HandlePunishmentVote(map[uuid.UUID]map[int]int) int {
