@@ -453,11 +453,15 @@ func (f *Team1AoA) ResourceAllocation(agentScores map[uuid.UUID]int, remainingRe
 
 func (t *Team1AoA) GetPunishment(agentScore int, agentId uuid.UUID) int {
 	// return (agentScore * 25) / 100
-	rank := t.GetAgentRank(agentId)
-	// add 1 to offenceMap
-	// t.offenceMap[agentId]++
-	t.ranking[agentId] = 0
-	return (agentScore * (rank + 1) * 10) / 100
+	if _, exists := t.ranking[agentId]; exists {
+		rank := t.GetAgentRank(agentId)
+		// add 1 to offenceMap
+		// t.offenceMap[agentId]++
+		t.ranking[agentId] = 0
+		return (agentScore * (rank + 1) * 10) / 100
+	}	else {
+		return 0
+	}
 }
 
 func (t *Team1AoA) GetNumberOfOffences(agentId uuid.UUID) int {
