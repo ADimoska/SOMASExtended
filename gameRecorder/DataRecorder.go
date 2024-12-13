@@ -1,6 +1,7 @@
 package gameRecorder
 
 import (
+	"github.com/google/uuid"
 	"log"
 	"sort"
 )
@@ -32,6 +33,7 @@ type ServerDataRecorder struct {
 
 	currentIteration int
 	currentTurn      int
+	Turnteam1Rank    []Team1RankRecord
 }
 
 func (sdr *ServerDataRecorder) GetCurrentTurnRecord() *TurnRecord {
@@ -52,6 +54,10 @@ func (sdr *ServerDataRecorder) RecordNewIteration() {
 
 	// create new turn record
 	sdr.TurnRecords = append(sdr.TurnRecords, NewTurnRecord(sdr.currentTurn, sdr.currentIteration))
+}
+
+func (sdr *ServerDataRecorder) RecordTeam1RankBoundaries(TeamID uuid.UUID, boundaries [5]int) {
+	sdr.Turnteam1Rank = append(sdr.Turnteam1Rank, NewTeam1RankRecord(sdr.currentTurn, sdr.currentIteration, TeamID, boundaries))
 }
 
 func (sdr *ServerDataRecorder) RecordNewTurn(agentRecords []AgentRecord, teamRecords []TeamRecord, commonRecord CommonRecord) {

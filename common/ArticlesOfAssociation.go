@@ -1,6 +1,7 @@
 package common
 
 import "github.com/google/uuid"
+import gameRecorder "github.com/ADimoska/SOMASExtended/gameRecorder"
 
 type Vote struct {
 	IsVote        int
@@ -19,7 +20,7 @@ type IArticlesOfAssociation interface {
 	GetWithdrawalAuditResult(agentId uuid.UUID) bool
 	SetContributionAuditResult(agentId uuid.UUID, agentScore int, agentActualContribution int, agentStatedContribution int)
 	GetWithdrawalOrder(agentIDs []uuid.UUID) []uuid.UUID
-	RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent)
+	RunPreIterationAoaLogic(team *Team, agentMap map[uuid.UUID]IExtendedAgent, dataRecorder *gameRecorder.ServerDataRecorder)
 	GetPunishment(agentScore int, agentId uuid.UUID) int
 
 	// Team 4 AoA Specific Functions

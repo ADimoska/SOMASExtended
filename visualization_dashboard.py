@@ -27,6 +27,7 @@ def load_data():
         "agent_records": pd.read_csv(f"{base_path}/agent_records.csv"),
         "common_records": pd.read_csv(f"{base_path}/common_records.csv"),
         "team_records": pd.read_csv(f"{base_path}/team_records.csv"),
+        "team1_boundaries": pd.read_csv(f"{base_path}/team1Rank_records.csv"),
     }
 
     # Create a hash of the current data
@@ -59,6 +60,17 @@ team_filter = dcc.Dropdown(
         for i in data["agent_records"]["TrueSomasTeamID"].unique()
     ],
     value=1,  # Default to Team 1
+    clearable=False
+)
+
+team_boundaries_filter = dcc.Dropdown(
+    id="team-boundaries-filter",
+    options=[
+        {"label": tid[:8], "value": tid}
+        for tid in data["team1_boundaries"]["TeamID"].unique()
+        if tid != "00000000-0000-0000-0000-000000000000"
+    ],
+    value=data["team1_boundaries"]["TeamID"].unique()[1],  # Select a default non-empty team ID
     clearable=False
 )
 
@@ -131,7 +143,14 @@ app.layout = html.Div(
             html.H3("Agent Contributions"),
             team_filter,
             dcc.Graph(id="contribution-plot")
-        ])
+        ]),
+
+                # Add this section for boundaries:
+        html.Div([
+            html.H3("Team Boundaries"),
+            team_boundaries_filter,
+            dcc.Graph(id="boundaries-plot"),
+        ], className="graph-section"),
     ]
 )
 
@@ -753,6 +772,52 @@ def update_contribution_plot(iteration, team):
     )
 
     return fig
+
+@app.callback(
+    Output("boundaries-plot", "figure"),
+    [Input("iteration-filter", "value"),
+     Input("team-boundaries-filter", "value"),
+     Input("interval-component", "n_intervals")]
+)
+def update_boundaries_plot(iteration, team_id, n_intervals):
+    data = load_data()
+    boundaries_data = data["team1_boundaries"]
+    
+    # Filter data for the selected iteration and team_id
+    filtered = boundaries_data[
+        # (boundaries_data["IterationNumber"] == iteration) &
+        (boundaries_data["TeamID"] == team_id)
+    ]
+    
+    fig = go.Figure()
+    
+    # Identify boundary columns
+    boundary_columns = [col for col in filtered.columns if col.startswith("Boundaries")]
+    
+    # Plot each boundary line
+    for col in boundary_columns:
+        fig.add_trace(
+            go.Scatter(
+                x=filtered["TurnNumber"],
+                y=filtered[col],
+                name=col,
+                mode="lines+markers"
+            )
+        )
+    
+    fig.update_layout(
+        title=f"Rank Boundaries for {team_id[:8]} - Iteration {iteration}",
+        xaxis_title="Turn Number",
+        yaxis_title="Rank Boundary",
+        hovermode="x unified",
+        showlegend=True,
+        height=PLOT_HEIGHT,
+        width=PLOT_WIDTH,
+        margin=dict(t=150, r=150, b=50, l=50)
+    )
+    
+    return fig
+
 
 # Note: Don't forget to add corresponding div in the layout:
 # html.Div([
