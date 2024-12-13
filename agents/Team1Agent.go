@@ -386,10 +386,6 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 }
 
 func (a1 *Team1Agent) GetWithdrawalAuditVote() common.Vote {
-	// Short-term cheater never votes for audits
-	// if a1.agentType == CheatShortTerm {
-	// 	return common.CreateVote(-1, a1.GetID(), uuid.Nil) // No audit
-	// }
 
 	// Rational agent logic
 	if a1.agentType == Rational || (a1.agentType == CheatLongTerm && !a1.hasClimbedRankAndWithdrawn()) {
