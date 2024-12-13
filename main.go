@@ -45,7 +45,7 @@ func main() {
 	// agent configuration
 	agentConfig := agents.AgentConfig{
 		InitScore:    0,
-		VerboseLevel: 10,
+		VerboseLevel: 2,
 	}
 
 	argExposeThresholds := flag.Bool("exposeThresholds", false, "Expose the thresholds to the agents")
@@ -70,8 +70,9 @@ func main() {
 
 	agentPopulation := []common.IExtendedAgent{}
 	for i := 0; i < numAgents; i++ {
-		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
 		agentPopulation = append(agentPopulation, agents.Team2_CreateAgent(serv, agentConfig))
+		agentPopulation = append(agentPopulation, agents.Team4_CreateAgent(serv, agentConfig))
+		agentPopulation = append(agentPopulation, agents.Team6_CreateAgent(serv, agentConfig))
 		// agentPopulation = append(agentPopulation, agents.GetBaseAgents(serv, agentConfig))
 		// Add other teams' agents here
 	}
