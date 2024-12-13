@@ -55,7 +55,7 @@ func main() {
 		// note: the zero turn is used for team forming
 		BaseServer: baseServer.CreateBaseServer[common.IExtendedAgent](
 			3,                   //  iterations
-			100,                 //  turns per iteration
+			120,                 //  turns per iteration
 			50*time.Millisecond, //  max duration
 			10),                 //  message bandwidth
 		Teams: make(map[uuid.UUID]*common.Team),
@@ -76,19 +76,21 @@ func main() {
 		// Add other teams' agents here
 	}
 
-	for i := 0; i < numAgents-2; i++ {
+	for i := 0; i < numAgents-4; i++ {
 		// Add mostly honest agents
 		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig, agents.Rational))
 	}
 
 	// Add a short term and long term cheater agent from team 1
-	team1ShortTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatShortTerm)
-	log.Printf("Team1 %v is of type CheatShortTerm", team1ShortTermCheater.GetID())
-	agentPopulation = append(agentPopulation, team1ShortTermCheater)
+	for i := 0; i < 2; i++ {
+		team1ShortTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatShortTerm)
+		log.Printf("Team1 %v is of type CheatShortTerm", team1ShortTermCheater.GetID())
+		agentPopulation = append(agentPopulation, team1ShortTermCheater)
 
-	team1LongTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatLongTerm)
-	log.Printf("Team1 %v is of type CheatLongTerm", team1LongTermCheater.GetID())
-	agentPopulation = append(agentPopulation, team1LongTermCheater)
+		team1LongTermCheater := agents.Create_Team1Agent(serv, agentConfig, agents.CheatLongTerm)
+		log.Printf("Team1 %v is of type CheatLongTerm", team1LongTermCheater.GetID())
+		agentPopulation = append(agentPopulation, team1LongTermCheater)
+	}
 
 	for i, agent := range agentPopulation {
 		agent.SetName(i)

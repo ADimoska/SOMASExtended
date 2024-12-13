@@ -202,7 +202,7 @@ func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int 
 			return actualContribution
 		}
 	} else {
-		log.Println("Agent does not have a team")
+		// log.Println("Agent does not have a team")
 		return 0
 	}
 }
@@ -254,7 +254,7 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 		}
 		return decision
 	} else {
-		log.Println("Agent does not have a team")
+		// log.Println("Agent does not have a team")
 		return 0
 	}
 }
@@ -277,6 +277,7 @@ func (a1 *Team1Agent) GetStatedContribution(instance common.IExtendedAgent) int 
 		default:
 			return actualContribution
 		}
+
 	} else {
 		return 0
 	}
@@ -314,7 +315,7 @@ func (a1 *Team1Agent) hasClimbedRankAndWithdrawn() bool {
 		memoryEntry := a1.memory[a1.GetID()]
 		return currentRank > 1 && len(memoryEntry.historyWithdrawal) > 0
 	} else {
-		log.Println("Agent does not have a team")
+		// log.Println("Agent does not have a team")
 		return false
 	}
 }
@@ -329,8 +330,30 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 		return common.CreateVote(-1, a1.GetID(), uuid.Nil) // No audit - doesn't want to get caught
 	}
 
-	// Rationalagent logic
+	if a1.agentType == Rational {
+		team := a1.Server.GetTeam(a1.GetID())
+		agentsInTeam := team.Agents
+		minHonestyScore := 0
+		agentToAudit := uuid.Nil
+		for _, agentID := range agentsInTeam {
+			if agentMemory, exists := a1.memory[agentID]; exists {
+				currHonestyScore := agentMemory.honestyScore.Sum()
+				if currHonestyScore < 0 && currHonestyScore < minHonestyScore {
+					minHonestyScore = currHonestyScore
+					agentToAudit = agentID
+				}
+			}
+		}
+
+		if minHonestyScore < 0 && agentToAudit != uuid.Nil {
+			return common.CreateVote(1, a1.GetID(), agentToAudit)
+		}
+
+	}
+
+	// Rational agent logic
 	if a1.agentType == Rational || (a1.agentType == CheatLongTerm && !a1.hasClimbedRankAndWithdrawn()) {
+
 		var suspectID uuid.UUID
 		highestStatedContribution := 0
 
@@ -364,14 +387,35 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 
 func (a1 *Team1Agent) GetWithdrawalAuditVote() common.Vote {
 	// Short-term cheater never votes for audits
-	if a1.agentType == CheatShortTerm {
-		return common.CreateVote(-1, a1.GetID(), uuid.Nil) // No audit
-	}
+	// if a1.agentType == CheatShortTerm {
+	// 	return common.CreateVote(-1, a1.GetID(), uuid.Nil) // No audit
+	// }
 
 	// Rational agent logic
 	if a1.agentType == Rational || (a1.agentType == CheatLongTerm && !a1.hasClimbedRankAndWithdrawn()) {
 		var suspectID uuid.UUID
 		highestDiscrepancy := 0
+
+		if a1.agentType == Rational {
+			team := a1.Server.GetTeam(a1.GetID())
+			agentsInTeam := team.Agents
+			minHonestyScore := 0
+			agentToAudit := uuid.Nil
+			for _, agentID := range agentsInTeam {
+				if agentMemory, exists := a1.memory[agentID]; exists {
+					currHonestyScore := agentMemory.honestyScore.Sum()
+					if currHonestyScore < 0 && currHonestyScore < minHonestyScore {
+						minHonestyScore = currHonestyScore
+						agentToAudit = agentID
+					}
+				}
+			}
+
+			if minHonestyScore < 0 && agentToAudit != uuid.Nil {
+				return common.CreateVote(1, a1.GetID(), agentToAudit)
+			}
+
+		}
 
 		// Iterate over memory to find the agent with the largest discrepancy
 		for agentID, memoryEntry := range a1.memory {
