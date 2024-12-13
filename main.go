@@ -78,7 +78,7 @@ func main() {
 
 	for i := 0; i < numAgents-4; i++ {
 		// Add mostly honest agents
-		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig, agents.Honest))
+		agentPopulation = append(agentPopulation, agents.Create_Team1Agent(serv, agentConfig, agents.Rational))
 	}
 
 	// Add a short term and long term cheater agent from team 1

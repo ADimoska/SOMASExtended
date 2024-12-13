@@ -3,7 +3,6 @@ package agents
 import (
 	// "fmt"
 	"log"
-	"math"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -50,9 +49,9 @@ type AgentType int
 const (
 	// iota automatically increments the value by 1 for each constant, starting from 0.
 
-	// Honest (Value: 0): Agents who always state what they actually contributed.
+	// Rational(Value: 0): Agents who always state what they actually contributed.
 	// Withdraw as per their expected withdrawal.
-	Honest AgentType = iota
+	Rational = iota
 
 	// CheatLongTerm (Value: 1): Agents who always contribute honestly. After
 	// rising in rank, they start withdrawing more than allowed.
@@ -118,22 +117,89 @@ func getExpectedGain(accumulatedScore, prevRoll int) float64 {
 	return eGain + eLoss
 }
 
+func (a1 *Team1Agent) AmountToNextRank() int {
+	teamAoA, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
+	if !ok {
+		// If unable to access Team1AoA, just return 0 - this shouldn't happen
+		return 0
+	}
+
+	currentRank := teamAoA.GetAgentRank(a1.GetID())
+	thresholds := teamAoA.GetRankThresholds()
+
+	// Check if the agent is already at the highest rank
+	if currentRank+1 >= len(thresholds) {
+		// Already at the highest rank, no "next rank" exists
+		return 0
+	}
+
+	// Calculate the amount to the next rank
+	amountToNextRank := thresholds[currentRank+1] - a1.Score
+	return max(amountToNextRank, 0)
+}
+
+func (a1 *Team1Agent) GetLatestStatedContributions() int {
+	// Fetch the memory for this agent using its ID
+	agentMemory, exists := a1.memory[a1.GetID()]
+	if !exists {
+		return 0 // No memory found for this agent
+	}
+
+	// Restrict to relevant contributions based on LastContributionCount
+	relevantContributions := agentMemory.historyContribution[:agentMemory.LastContributionCount]
+
+	// Handle cases where there are fewer than 5 contributions
+	startIndex := len(relevantContributions) - 5
+	if startIndex < 0 {
+		startIndex = 0
+	}
+
+	// Extract the latest 5 contributions and calculate their sum
+	latestContributions := relevantContributions[startIndex:]
+
+	total := 0
+	for _, contrib := range latestContributions {
+		total += contrib.ContributionStated
+	}
+
+	count := len(latestContributions)
+	if count == 0 {
+		return 0
+	}
+
+	return total / count // Integer division
+}
+
 func (a1 *Team1Agent) GetActualContribution(instance common.IExtendedAgent) int {
 	if a1.HasTeam() {
-		aoaExpectedContribution := a1.Server.GetTeam(a1.GetID()).TeamAoA.GetExpectedContribution(a1.GetID(), a1.Score)
+		actualContribution := 0
+		avg_last_5_contributions := a1.GetLatestStatedContributions()
 		switch a1.agentType {
-		case Honest, CheatLongTerm:
-			// return aoaExpectedContribution
-			return a1.Score
-		case CheatShortTerm:
-			// Contribute less than expected
-			contributedAmount := aoaExpectedContribution - cheat_amount
-			if contributedAmount < 0 {
-				contributedAmount = 0
+		case Rational, CheatLongTerm:
+			//if threshold known - try to rise up a rank, without dying
+			knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
+			if ok {
+				if a1.AmountToNextRank()-(4*avg_last_5_contributions) < (a1.Score - knownThreshold) {
+					actualContribution = a1.AmountToNextRank() - (4 * avg_last_5_contributions)
+				} else if avg_last_5_contributions < (a1.Score - knownThreshold) {
+					//then contribute last n contributions
+					actualContribution = avg_last_5_contributions
+				} else {
+					actualContribution = a1.Score
+				}
+			} else {
+				//if threshold unknown - contribute max(check difference to next rank, 30% of savings)
+				actualContribution = int(max(float64(a1.AmountToNextRank()-(4*avg_last_5_contributions)), (0.3 * float64(a1.Score))))
+				if actualContribution > a1.Score {
+					actualContribution = a1.Score
+				}
 			}
-			return contributedAmount
+			return actualContribution
+		case CheatShortTerm:
+			// Doesn't Contribute anything
+			return 0
 		default:
-			return aoaExpectedContribution
+			return actualContribution
 		}
 	} else {
 		// log.Println("Agent does not have a team")
@@ -147,16 +213,10 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 		aoaExpectedWithdrawal := a1.Server.GetTeam(a1.GetID()).TeamAoA.GetExpectedWithdrawal(a1.GetID(), a1.Score, commonPool)
 		currentRank := 0
 
-		/* If the threshold is known (this only occurs in some games), then just
-		   withdraw the minimum you need to survive. */
-		knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
-		if ok {
-			return int(math.Max(float64(knownThreshold)-float64(a1.Score), 0.0))
-		}
-
+		decision := 0
 		switch a1.agentType {
-		case Honest:
-			return aoaExpectedWithdrawal
+		case Rational:
+			decision = aoaExpectedWithdrawal
 		case CheatLongTerm:
 			// Perform type assertion to get Team1AoA
 			teamAoA, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
@@ -168,21 +228,31 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 					if withdrawalAmount > commonPool {
 						withdrawalAmount = aoaExpectedWithdrawal //doesn't take whole pool to avoid getting caught
 					}
-					return withdrawalAmount
+					decision = withdrawalAmount
+				} else {
+					decision = aoaExpectedWithdrawal
 				}
-				return aoaExpectedWithdrawal
+			} else {
+				decision = aoaExpectedWithdrawal
 			}
-			return aoaExpectedWithdrawal
 		case CheatShortTerm:
 			// Over-withdraw regardless of rank
 			withdrawalAmount := aoaExpectedWithdrawal + cheat_amount
 			if withdrawalAmount > commonPool { //takes whatever is left in pool if withdrawalAmount is too much
 				withdrawalAmount = commonPool
 			}
-			return withdrawalAmount
+			decision = withdrawalAmount
 		default:
-			return aoaExpectedWithdrawal
+			decision = aoaExpectedWithdrawal
 		}
+		/* If the threshold is known (this only occurs in some games), then just
+		   withdraw the minimum you need to survive. */
+		knownThreshold, ok := a1.Server.GetTeam(a1.GetID()).GetKnownThreshold()
+		if ok {
+			survival := int(max(float64(knownThreshold)-float64(a1.Score), 0.0))
+			return int(max(float64(decision), float64(survival)))
+		}
+		return decision
 	} else {
 		// log.Println("Agent does not have a team")
 		return 0
@@ -190,32 +260,39 @@ func (a1 *Team1Agent) GetActualWithdrawal(instance common.IExtendedAgent) int {
 }
 
 func (a1 *Team1Agent) GetStatedContribution(instance common.IExtendedAgent) int {
-	actualContribution := instance.GetActualContribution(instance)
-	switch a1.agentType {
-	case Honest, CheatLongTerm:
-		return actualContribution
-	case CheatShortTerm:
-		// Overstate the contribution (hardcoded high values - can change later)
-		statedContribution := actualContribution + cheat_amount
-		if statedContribution > overstate_contribution {
-			statedContribution = overstate_contribution
+	if a1.HasTeam() {
+		actualContribution := instance.GetActualContribution(instance)
+		switch a1.agentType {
+		case Rational, CheatLongTerm:
+			return actualContribution
+		case CheatShortTerm:
+			_, ok := a1.Server.GetTeam(a1.GetID()).TeamAoA.(*common.Team1AoA)
+			if !ok {
+				// If unable to access Team1AoA, just use actual contribution with some fixed cheating value
+				return actualContribution + overstate_contribution
+			}
+			//State what they would have contributed to climb the next rank (but didn't actually do)
+			statedContribution := a1.AmountToNextRank()
+			return statedContribution
+		default:
+			return actualContribution
 		}
-		return statedContribution + 1000
-	default:
-		return actualContribution
+
+	} else {
+		return 0
 	}
 }
 
 func (a1 *Team1Agent) GetStatedWithdrawal(instance common.IExtendedAgent) int {
 	actualWithdrawal := instance.GetActualWithdrawal(instance)
 	switch a1.agentType {
-	case Honest, CheatLongTerm:
+	case Rational, CheatLongTerm:
 		return actualWithdrawal
 	case CheatShortTerm:
-		// Understate the withdrawal
-		statedWithdrawal := actualWithdrawal - cheat_amount
+		// Understate the withdrawal by fixed amount = 3
+		statedWithdrawal := actualWithdrawal - cheat_amount //TO_CHECK: Are we happy with this?
 		if statedWithdrawal < 0 {
-			statedWithdrawal = min_stated_withdrawal
+			statedWithdrawal = min_stated_withdrawal // = 1
 		}
 		return statedWithdrawal
 	default:
@@ -253,7 +330,7 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 		return common.CreateVote(-1, a1.GetID(), uuid.Nil) // No audit - doesn't want to get caught
 	}
 
-	if a1.agentType == Honest {
+	if a1.agentType == Rational {
 		team := a1.Server.GetTeam(a1.GetID())
 		agentsInTeam := team.Agents
 		minHonestyScore := 0
@@ -274,8 +351,9 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 
 	}
 
-	// Honest agent logic
-	if a1.agentType == Honest || (a1.agentType == CheatLongTerm && !a1.hasClimbedRankAndWithdrawn()) {
+	// Rational agent logic
+	if a1.agentType == Rational || (a1.agentType == CheatLongTerm && !a1.hasClimbedRankAndWithdrawn()) {
+
 		var suspectID uuid.UUID
 		highestStatedContribution := 0
 
@@ -308,17 +386,13 @@ func (a1 *Team1Agent) GetContributionAuditVote() common.Vote {
 }
 
 func (a1 *Team1Agent) GetWithdrawalAuditVote() common.Vote {
-	// Short-term cheater never votes for audits
-	// if a1.agentType == CheatShortTerm {
-	// 	return common.CreateVote(-1, a1.GetID(), uuid.Nil) // No audit
-	// }
 
-	// Honest agent logic
-	if a1.agentType == Honest || a1.agentType == CheatShortTerm || (a1.agentType == CheatLongTerm && !a1.hasClimbedRankAndWithdrawn()) {
+	// Rational agent logic
+	if a1.agentType == Rational || (a1.agentType == CheatLongTerm && !a1.hasClimbedRankAndWithdrawn()) {
 		var suspectID uuid.UUID
 		highestDiscrepancy := 0
 
-		if a1.agentType == Honest {
+		if a1.agentType == Rational {
 			team := a1.Server.GetTeam(a1.GetID())
 			agentsInTeam := team.Agents
 			minHonestyScore := 0
@@ -428,7 +502,7 @@ func (a1 *Team1Agent) VoteOnAgentEntry(candidateID uuid.UUID) bool {
 	}
 
 	switch a1.agentType {
-	case Honest:
+	case Rational:
 		return value.honestyScore.Sum() > 0
 	default:
 		return true
