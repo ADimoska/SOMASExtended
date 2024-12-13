@@ -101,10 +101,6 @@ func (t *Team6AoA) GetExpectedWithdrawal(agentId uuid.UUID, agentScore int, comm
 
 func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int, actualContribution int, agentStatedContribution int) {
 
-	// first, run monitoring for all agents being monitored!
-	t.RunContributionMonitoring()
-	// for now, we're saying monitoring is included in cost of initial audit
-
 	// Store current contribution
 	t.currentContributions[agentId] = float64(actualContribution)
 
@@ -131,9 +127,6 @@ func (t *Team6AoA) SetContributionAuditResult(agentId uuid.UUID, agentScore int,
 }
 
 func (t *Team6AoA) SetWithdrawalAuditResult(agentId uuid.UUID, agentScore int, agentActualWithdrawal int, agentStatedWithdrawal int, commonPool int) {
-
-	// first, run monitoring for all agents being monitored!
-	t.RunWithdrawalMonitoring()
 
 	// auditCost := t.GetAuditCost((commonPool))
 	// numAgentsInTeam := len(t.auditHistory)
@@ -280,6 +273,10 @@ func (t *Team6AoA) RunContributionMonitoring() {
 // - So that the probability of detection is based on how much the agent cheated
 func (t *Team6AoA) GetContributionAuditResult(agentId uuid.UUID) bool {
 
+	// first, run monitoring for all agents being monitored!
+	t.RunContributionMonitoring()
+	// for now, we're saying monitoring is included in cost of initial audit
+
 	// Check if agent has any audit history
 	if history, exists := t.auditHistory[agentId]; exists && len(history) > 0 {
 		// Get the most recent audit record
@@ -391,6 +388,9 @@ func (t *Team6AoA) RunWithdrawalMonitoring() {
 }
 
 func (t *Team6AoA) GetWithdrawalAuditResult(agentId uuid.UUID) bool {
+
+	// first, run monitoring for all agents being monitored!
+	t.RunWithdrawalMonitoring()
 
 	// Check if agent has any audit history
 	if history, exists := t.auditHistory[agentId]; exists && len(history) > 0 {
