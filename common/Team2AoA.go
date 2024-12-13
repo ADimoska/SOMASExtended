@@ -11,14 +11,6 @@ import (
 
 // Warning -> Implicit to the AoA, not formalized until a successful audit
 // Offence -> Formalized warning, 3 offences result in a kick
-// Need to formalize the first offence punishment -> Server needs to enforce this.
-
-/*
- * TODO:
- * - Write some tests for the audit functionality here
- * - Implement the functionality on the server to work with this (so with offences)
- * - Make sure that if the leader dies, or is audited, they have to be re-elected
- */
 
 // ---------------------------------------- Articles of Association Functionality ----------------------------------------
 
@@ -53,7 +45,6 @@ func (t *Team2AoA) GetAuditResult(agentId uuid.UUID) bool {
 	t.OffenceMap[agentId] = offences
 
 	// Reset the audit queue after an audit to prevent double counting of offences
-	// TODO: If probabilistic auditing is implemented, this should be removed
 	t.auditRecord.ClearAllInfractions(agentId)
 
 	return offences > 0
@@ -133,7 +124,6 @@ func (t *Team2AoA) GetAuditCost(commonPool int) int {
 	return t.auditRecord.GetAuditCost()
 }
 
-// TODO: Implement a borda vote here instead?
 func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 	if len(votes) == 0 {
 		return uuid.Nil
@@ -161,6 +151,13 @@ func (t *Team2AoA) GetVoteResult(votes []Vote) uuid.UUID {
 		t.auditRecord.SetAuditDuration(duration)
 	}
 
+	// Make it easier to audit a leader, this ensures the leader can't outvote the rest and stay in power
+	leaderVotes := voteMap[t.Leader]
+	if leaderVotes >= max(1, (count/2)-1) {
+		return t.Leader
+	}
+
+	// If the leader is not the one votes up, then check if someone else has been voted up
 	for votedFor, votes := range voteMap {
 		if votes >= ((count / 2) + 1) {
 			return votedFor
